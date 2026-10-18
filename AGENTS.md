@@ -1,0 +1,16 @@
+# Project rules
+
+- Use TypeScript, React, and Vite. Keep `src/engine/` and `src/domain/` independent of React, DOM APIs, storage, network access, and fixture imports. Keep candidate generation separate from evaluation.
+- This is a small-collection reference optimizer. Apply eligibility before scoring. Coverage under **both** leaders is required for **every** participant, including both leaders and the friend. Unknown/unsupported eligibility fails closed, including nested rules and mechanic declarations.
+- Do not add partial coverage by silently weakening the default. Any future exploration mode must require explicit opt-in, show a warning, retain separate coverage reports, and identify ineligible results.
+- Select six distinct owned instance IDs including the selected leader. Represent the friend as a separate seventh participant even when its card ID matches an owned unit. Never deduplicate participants by card ID.
+- Target rotations are two disjoint pairs plus three floaters using all seven participants exactly once. The reference search enumerates all 105 unordered layouts. Explain that these are targets, not guaranteed opening rotations.
+- Keep coverage, synthetic links, condition fulfillment, and synthetic scenario fit separate. Document all weights and assumptions. A shared-link count is not total strength. Scores are heuristics, never win probabilities or verified damage/survivability.
+- Retain deterministic tie-breaking and disclose candidate counts, limits, rejection counts, and truncation. Never claim global optimality for a truncated search. Replacements must pass the same eligibility/evaluation and identify their explored scope.
+- Preserve the exact visible notice: “Synthetic demonstration — not real Dokkan recommendations.” Synthetic fixtures belong only in `src/data/fixtures/`; future verified data belongs separately in `src/data/verified/`.
+- Never invent real card stats, categories, effects, links, or formulas. No scraping, copying third-party databases/assets, or internal-endpoint probing without verified access and reuse terms. Public visibility and a code license do not establish dataset rights. Update `docs/DATA_SOURCES.md` when evidence changes.
+- Records need stable IDs, provenance, reuse terms, review/verification dates, awakening state where applicable, and mechanic support declarations. Null verification dates mean unverified. Unsupported mechanics must remain visible; do not assume their benefit.
+- Storage is local, versioned, and validated. Handle blocked storage and corrupt/unknown schemas visibly. The current editor owns at most one instance per synthetic card record; do not add real same-name rules without evidence.
+- Engine tests must include small independently enumerated candidate/ranking examples, friend identity, both leader checks, unsupported rules, conditional activation, seven-slot layout partitions, and search truncation. Avoid tests that use the function under test to generate their expected answer.
+- Before completion run `npm test`, `npm run typecheck`, and `npm run build`. Report actual results and any checks not performed. Keep the dependency lockfile. Do not commit dependencies, build output, or personal collection data.
+- Use a feature branch for implementation. Do not merge or deploy unless requested. Keep changes focused on the approved scope.
