@@ -3,6 +3,6 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  base: '/dokkan-optimizer/',
   test: { environment: 'node', include: ['src/**/*.test.ts'] },
 });

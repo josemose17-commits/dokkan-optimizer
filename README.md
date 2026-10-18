@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite, normally `http://localhost:5173`. If your sandbox does not allow network-interface discovery, use `npm run dev -- --host 127.0.0.1`.
+Open the local URL printed by Vite, normally `http://localhost:5173/dokkan-optimizer/`. If your sandbox does not allow network-interface discovery, use `npm run dev -- --host 127.0.0.1`.
 
 ```sh
 npm test                 # engine/reference examples and local persistence tests
@@ -24,6 +24,27 @@ npm run typecheck       # strict TypeScript, no emit
 npm run build           # type checking + production bundle in dist/
 npm run preview         # serve the production bundle locally
 ```
+
+## GitHub Pages deployment
+
+The workflow in [`.github/workflows/pages.yml`](.github/workflows/pages.yml) uses **Node.js 24**, installs the lockfile with `npm ci`, runs `npm test`, and runs `npm run build` (which includes strict type checking). Pull requests targeting `main` run validation only. A push to `main` uploads `dist/` and deploys it after the build succeeds. The optional **Run workflow** trigger can deploy `main`; choosing another branch runs validation without uploading or deploying.
+
+**Required manual repository setting:** in [Settings → Pages](https://github.com/josemose17-commits/dokkan-optimizer/settings/pages), under **Build and deployment → Source**, select **GitHub Actions**. Pages was not enabled when this deployment setup was prepared. Set the source before merging this PR. Do not select a branch/folder publishing source or create a separate starter workflow; the checked-in workflow builds the application.
+
+If Actions is disabled by repository or organization policy, enable it in **Settings → Actions → General** and allow the official `actions/checkout`, `actions/setup-node`, `actions/upload-pages-artifact`, `actions/configure-pages`, and `actions/deploy-pages` actions. No personal access token or custom deployment secret is required. The workflow grants `contents: read` by default and grants `pages: write` / `id-token: write` only to the `main` deployment job. That job targets the **`github-pages`** environment and serializes deployments. If an existing environment policy restricts deployment branches, it must permit `main`; any configured required reviewer still needs to approve the job.
+
+After the workflow is merged into `main`, a push to `main` starts deployment automatically. To retry manually, open **Actions → Validate and deploy GitHub Pages → Run workflow** and choose **main**. The manual trigger is available after the workflow exists on the default branch. Check the deployment job's result and its environment URL; a successful local build or PR check alone does not mean the site is live.
+
+Expected address **after a successful deployment**: `https://josemose17-commits.github.io/dokkan-optimizer/`. This README does not assert a completed deployment.
+
+Vite's `base` is explicitly `/dokkan-optimizer/`, so generated JavaScript and CSS URLs retain the repository prefix. To check the production build locally:
+
+```sh
+npm run build
+npm run preview -- --host 127.0.0.1
+```
+
+Open `http://127.0.0.1:4173/dokkan-optimizer/`. Check that scripts and styles load under `/dokkan-optimizer/assets/` and that **“Synthetic demonstration — not real Dokkan recommendations.”** remains visible. If the repository name or hosting path changes, update `base` in `vite.config.ts`. Collection storage belongs to the browser origin, so a local collection is not automatically transferred to the Pages origin.
 
 ## First run
 
