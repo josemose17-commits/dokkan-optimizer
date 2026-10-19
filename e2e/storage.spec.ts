@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, WORKING_KEY } from './fixtures';
+import { expect, test, WORKING_KEY, GOKU_OPTIMIZER } from './fixtures';
 
 test('corrupt working settings warn and are kept until an explicit edit', async ({
   page,
 }) => {
-  await page.goto('?workbench=character-build');
+  await page.goto(GOKU_OPTIMIZER);
   await page.evaluate(
     (key) => window.localStorage.setItem(key, 'not-json'),
     WORKING_KEY,
@@ -14,8 +14,8 @@ test('corrupt working settings warn and are kept until an explicit edit', async 
     page.getByText('Saved character settings could not be read'),
   ).toBeVisible();
   // Browsing the catalog does not write it either.
-  await page.goto('./');
-  await page.goto('?workbench=character-build');
+  await page.goto('?workbench=catalog');
+  await page.goto(GOKU_OPTIMIZER);
   expect(
     await page.evaluate((key) => window.localStorage.getItem(key), WORKING_KEY),
   ).toBe('not-json');
@@ -50,7 +50,7 @@ test('blocked storage is reported while calculations stay usable', async ({
       },
     });
   });
-  await page.goto('?workbench=character-build');
+  await page.goto(GOKU_OPTIMIZER);
   await expect(
     page.getByText(
       'Local storage is unavailable; changes last for this session.',
@@ -60,11 +60,13 @@ test('blocked storage is reported while calculations stay usable', async ({
     page.getByText('Local storage is unavailable. Saved builds cannot be kept'),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save build' })).toBeDisabled();
-  await page.getByRole('button', { name: 'Compare legal builds' }).click();
+  await page
+    .getByRole('button', { name: 'Compare compatible configurations' })
+    .click();
   await expect(page.locator('.cb-search')).toContainText(
-    '16 legal targets evaluated',
+    '16 compatible targets evaluated',
   );
-  await page.goto('./');
+  await page.goto('?workbench=catalog');
   await expect(
     page.getByRole('heading', { name: 'Super Saiyan 3 Goku', level: 2 }),
   ).toBeVisible();

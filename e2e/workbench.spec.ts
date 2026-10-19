@@ -1,13 +1,15 @@
 import type { Page } from '@playwright/test';
-import { expect, test, WORKING_KEY } from './fixtures';
+import { expect, test, WORKING_KEY, GOKU_OPTIMIZER } from './fixtures';
 
 // Expected values are the hand-checked figures documented in README.md.
 const open = async (page: Page) => {
-  await page.goto('?workbench=character-build');
+  await page.goto(GOKU_OPTIMIZER);
   await expect(page.locator('.cb-search')).toBeVisible();
 };
 const compare = (page: Page) =>
-  page.getByRole('button', { name: 'Compare legal builds' }).click();
+  page
+    .getByRole('button', { name: 'Compare compatible configurations' })
+    .click();
 const rows = (page: Page) => page.locator('.cb-table tbody tr');
 const search = (page: Page) => page.locator('.cb-search');
 
@@ -16,13 +18,16 @@ test('default comparison enumerates 16 targets with the documented baseline', as
 }) => {
   await open(page);
   await expect(search(page)).toContainText(
-    '16 legal targets evaluated · 16 distinct evaluations',
+    '16 compatible targets evaluated · 16 distinct evaluations',
   );
   const baseline = page.locator('.cb-baseline');
   for (const value of ['13,911', '8,596', '15,327', '5.0%'])
     await expect(baseline).toContainText(value);
   await expect(rows(page)).toHaveCount(16);
-  await expect(rows(page).filter({ hasText: '#1' })).toHaveCount(4);
+  // One "Explain #1" control per rank-1 row: four exact ties.
+  await expect(
+    page.getByRole('button', { name: 'Explain #1', exact: true }),
+  ).toHaveCount(4);
   await expect(rows(page).filter({ hasText: 'FRONTIER' })).toHaveCount(9);
   await expect(page.locator('#space-estimate')).toContainText(
     '4 bronze × 4 silver × 1 gold option (each including empty) × 1 allocation = 16 targets at most',
@@ -68,7 +73,7 @@ test('inventory mode restricts targets while current equips can be retained', as
   await open(page);
   await page.getByLabel('Use my inventory quantities').check();
   await compare(page);
-  await expect(search(page)).toContainText('1 legal targets evaluated');
+  await expect(search(page)).toContainText('1 compatible targets evaluated');
   await page
     .getByLabel('Unequipped copies: AGL ATK +500 · bronze Lv.5')
     .fill('1');
@@ -77,7 +82,7 @@ test('inventory mode restricts targets while current equips can be retained', as
     .selectOption({ label: 'Critical Hit +2 · silver' });
   await compare(page);
   // bronze {empty, ATK} × silver {empty, retained critical}
-  await expect(search(page)).toContainText('4 legal targets evaluated');
+  await expect(search(page)).toContainText('4 compatible targets evaluated');
 });
 
 test('evasion-disabled context groups 16 targets into 12 evaluations', async ({
@@ -87,7 +92,7 @@ test('evasion-disabled context groups 16 targets into 12 evaluations', async ({
   await page.getByLabel('Incoming-attack assumption').selectOption('disabled');
   await compare(page);
   await expect(search(page)).toContainText(
-    '16 legal targets evaluated · 12 distinct evaluations',
+    '16 compatible targets evaluated · 12 distinct evaluations',
   );
 });
 
@@ -99,7 +104,7 @@ test('truncation is disclosed and makes no global claim', async ({ page }) => {
   );
   await compare(page);
   await expect(page.getByRole('alert')).toContainText(
-    'Search truncated at 2 targets; total legal count is unknown.',
+    'Search truncated at 2 targets; total matching count is unknown.',
   );
 });
 
@@ -141,7 +146,7 @@ test('invalid inputs are reported on their fields and block comparison', async (
   await limit.fill('16');
   await page.getByLabel(/Hidden Potential is already unlocked/).uncheck();
   await expect(
-    page.getByText('Required: only an unlocked system'),
+    page.getByText('Required: this evaluator supports only an unlocked system'),
   ).toBeVisible();
   await compare(page);
   await expect(page.locator('.cb-results')).toHaveCount(0);
@@ -184,8 +189,8 @@ test('settings persist across reload and navigation without touching other keys'
   );
   await expect(page.getByLabel('Use my inventory quantities')).toBeChecked();
   // The catalog only reads the working key; it never writes it.
-  await page.goto('./');
-  await page.goto('?workbench=character-build');
+  await page.goto('?workbench=catalog');
+  await page.goto(GOKU_OPTIMIZER);
   await expect(page.getByLabel('Current silver equip')).toHaveValue(
     'generic:silver:critical:2',
   );
@@ -214,10 +219,12 @@ test('keyboard users can submit and the identity bar follows scrolling', async (
   await page.keyboard.press('Control+A');
   await page.keyboard.type('20000');
   await page.keyboard.press('Enter');
-  await expect(search(page)).toContainText('16 legal targets evaluated');
+  await expect(search(page)).toContainText('16 compatible targets evaluated');
   await page.locator('.cb-results').scrollIntoViewIfNeeded();
   await expect(bar).toBeVisible();
-  await expect(bar).toContainText('EZA step 7 · Lv.140 · SA15 · not SEZA');
+  await expect(bar).toContainText(
+    'EZA step 7 · without Super EZA · Lv.140 · SA15',
+  );
 });
 
 test('results fit the viewport without horizontal table scrolling on narrow screens', async ({

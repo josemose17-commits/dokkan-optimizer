@@ -1,7 +1,11 @@
 import { useEffect } from 'react';
 import LegacyTeamApp from './App';
-import CharacterWorkbench from './character-build/CharacterWorkbench';
+import BuildOptimizerPage from './character-build/BuildOptimizerPage';
 import CatalogBrowser from './characters/CatalogBrowser';
+import { catalogSnapshot } from './data/real/catalog';
+import { productionRegistry } from './data/real/character-build/registry';
+import DefinitionWorkbench from './character-definitions/DefinitionWorkbench';
+import PotentialOptimizer from './potential/PotentialOptimizer';
 
 export default function Workbench() {
   const legacy =
@@ -10,21 +14,43 @@ export default function Workbench() {
   const builds =
     new URLSearchParams(window.location.search).get('workbench') ===
     'character-build';
+  const params = new URLSearchParams(window.location.search);
+  const catalog =
+    params.get('workbench') === 'catalog' ||
+    (params.get('workbench') === null && params.has('state'));
+  const definitions = params.get('workbench') === 'definitions';
+  const optimizer = !legacy && !builds && !catalog && !definitions;
   useEffect(() => {
     document.title = legacy
       ? 'Dokkan Team Lab · Legacy synthetic demo'
       : builds
-        ? 'Dokkan Character Builds · Limited workbench'
-        : 'Dokkan Character Catalog · Admitted records';
-  }, [legacy, builds]);
+        ? 'Dokkan Character Builds · Equip comparison'
+        : catalog
+          ? 'Dokkan Character Catalog · Admitted records'
+          : definitions
+            ? 'Dokkan Character Lab · Definitions and custom builds'
+            : 'Dokkan · Profile/equipment comparison';
+  }, [legacy, builds, catalog, definitions]);
   return (
     <>
       <header className="workbench-switch">
-        <strong>DOKKAN / CHARACTER CATALOG</strong>
+        <strong>DOKKAN / PROFILE COMPARISON</strong>
         <nav aria-label="Workbench">
           <a
             href={import.meta.env.BASE_URL}
-            aria-current={!legacy && !builds ? 'page' : undefined}
+            aria-current={optimizer ? 'page' : undefined}
+          >
+            Profile/equipment comparison
+          </a>
+          <a
+            href={`${import.meta.env.BASE_URL}?workbench=definitions`}
+            aria-current={definitions ? 'page' : undefined}
+          >
+            Character maintenance
+          </a>
+          <a
+            href={`${import.meta.env.BASE_URL}?workbench=catalog`}
+            aria-current={catalog ? 'page' : undefined}
           >
             Character catalog
           </a>
@@ -32,7 +58,7 @@ export default function Workbench() {
             href={`${import.meta.env.BASE_URL}?workbench=character-build`}
             aria-current={builds ? 'page' : undefined}
           >
-            Limited build comparison
+            Source build examples
           </a>
           <a
             href={`${import.meta.env.BASE_URL}?workbench=legacy-team`}
@@ -45,9 +71,19 @@ export default function Workbench() {
       {legacy ? (
         <LegacyTeamApp />
       ) : builds ? (
-        <CharacterWorkbench />
-      ) : (
+        <BuildOptimizerPage
+          snapshot={catalogSnapshot}
+          registry={productionRegistry}
+        />
+      ) : catalog ? (
         <CatalogBrowser />
+      ) : definitions ? (
+        <DefinitionWorkbench />
+      ) : (
+        <PotentialOptimizer
+          snapshot={catalogSnapshot}
+          registry={productionRegistry}
+        />
       )}
     </>
   );

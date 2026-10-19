@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { gokuEntry } from '../data/real/character-build/registry';
 import {
   characterCatalog,
   defaultRequest,
@@ -28,10 +29,8 @@ it('round trips current build, inventory, objective and context separately from 
   request.inventory[ORB_IDS.attack] = 2;
   request.context.evasionAllowed = false;
   request.objective = 'attack';
-  expect(saveCharacterState(storage, request, characterCatalog)).toBeNull();
-  expect(
-    loadCharacterState(storage, defaultRequest(), characterCatalog).state,
-  ).toEqual(request);
+  expect(saveCharacterState(storage, request, gokuEntry)).toBeNull();
+  expect(loadCharacterState(storage, gokuEntry).state).toEqual(request);
   expect(storage.values.get('dokkan-team-lab.collection.v1')).toBe(
     'legacy-owned',
   );
@@ -44,11 +43,7 @@ it.each([
 ])('warns and preserves invalid/unknown saved data %s', (raw) => {
   const storage = memory();
   storage.values.set(CHARACTER_STORAGE_KEY, raw);
-  const loaded = loadCharacterState(
-    storage,
-    defaultRequest(),
-    characterCatalog,
-  );
+  const loaded = loadCharacterState(storage, gokuEntry);
   expect(loaded.warning).toContain('could not be read');
   // The unusable copy is offered for download and left in storage.
   expect(loaded.raw).toBe(raw);
@@ -64,9 +59,7 @@ it('rejects a malformed object even with the correct schema revision', () => {
       request: { current: null },
     }),
   );
-  expect(
-    loadCharacterState(storage, defaultRequest(), characterCatalog).warning,
-  ).not.toBeNull();
+  expect(loadCharacterState(storage, gokuEntry).warning).not.toBeNull();
 });
 it('handles unavailable and throwing storage', () => {
   const broken = {
@@ -77,39 +70,29 @@ it('handles unavailable and throwing storage', () => {
       throw new Error('quota');
     },
   };
+  expect(loadCharacterState(null, gokuEntry).warning).not.toBeNull();
+  expect(loadCharacterState(broken, gokuEntry).warning).not.toBeNull();
   expect(
-    loadCharacterState(null, defaultRequest(), characterCatalog).warning,
-  ).not.toBeNull();
-  expect(
-    loadCharacterState(broken, defaultRequest(), characterCatalog).warning,
-  ).not.toBeNull();
-  expect(
-    saveCharacterState(broken, defaultRequest(), characterCatalog),
+    saveCharacterState(broken, defaultRequest(), gokuEntry),
   ).not.toBeNull();
 });
 it('does not save invalid progression', () => {
   const storage = memory();
   const request = defaultRequest();
   request.progression.routes = ['bottomRight'];
-  expect(saveCharacterState(storage, request, characterCatalog)).not.toBeNull();
+  expect(saveCharacterState(storage, request, gokuEntry)).not.toBeNull();
   expect(storage.values.has(CHARACTER_STORAGE_KEY)).toBe(false);
 });
 it('offers no stored copy when nothing was saved, storage is blocked or the data loads', () => {
-  expect(
-    loadCharacterState(memory(), defaultRequest(), characterCatalog).raw,
-  ).toBeNull();
+  expect(loadCharacterState(memory(), gokuEntry).raw).toBeNull();
   const blocked = {
     getItem: () => {
       throw new Error('blocked');
     },
     setItem: () => undefined,
   };
-  expect(
-    loadCharacterState(blocked, defaultRequest(), characterCatalog).raw,
-  ).toBeNull();
+  expect(loadCharacterState(blocked, gokuEntry).raw).toBeNull();
   const storage = memory();
-  saveCharacterState(storage, defaultRequest(), characterCatalog);
-  expect(
-    loadCharacterState(storage, defaultRequest(), characterCatalog).raw,
-  ).toBeNull();
+  saveCharacterState(storage, defaultRequest(), gokuEntry);
+  expect(loadCharacterState(storage, gokuEntry).raw).toBeNull();
 });

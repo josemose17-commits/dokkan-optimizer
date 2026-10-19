@@ -2,16 +2,19 @@ import {
   SLOTS,
   type Build,
   type BuildRequest,
-  type CharacterCatalog,
+  type CalculationTrace,
+  type Contribution,
   type Evaluation,
+  type EvaluatorEntry,
+  type EvaluatorImplementation,
   type Metric,
   type Metrics,
+  type ProbabilityStep,
   type Skill,
+  type Skills,
+  type Stats,
 } from './domain';
 import { buildErrors, requestErrors } from './legality';
-
-// Recorded with saved builds; matches the catalog state's evaluatorId.
-export const EVALUATOR_VERSION = 'goku-initial-check-v1';
 
 export function hiddenPotentialChance(level: number, skill: Skill): number {
   const p = level * (skill === 'evasion' ? 0.01 : 0.02);
@@ -27,77 +30,214 @@ export function independentChecks(a: number, b: number): number {
   return 1 - (1 - a) * (1 - b);
 }
 
+// Rule claims the initial-check implementation relies on. An entry using it
+// must carry evidence records with these IDs, or it fails closed.
+export const INITIAL_CHECK_RULES = {
+  statAddition: 'raw-stat-addition',
+  additional: 'aa-initial-check',
+  critical: 'critical-check',
+  evasion: 'evasion-check',
+  damage: 'damage-gate',
+} as const;
+const SUPER_CONVERSION = 0.5;
+
+const STAT_KEYS = ['hp', 'attack', 'defense'] as const;
+const nonZero = <K extends string>(values: Partial<Record<K, number>>) =>
+  Object.fromEntries(
+    Object.entries(values).filter(([, v]) => v !== 0 && v !== undefined),
+  ) as Partial<Record<K, number>>;
+
 export function evaluateBuild(
   build: Build,
   request: BuildRequest,
-  catalog: CharacterCatalog,
+  entry: EvaluatorEntry,
 ): Evaluation {
+  const catalog = entry.model;
   const errors = [
-    ...requestErrors(request, catalog),
+    ...requestErrors(request, entry),
     ...buildErrors(build, request, catalog),
   ];
   if (errors.length) throw new Error(errors.join(' '));
-  const stats = { ...catalog.card.baseStats };
-  for (const key of ['hp', 'attack', 'defense'] as const)
-    stats[key] += catalog.profile.statBonus[key];
-  const skills = { ...catalog.profile.fixedSkills };
-  for (const [id, skill] of Object.entries(build.choices))
-    skills[skill] += catalog.profile.nodes.find((n) => n.id === id)!.levels;
+  const { card, profile } = catalog;
+
+  // Every addition is recorded with its source; totals are summed from the
+  // same records the explanation shows.
+  const trace: CalculationTrace = { stats: [], skills: [], probabilities: [] };
+  const statSource = (c: Contribution<Partial<Stats>>) => trace.stats.push(c);
+  const skillSource = (c: Contribution<Partial<Skills>>) =>
+    trace.skills.push(c);
+  statSource({
+    source: 'card',
+    label: `Card base stats (Lv.${card.level})`,
+    slot: null,
+    itemId: null,
+    nodeId: null,
+    values: { ...card.baseStats },
+    evidenceIds: card.evidenceIds,
+  });
+  statSource({
+    source: 'potential',
+    label: `Hidden Potential: ${profile.label}`,
+    slot: null,
+    itemId: null,
+    nodeId: null,
+    values: { ...profile.statBonus },
+    evidenceIds: profile.evidenceIds,
+  });
+  skillSource({
+    source: 'potential',
+    label: `Fixed skills: ${profile.label}`,
+    slot: null,
+    itemId: null,
+    nodeId: null,
+    values: nonZero(profile.fixedSkills),
+    evidenceIds: profile.evidenceIds,
+  });
+  for (const [id, skill] of Object.entries(build.choices)) {
+    const node = profile.nodes.find((n) => n.id === id)!;
+    skillSource({
+      source: 'node',
+      label: `Choice node ${id}: ${skill}`,
+      slot: null,
+      itemId: null,
+      nodeId: id,
+      values: { [skill]: node.levels },
+      evidenceIds: node.evidenceIds,
+    });
+  }
   for (const slot of SLOTS) {
     const orb = catalog.orbs.find((o) => o.id === build.equips[slot]);
     if (!orb) continue;
-    for (const key of ['hp', 'attack', 'defense'] as const)
-      stats[key] += orb.stats[key] ?? 0;
-    for (const key of ['additional', 'critical', 'evasion'] as const)
-      skills[key] += orb.skills[key] ?? 0;
+    const base = { slot, itemId: orb.id, nodeId: null };
+    const label = `${slot[0]!.toUpperCase()}${slot.slice(1)} equip: ${orb.label}`;
+    if (Object.keys(nonZero(orb.stats)).length)
+      statSource({
+        ...base,
+        source: 'equip',
+        label,
+        values: nonZero(orb.stats),
+        evidenceIds: orb.evidenceIds,
+      });
+    if (Object.keys(nonZero(orb.skills)).length)
+      skillSource({
+        ...base,
+        source: 'equip',
+        label,
+        values: nonZero(orb.skills),
+        evidenceIds: orb.evidenceIds,
+      });
   }
-  const stat = (value: number): Metric => ({
-    value,
-    unit: 'stat',
-    evidenceIds: [
-      'card-stats',
-      'base-board',
-      'raw-stat-addition',
-      'bronze-items',
+  const stats: Stats = { hp: 0, attack: 0, defense: 0 };
+  for (const c of trace.stats)
+    for (const key of STAT_KEYS) stats[key] += c.values[key] ?? 0;
+  const skills: Skills = { additional: 0, critical: 0, evasion: 0 };
+  for (const c of trace.skills)
+    for (const key of ['additional', 'critical', 'evasion'] as const)
+      skills[key] += c.values[key] ?? 0;
+
+  const sourceEvidence = (
+    contributions: Contribution<Partial<Record<string, number>>>[],
+    key: string,
+  ) =>
+    contributions
+      .filter((c) => (c.values[key] ?? 0) !== 0)
+      .flatMap((c) => c.evidenceIds);
+  const unique = (ids: string[]) => [...new Set(ids)];
+
+  const step = (
+    metric: ProbabilityStep['metric'],
+    factors: ProbabilityStep['factors'],
+    value: number,
+    evidenceIds: string[],
+    note: string,
+  ) => {
+    trace.probabilities.push({ metric, factors, value, evidenceIds, note });
+    return value;
+  };
+  const perLevel = (skill: Skill, label: string) => {
+    const rate = skill === 'evasion' ? 0.01 : 0.02;
+    return step(
+      skill === 'additional' ? 'additionalTrigger' : skill,
+      [
+        { label: `${label} levels`, value: skills[skill], kind: 'level' },
+        { label: 'chance per level', value: rate, kind: 'rate' },
+      ],
+      hiddenPotentialChance(skills[skill], skill),
+      unique([
+        INITIAL_CHECK_RULES[skill],
+        ...sourceEvidence(trace.skills, skill),
+      ]),
+      `${label}: Hidden Potential level × ${rate * 100}% per level.`,
+    );
+  };
+  const trigger = perLevel('additional', 'Additional Attack');
+  const extraSuper = step(
+    'additionalSuper',
+    [
+      { label: 'Initial AA trigger', value: trigger, kind: 'rate' },
+      { label: 'Super conversion', value: SUPER_CONVERSION, kind: 'rate' },
     ],
+    trigger * SUPER_CONVERSION,
+    unique([
+      INITIAL_CHECK_RULES.additional,
+      ...sourceEvidence(trace.skills, 'additional'),
+    ]),
+    'The initial check triggers and the extra attack is a Super. No passive chain model.',
+  );
+  const critical = perLevel('critical', 'Critical Hit');
+  const evasion = request.context.evasionAllowed
+    ? perLevel('evasion', 'Evasion')
+    : step(
+        'evasion',
+        [],
+        0,
+        [INITIAL_CHECK_RULES.evasion],
+        'Fixed at 0 by the explicit context: evasion disabled.',
+      );
+
+  const stat = (key: (typeof STAT_KEYS)[number]): Metric => ({
+    value: stats[key],
+    unit: 'stat',
+    evidenceIds: unique([
+      ...sourceEvidence(trace.stats, key),
+      INITIAL_CHECK_RULES.statAddition,
+    ]),
     reason:
       'Card stat including activated potential and equips. No combat multipliers.',
   });
   const probability = (
+    metric: ProbabilityStep['metric'],
     value: number,
-    evidenceId: string,
     reason: string,
   ): Metric => ({
     value,
     unit: 'probability',
-    evidenceIds: [evidenceId, 'base-board', 'silver-items'],
+    evidenceIds: trace.probabilities.find((p) => p.metric === metric)!
+      .evidenceIds,
     reason,
   });
-  const trigger = hiddenPotentialChance(skills.additional, 'additional');
   const metrics: Metrics = {
-    attack: stat(stats.attack),
-    defense: stat(stats.defense),
-    hp: stat(stats.hp),
+    attack: stat('attack'),
+    defense: stat('defense'),
+    hp: stat('hp'),
     additionalTrigger: probability(
+      'additionalTrigger',
       trigger,
-      'aa-initial-check',
       'Initial eligible attack: Hidden Potential trigger chance. Not a full-turn attack distribution.',
     ),
     additionalSuper: probability(
-      trigger * 0.5,
-      'aa-initial-check',
+      'additionalSuper',
+      extraSuper,
       'Initial check triggers and yields a Super: trigger × 50%. No passive chain model.',
     ),
     critical: probability(
-      hiddenPotentialChance(skills.critical, 'critical'),
-      'critical-check',
+      'critical',
+      critical,
       'Hidden Potential critical chance per eligible attack; no native/external critical effects.',
     ),
     evasion: probability(
-      request.context.evasionAllowed
-        ? hiddenPotentialChance(skills.evasion, 'evasion')
-        : 0,
-      'evasion-check',
+      'evasion',
+      evasion,
       request.context.evasionAllowed
         ? 'Per eligible incoming attack; not a survival probability.'
         : 'The explicit context assumes evasion is disabled.',
@@ -105,14 +245,14 @@ export function evaluateBuild(
     damage: {
       value: null,
       unit: 'damage',
-      evidenceIds: ['damage-gate'],
+      evidenceIds: [INITIAL_CHECK_RULES.damage],
       reason:
         'Unavailable: outgoing damage stages, critical damage, enemy interactions and rounding are not verified.',
     },
     battleDefense: {
       value: null,
       unit: 'stat',
-      evidenceIds: ['eza-kit'],
+      evidenceIds: card.evidenceIds,
       reason:
         'Unavailable: battle DEF/passive stages are outside the admitted card-stat model.',
     },
@@ -121,7 +261,11 @@ export function evaluateBuild(
     stats,
     skills,
     metrics,
+    trace,
     comparisonKey: JSON.stringify([
+      entry.id,
+      entry.evaluator.id,
+      entry.evaluator.version,
       catalog.revision,
       request.cardStateId,
       request.level,
@@ -133,3 +277,19 @@ export function evaluateBuild(
     ]),
   };
 }
+
+export const initialCheckEvaluator: EvaluatorImplementation = {
+  id: 'hidden-potential-initial-check',
+  version: '1',
+  label: 'Card stats and initial-check Hidden Potential probabilities',
+  verification:
+    'Arithmetic is covered by independent unit tests with hand-computed expected values. Tests check this implementation, not game behavior.',
+  entryErrors: (entry) =>
+    Object.values(INITIAL_CHECK_RULES)
+      .filter((id) => !entry.model.evidence.some((e) => e.id === id))
+      .map(
+        (id) =>
+          `Evaluator ${entry.id} lacks the "${id}" rule evidence required by this implementation.`,
+      ),
+  evaluate: evaluateBuild,
+};

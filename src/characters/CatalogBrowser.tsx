@@ -1,6 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { recommendationHref } from '../potential/urls';
+import { resolveEvaluator } from '../character-build/registry';
 import { CHARACTER_STORAGE_KEY } from '../character-build/storage';
-import { CARD_STATE_ID } from '../data/real/character-build/goku';
+import { productionRegistry } from '../data/real/character-build/registry';
 import { catalogSnapshot as bundled } from '../data/real/catalog';
 import {
   catalogCounts,
@@ -140,10 +142,11 @@ function CatalogDetails({
     ['Pre-battle total', layers.preBattle],
     ['Battle stats after modifiers', layers.battle],
   ];
-  const canOptimize =
-    isBundled &&
-    state.id === CARD_STATE_ID &&
-    state.optimization.evaluatorId === 'goku-initial-check-v1';
+  // The registry decides from the state's own evaluator ID; session files
+  // are never resolved against it.
+  const resolution = isBundled
+    ? resolveEvaluator(productionRegistry, snapshot, state.id)
+    : null;
   return (
     <article
       className="catalog-panel catalog-details"
@@ -289,14 +292,18 @@ function CatalogDetails({
             : `Declared by the file: ${state.optimization.status} — not offered in this app`}
         </h3>
         <p>{state.optimization.reason}</p>
-        {canOptimize && (
-          <a
-            className="catalog-action"
-            href={`${import.meta.env.BASE_URL}?workbench=character-build`}
-          >
-            Optimize this character
+        {resolution?.ok && (
+          <a className="catalog-action" href={recommendationHref(state.id)}>
+            Compare documented profile
           </a>
         )}
+        {resolution &&
+          !resolution.ok &&
+          resolution.code !== 'not-supported' && (
+            <p className="catalog-unsupported" role="note">
+              <strong>Optimization unavailable:</strong> {resolution.reason}
+            </p>
+          )}
         {!isBundled && (
           <>
             <button
@@ -305,7 +312,7 @@ function CatalogDetails({
               disabled
               aria-describedby="session-optimize-note"
             >
-              Optimize this character
+              Compare documented profile
             </button>
             <p id="session-optimize-note" className="subtle">
               Optimization is only offered for the bundled admitted record.
@@ -390,6 +397,7 @@ export default function CatalogBrowser() {
     window.history.pushState(null, '', url);
   };
   const counts = useMemo(() => catalogCounts(snapshot), [snapshot]);
+  const bundledCounts = useMemo(() => catalogCounts(bundled), []);
   // Typing stays responsive on a large session file; results follow shortly.
   const deferredFilters = useDeferredValue(filters);
   const rows = useMemo(
@@ -465,9 +473,11 @@ export default function CatalogBrowser() {
           Dokkan Info acquisition is paused pending an approved method.
         </strong>
         <p>
-          No provider import is connected. The bundled catalog contains the
-          existing Goku record only. Synthetic catalog fixtures are confined to
-          automated tests.
+          No provider import is connected. The bundled catalog holds{' '}
+          {plural(bundledCounts.cards, 'card form')} and{' '}
+          {plural(bundledCounts.states, 'exact state')}, each recorded
+          individually with field-level references; it is not a complete roster.
+          Synthetic catalog fixtures are confined to automated tests.
         </p>
       </div>
       {session && (

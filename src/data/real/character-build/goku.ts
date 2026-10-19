@@ -100,6 +100,8 @@ const metadata = (id: string, evidenceIds: string[]): Metadata => ({
 });
 
 export const CARD_STATE_ID = 'global-en:1003211:eza-7:lv140:sa15';
+// Catalog card identity this state belongs to (see src/data/real/catalog.ts).
+export const CATALOG_CARD_ID = 'admitted-card:1003211';
 export const PROFILE_ID = 'goku-s-agl:no-dupes:base-board-filled:v1';
 export const ORB_IDS = {
   hp: 'agl:bronze:hp:5',
