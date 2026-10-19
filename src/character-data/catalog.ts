@@ -1,5 +1,6 @@
 import type {
   AcquisitionAdapter,
+  CatalogCard,
   CatalogSnapshot,
   CatalogState,
   DetailFields,
@@ -160,6 +161,9 @@ export type SearchFilters = {
   category?: string;
   awakening?: string;
   region?: string;
+  optimization?: CatalogState['optimization']['status'];
+  // 'catalog' keeps snapshot order; 'name' is a deterministic name/title/ID order.
+  sort?: 'catalog' | 'name';
 };
 const normalize = (value: string) =>
   value
@@ -168,6 +172,39 @@ const normalize = (value: string) =>
     .toLocaleLowerCase('en-US');
 const matches = (value: string | null, filter: string | undefined) =>
   !filter || (filter === '__missing__' ? value === null : value === filter);
+
+type SearchIndex = {
+  cards: CatalogCard[];
+  entries: { haystack: string; name: string | null; title: string | null }[];
+};
+// Snapshots are treated as immutable once searched. A replaced cards array is re-indexed.
+const searchIndexes = new WeakMap<CatalogSnapshot, SearchIndex>();
+function searchIndex(snapshot: CatalogSnapshot): SearchIndex {
+  const cached = searchIndexes.get(snapshot);
+  if (cached && cached.cards === snapshot.cards) return cached;
+  const index: SearchIndex = {
+    cards: snapshot.cards,
+    entries: snapshot.cards.map((card) => ({
+      haystack: normalize(
+        [
+          card.name.value,
+          card.title.value,
+          card.id,
+          ...card.aliases.map((a) => a.recordId),
+        ].join(' '),
+      ),
+      name: card.name.value === null ? null : normalize(card.name.value),
+      title: card.title.value === null ? null : normalize(card.title.value),
+    })),
+  };
+  searchIndexes.set(snapshot, index);
+  return index;
+}
+// Code-unit comparison of normalized text: locale-independent and deterministic.
+const compareText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+// Unknown (null) names/titles sort after known values; they are not empty strings.
+const compareNullable = (a: string | null, b: string | null) =>
+  a === null ? (b === null ? 0 : 1) : b === null ? -1 : compareText(a, b);
 
 export function searchCatalog(
   snapshot: CatalogSnapshot,
@@ -185,6 +222,8 @@ export function searchCatalog(
       matches(state.fields.rarity.value, filters.rarity) &&
       matches(state.region, filters.region) &&
       (!filters.awakening || state.awakening.kind === filters.awakening) &&
+      (!filters.optimization ||
+        state.optimization.status === filters.optimization) &&
       (!filters.category ||
         (filters.category === '__missing__'
           ? state.fields.categories.value === null
@@ -195,20 +234,22 @@ export function searchCatalog(
       matchingStates.set(state.cardId, states);
     }
   }
-  return snapshot.cards.flatMap((card) => {
-    const haystack = normalize(
-      [
-        card.name.value,
-        card.title.value,
-        card.id,
-        ...card.aliases.map((a) => a.recordId),
-      ].join(' '),
-    );
-    if (!tokens.every((token) => haystack.includes(token))) return [];
+  const index = searchIndex(snapshot);
+  const rows = snapshot.cards.flatMap((card, i) => {
+    const entry = index.entries[i]!;
+    if (!tokens.every((token) => entry.haystack.includes(token))) return [];
     // All state filters must match the SAME state; never combine EZA type with a base category.
     const states = matchingStates.get(card.id) ?? [];
-    return states.length ? [{ card, states }] : [];
+    return states.length ? [{ card, states, entry }] : [];
   });
+  if (filters.sort === 'name')
+    rows.sort(
+      (a, b) =>
+        compareNullable(a.entry.name, b.entry.name) ||
+        compareNullable(a.entry.title, b.entry.title) ||
+        compareText(a.card.id, b.card.id),
+    );
+  return rows.map(({ card, states }) => ({ card, states }));
 }
 
 export function statLayers(
