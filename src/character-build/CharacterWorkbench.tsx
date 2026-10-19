@@ -32,7 +32,9 @@ const labels: Record<MetricKey, string> = {
 };
 const MAX_LIMIT = 20000;
 const shortOrb = (id: string | null) =>
-  catalog.orbs.find((orb) => orb.id === id)?.label ?? 'Empty';
+  id === null
+    ? 'Empty'
+    : (catalog.orbs.find((orb) => orb.id === id)?.label ?? 'Unknown item');
 const quantityIssue = (n: number | undefined) =>
   n === undefined || (Number.isSafeInteger(n) && n >= 0 && n <= 999)
     ? null
@@ -41,7 +43,7 @@ const describeRequest = (r: BuildRequest) =>
   `${shortOrb(r.current.equips.bronze)} / ${shortOrb(r.current.equips.silver)} · ${
     r.mode === 'catalog' ? 'ownership ignored' : 'inventory'
   } · evasion ${r.context.evasionAllowed ? 'allowed' : 'disabled'} · sorted by ${
-    labels[r.objective]
+    labels[r.objective] ?? 'an unsupported objective'
   }`;
 
 function BuildLabel({ build }: { build: Build }) {
@@ -87,7 +89,9 @@ export default function CharacterWorkbench() {
     setNotice(saveCharacterState(browserStorage(), next, catalog));
   }
   function replaceRequest(next: BuildRequest, message: string) {
-    change(next);
+    setRequest(next);
+    setResult(null);
+    setFailure(null);
     setLimitDraft(String(next.maxCandidates));
     setNotice(saveCharacterState(browserStorage(), next, catalog) ?? message);
   }
@@ -223,6 +227,7 @@ export default function CharacterWorkbench() {
         request={request}
         defaults={defaultRequest}
         describe={describeRequest}
+        inputIssues={issueCount}
         onReplace={replaceRequest}
       />
 

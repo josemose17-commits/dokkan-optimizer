@@ -50,7 +50,11 @@ The update report lists added/removed cards/states, changed state fields and com
 
 ## Identity, updates and persistence
 
-Search is accent/case insensitive for names/titles/IDs. Filters must match the **same state**. Missing categories do not match specific known categories; explicit unknown-category filtering is available. Search makes one pass over states and one over cards. Missing optimization support does not hide descriptive cards.
+Search is accent/case insensitive for names/titles/IDs. Filters (type, rarity, awakening, category, region, optimization support) must match the **same state**. Missing categories do not match specific known categories; explicit unknown-category filtering is available. Missing optimization support does not hide descriptive cards. Each card's normalized search text is indexed once per snapshot object (a `WeakMap`), so each search is one pass over states and one over the precomputed card index. Sort is either catalog order or a deterministic name order: normalized name, then title, then card ID. Unknown names and titles sort after known ones rather than as empty strings. The UI renders 50 matching cards at a time.
+
+## Inspect a local file in the browser
+
+**Inspect a local normalized catalog file** in the catalog page accepts a JSON file of up to 20 MiB. It checks the size before reading and runs the same `validateCatalog` as the CLI, without the test-fixture allowance. Parse errors are not echoed. Up to 20 truncated validation messages are shown as plain text. A valid file shows its counts and the `assessCatalogUpdate` report against the bundled revision. You can then **browse it for this session** behind a banner that says it is not admitted or reviewed and that its evidence statuses are as declared. Session files are never written to storage or the URL. Their states get no optimization link or saved-build navigation, whatever support they declare. **Return to bundled catalog** restores the admitted record.
 
 `resolveState` accepts only canonical IDs or declared aliases. `resolveBuildState` also checks level and SA. No name match, inferred ID conversion or latest-state substitution is used. Catalog revisions are separate from state identities.
 
@@ -64,6 +68,8 @@ The existing `dokkan.character-builds.v1` payload and evaluator catalog revision
 2. Select the state. Its exact ID stays in the URL through reload/back/forward. An unknown `state` reports unavailable without substituting Goku.
 3. Expand field evidence to see completeness, references, limitations and uncaptured retrieval/verification dates.
 4. Select the admitted 55% stat illustration. Raw, potential, explicit no-equip totals and unavailable battle stats remain separate.
-5. Open **Limited build comparison**, then return to **Character catalog**. Saved identity resolves without changing the payload or evaluator scope. The legacy demo retains its exact synthetic warning.
+5. Set **Optimization support** to _Unavailable_ (no match) or _Limited evaluator available_ (Goku). **Optimize this character** opens the limited comparison.
+6. Export the admitted record with the CLI, then inspect it via **Inspect a local normalized catalog file**. It is schema-valid, keeps every bundled ID and alias, and can be browsed for the session. A file with `origin: "test-fixtures"` is rejected.
+7. Open **Limited build comparison**, then return to **Character catalog**. Saved identity resolves without changing the payload or evaluator scope. The legacy demo retains its exact synthetic warning.
 
 No new verified-only orb mode is added, and unresolved silver items are not promoted by this catalog. Legal node respec, damage objectives, probability refinement, purchases, merge and deployment remain outside this milestone.

@@ -1,0 +1,43 @@
+name: Browser tests
+
+# Validation only: no deployment permissions. The Pages workflow is unchanged.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright (Chromium, production build, Node 24)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up required Node.js version
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      # Builds with the Pages base path, serves dist/ and runs desktop + mobile projects.
+      - name: Build and run browser tests
+        run: npm run test:e2e

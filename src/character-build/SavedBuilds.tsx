@@ -56,12 +56,15 @@ export default function SavedBuilds({
   request,
   defaults,
   describe,
+  inputIssues,
   onReplace,
 }: {
   catalog: CharacterCatalog;
   request: BuildRequest;
   defaults: () => BuildRequest;
   describe: (request: BuildRequest) => string;
+  // Field errors not yet reflected in `request` (e.g. an invalid limit draft).
+  inputIssues: number;
   onReplace: (request: BuildRequest, message: string) => void;
 }) {
   const [library, setLibrary] = useState<LibraryState>(() =>
@@ -97,6 +100,12 @@ export default function SavedBuilds({
   }
 
   function save() {
+    if (inputIssues) {
+      setNameError(
+        'Only valid settings can be saved. Fix the highlighted inputs.',
+      );
+      return;
+    }
     const created = createSavedBuild({
       id: newId(),
       name,
