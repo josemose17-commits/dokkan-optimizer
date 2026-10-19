@@ -25,3 +25,26 @@ export function formatDelta(value: number | null, baseline: Metric): string {
     baseline.value === 0 ? '% n/a: 0 baseline' : relative(2)
   })`;
 }
+
+export const formatPercent = (p: number, digits = 1) =>
+  `${(p * 100).toFixed(digits)}%`;
+
+// Text for a structured delta: percentage points for probabilities, absolute
+// change for stats, and an explicit statement when relative change is undefined.
+export function formatDeltaInfo(info: {
+  absolute: number;
+  unit: 'pp' | 'stat';
+  relative: number | null;
+}): string {
+  if (Math.abs(info.absolute) < 1e-10) return 'no change';
+  const sign = info.absolute > 0 ? '+' : '−';
+  const absolute =
+    info.unit === 'pp'
+      ? `${sign}${Math.abs(info.absolute * 100).toFixed(1)} percentage points`
+      : `${sign}${Math.abs(info.absolute).toLocaleString('en-US')}`;
+  const relative =
+    info.relative === null
+      ? 'relative change undefined: zero baseline'
+      : `${sign}${Math.abs(info.relative * 100).toFixed(info.unit === 'pp' ? 1 : 2)}% relative change`;
+  return `${absolute} (${relative})`;
+}

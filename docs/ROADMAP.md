@@ -21,7 +21,7 @@ Status on branch `claude/tender-maxwell-o43x7j`, 2026-10-19. A checked item is i
 - [x] Saved working settings are parsed structurally, with exact keys and no prototype keys, before legality checks.
 - [x] A stored library that is unreadable or from a newer version is never overwritten without explicit replacement. A copy can be downloaded first.
 - [x] Builds from another catalog revision are retained and marked stale, never auto-loaded.
-- [ ] Before adding the first non-Goku record, add an evaluator registry keyed by exact state ID and evaluator version. Today the workbench imports the Goku record directly.
+- [x] Evaluator registry keyed by exact state ID: the catalog names the evaluator, the entry must be bound to that state with matching data, and there is no fallback. Saved builds load only into their own state's evaluator. A TEST ONLY second character proves isolation; it is not shipped.
 
 - [x] PR #5 review follow-up: catalog validation rejects unknown keys at every level (deep nesting under an unknown key previously crashed validation); saved-build duplicates are compared independent of key order; the import preview shows the exact merge plan; evaluator-version mismatches are stale; autosave, save and export pause while a field is invalid; a second tab cannot overwrite saved builds; unreadable working settings can be downloaded first.
 
@@ -31,7 +31,7 @@ Status on branch `claude/tender-maxwell-o43x7j`, 2026-10-19. A checked item is i
 - [x] Named saved builds recording the exact state, catalog revision and evaluator version. JSON export/import includes a preview, duplicate handling and ID-conflict handling.
 - [x] Candidate-space upper bound shown before searching.
 - [ ] Shareable build URL (versioned, validated, inventory excluded by default).
-- [ ] Per-metric explanation panel linking each result to its evidence claims and assumptions.
+- [x] Result explanations generated from the calculation trace: configuration changes, stat/skill sources, probability factors, pp vs relative change, rank/tie and frontier dominance, evidence status, test coverage and model versions.
 - [ ] Multi-character equipment allocation with shared inventory. This waits until a second character can be evaluated.
 
 ### UX and accessibility

@@ -8,9 +8,11 @@ import type {
   Build,
   CharacterCatalog,
   ChoiceNode,
+  EvaluatorEntry,
   MetricKey,
   Orb,
 } from './domain';
+import { gokuEntry } from '../data/real/character-build/registry';
 import { compareBuilds, frontier } from './comparison';
 import {
   evaluateBuild,
@@ -21,6 +23,11 @@ import { estimateCandidateSpace, generateBuilds } from './generation';
 import { buildErrors, orbErrors, requestErrors } from './legality';
 
 const cloneCatalog = () => structuredClone(characterCatalog);
+// The production Goku entry with a (possibly modified) evaluation model.
+const E = (model: CharacterCatalog = characterCatalog): EvaluatorEntry => ({
+  ...gokuEntry,
+  model,
+});
 const empty: Build = {
   choices: {},
   equips: { bronze: null, silver: null, gold: null },
@@ -30,7 +37,7 @@ const vector = (
   defense: number,
   damage: number | null = null,
 ) => {
-  const e = evaluateBuild(empty, defaultRequest(), characterCatalog);
+  const e = evaluateBuild(empty, defaultRequest(), gokuEntry);
   e.metrics.attack.value = attack;
   e.metrics.defense.value = defense;
   e.metrics.damage.value = damage;
@@ -81,7 +88,7 @@ describe('independent probability arithmetic (not game-behavior confirmation)', 
 
 describe('real, limited Goku snapshot', () => {
   it('evaluates the unequipped source-documented 55% baseline', () => {
-    const e = evaluateBuild(empty, defaultRequest(), characterCatalog);
+    const e = evaluateBuild(empty, defaultRequest(), gokuEntry);
     expect(e.stats).toEqual({ hp: 15327, attack: 13911, defense: 8596 });
     expect(e.skills).toEqual({ additional: 5, critical: 0, evasion: 0 });
     expect(e.metrics.additionalTrigger.value).toBeCloseTo(0.1);
@@ -96,16 +103,16 @@ describe('real, limited Goku snapshot', () => {
       ...empty,
       equips: { ...empty.equips, bronze: ORB_IDS.attack },
     };
-    expect(
-      evaluateBuild(build, defaultRequest(), characterCatalog).stats.attack,
-    ).toBe(14411);
+    expect(evaluateBuild(build, defaultRequest(), gokuEntry).stats.attack).toBe(
+      14411,
+    );
   });
   it('calculates the initial-check chance with AA+2, independently expected 7%', () => {
     const build = {
       ...empty,
       equips: { ...empty.equips, silver: ORB_IDS.additional },
     };
-    const e = evaluateBuild(build, defaultRequest(), characterCatalog);
+    const e = evaluateBuild(build, defaultRequest(), gokuEntry);
     expect(e.metrics.additionalTrigger.value).toBeCloseTo(0.14);
     expect(e.metrics.additionalSuper.value).toBeCloseTo(0.07);
   });
@@ -116,12 +123,12 @@ describe('real, limited Goku snapshot', () => {
       equips: { ...empty.equips, silver: ORB_IDS.evasion },
     };
     expect(
-      evaluateBuild(build, request, characterCatalog).metrics.evasion.value,
+      evaluateBuild(build, request, gokuEntry).metrics.evasion.value,
     ).toBeCloseTo(0.02);
     request.context.evasionAllowed = false;
-    expect(
-      evaluateBuild(build, request, characterCatalog).metrics.evasion.value,
-    ).toBe(0);
+    expect(evaluateBuild(build, request, gokuEntry).metrics.evasion.value).toBe(
+      0,
+    );
   });
   it('does not promote source documentation or arithmetic tests to game verification', () => {
     for (const evidence of characterCatalog.evidence) {
@@ -156,7 +163,7 @@ describe('independently enumerated real equip choices', () => {
     .map((pair) => JSON.stringify(pair))
     .sort();
   it('generates exactly the 16 independently listed builds, no gold or node choices', () => {
-    const builds = [...generateBuilds(defaultRequest(), characterCatalog)];
+    const builds = [...generateBuilds(defaultRequest(), gokuEntry)];
     expect(
       builds
         .map((b) => JSON.stringify([b.equips.bronze, b.equips.silver]))
@@ -171,9 +178,9 @@ describe('independently enumerated real equip choices', () => {
   it('uses inventory quantities, and does not assume the catalog is owned', () => {
     const request = defaultRequest();
     request.mode = 'inventory';
-    expect([...generateBuilds(request, characterCatalog)]).toEqual([empty]);
+    expect([...generateBuilds(request, gokuEntry)]).toEqual([empty]);
     request.inventory = { [ORB_IDS.attack]: 1, [ORB_IDS.critical]: 1 };
-    const builds = [...generateBuilds(request, characterCatalog)];
+    const builds = [...generateBuilds(request, gokuEntry)];
     expect(builds).toHaveLength(4);
     expect(
       builds.every(
@@ -185,15 +192,15 @@ describe('independently enumerated real equip choices', () => {
     const request = defaultRequest();
     request.mode = 'inventory';
     request.current.equips.silver = ORB_IDS.critical;
-    expect([...generateBuilds(request, characterCatalog)]).toHaveLength(2);
+    expect([...generateBuilds(request, gokuEntry)]).toHaveLength(2);
     expect(
-      compareBuilds(request, characterCatalog).groups.some((g) =>
+      compareBuilds(request, gokuEntry).groups.some((g) =>
         g.alternatives.some((a) => a.isCurrent),
       ),
     ).toBe(true);
   });
   it('catalog mode ignores ownership, while still reporting needed items', () => {
-    const result = compareBuilds(defaultRequest(), characterCatalog);
+    const result = compareBuilds(defaultRequest(), gokuEntry);
     expect(
       result.groups.some((g) =>
         g.alternatives.some((a) => a.missingInventory[ORB_IDS.critical] === 1),
@@ -212,12 +219,12 @@ describe('eligibility before evaluation', () => {
   it('rejects unknown progression, duplicate routes and invented numeric allocations', () => {
     const r = defaultRequest();
     r.progression.routes = ['topLeft'];
-    expect(compareBuilds(r, characterCatalog).errors.join(' ')).toContain(
+    expect(compareBuilds(r, gokuEntry).errors.join(' ')).toContain(
       'progression',
     );
     r.progression.routes = [];
     r.current.choices = { invented: 'critical' };
-    expect(compareBuilds(r, characterCatalog).groups).toEqual([]);
+    expect(compareBuilds(r, gokuEntry).groups).toEqual([]);
   });
   it('rejects SEZA, a different region alias, level and SA state', () => {
     for (const changes of [
@@ -227,8 +234,8 @@ describe('eligibility before evaluation', () => {
       { superAttackLevel: 10 },
     ]) {
       expect(
-        compareBuilds({ ...defaultRequest(), ...changes }, characterCatalog)
-          .errors.length,
+        compareBuilds({ ...defaultRequest(), ...changes }, gokuEntry).errors
+          .length,
       ).toBeGreaterThan(0);
     }
   });
@@ -238,22 +245,22 @@ describe('eligibility before evaluation', () => {
       ...r.context,
       battleTurn: 8,
     } as unknown as typeof r.context;
-    expect(
-      compareBuilds({ ...r, context: invalid }, characterCatalog).groups,
-    ).toEqual([]);
+    expect(compareBuilds({ ...r, context: invalid }, gokuEntry).groups).toEqual(
+      [],
+    );
   });
   it('requires an unlocked potential system', () => {
     const r = defaultRequest();
     r.progression.systemUnlocked = false;
-    expect(requestErrors(r, characterCatalog).join(' ')).toContain(
+    expect(requestErrors(r, gokuEntry).join(' ')).toContain(
       'already be unlocked',
     );
   });
   it('fails closed on unrecognized context effects', () => {
     const r = defaultRequest();
     r.context = { ...r.context, mysteryEffect: true } as typeof r.context;
-    expect(compareBuilds(r, characterCatalog).groups).toEqual([]);
-    expect(compareBuilds(r, characterCatalog).errors.join(' ')).toContain(
+    expect(compareBuilds(r, gokuEntry).groups).toEqual([]);
+    expect(compareBuilds(r, gokuEntry).errors.join(' ')).toContain(
       'Unsupported context',
     );
   });
@@ -264,19 +271,19 @@ describe('eligibility before evaluation', () => {
       attack: 2,
       mystery: 3,
     } as unknown as typeof c.card.baseStats;
-    expect(requestErrors(defaultRequest(), c)).toContain(
+    expect(requestErrors(defaultRequest(), E(c))).toContain(
       'Invalid or unsupported card/profile facts.',
     );
   });
   it('rejects wrong-slot and unknown equips', () => {
     const r = defaultRequest();
     r.current.equips.bronze = ORB_IDS.critical;
-    expect(compareBuilds(r, characterCatalog).errors.join(' ')).toContain(
+    expect(compareBuilds(r, gokuEntry).errors.join(' ')).toContain(
       'wrong equip slot',
     );
     r.current.equips.bronze = 'not-a-catalog-item';
     // The unknown ID stays identifiable instead of reading as an empty slot.
-    expect(compareBuilds(r, characterCatalog).errors.join(' ')).toContain(
+    expect(compareBuilds(r, gokuEntry).errors.join(' ')).toContain(
       'Unknown equip in bronze: not-a-catalog-item.',
     );
   });
@@ -291,7 +298,7 @@ describe('eligibility before evaluation', () => {
         orbErrors(c.orbs[0]!, 'bronze', defaultRequest(), c).join(' '),
       ).toContain('unsupported');
       expect(
-        [...generateBuilds(defaultRequest(), c)].some(
+        [...generateBuilds(defaultRequest(), E(c))].some(
           (b) => b.equips.bronze === c.orbs[0]!.id,
         ),
       ).toBe(false);
@@ -333,13 +340,13 @@ describe('eligibility before evaluation', () => {
     (n) => {
       const r = defaultRequest();
       r.inventory[ORB_IDS.attack] = n;
-      expect(compareBuilds(r, characterCatalog).groups).toEqual([]);
+      expect(compareBuilds(r, gokuEntry).groups).toEqual([]);
     },
   );
   it('does not offer a damage objective', () => {
     const r = defaultRequest();
     r.objective = 'damage' as typeof r.objective;
-    expect(compareBuilds(r, characterCatalog).errors).toContain(
+    expect(compareBuilds(r, gokuEntry).errors).toContain(
       'Unsupported objective.',
     );
   });
@@ -378,7 +385,7 @@ describe('abstract graphs and quantities (not fictional game cards)', () => {
   }
   it('matches four manually listed allocations and never generates the expected set from production code', () => {
     const { c, r } = graph();
-    expect([...generateBuilds(r, c)].map((b) => b.choices)).toEqual([
+    expect([...generateBuilds(r, E(c))].map((b) => b.choices)).toEqual([
       { 'test-a': 'additional', 'test-b': 'additional' },
       { 'test-a': 'additional', 'test-b': 'evasion' },
       { 'test-a': 'critical', 'test-b': 'additional' },
@@ -389,13 +396,13 @@ describe('abstract graphs and quantities (not fictional game cards)', () => {
     const { c, r } = graph();
     r.progression.activatedNodes = ['test-b'];
     r.current.choices = { 'test-b': 'evasion' };
-    expect(requestErrors(r, c).join(' ')).toContain('prerequisite');
+    expect(requestErrors(r, E(c)).join(' ')).toContain('prerequisite');
     r.progression.activatedNodes = ['test-a', 'test-b'];
-    expect(requestErrors(r, c).join(' ')).toContain('exactly one');
+    expect(requestErrors(r, E(c)).join(' ')).toContain('exactly one');
     r.current.choices = { 'test-a': 'critical', 'test-b': 'critical' };
-    expect(requestErrors(r, c).join(' ')).toContain('illegal choice');
+    expect(requestErrors(r, E(c)).join(' ')).toContain('illegal choice');
     c.profile.nodes[0]!.support = 'unsupported';
-    expect(requestErrors(r, c).join(' ')).toContain('Unsupported node');
+    expect(requestErrors(r, E(c)).join(' ')).toContain('Unsupported node');
   });
   it('never selects two copies of a one-copy multi-slot test item', () => {
     const c = cloneCatalog();
@@ -403,14 +410,14 @@ describe('abstract graphs and quantities (not fictional game cards)', () => {
     const r = defaultRequest();
     r.mode = 'inventory';
     r.inventory[c.orbs[0]!.id] = 1;
-    expect([...generateBuilds(r, c)]).toHaveLength(3); // empty, bronze only, silver only
+    expect([...generateBuilds(r, E(c))]).toHaveLength(3); // empty, bronze only, silver only
     const both: Build = {
       choices: {},
       equips: { bronze: c.orbs[0]!.id, silver: c.orbs[0]!.id, gold: null },
     };
     expect(buildErrors(both, r, c).join(' ')).toContain('Insufficient');
     r.inventory[c.orbs[0]!.id] = 2;
-    expect([...generateBuilds(r, c)]).toHaveLength(4);
+    expect([...generateBuilds(r, E(c))]).toHaveLength(4);
   });
   it('does not treat an attached ordinary item as a free movable copy', () => {
     const c = cloneCatalog();
@@ -418,15 +425,15 @@ describe('abstract graphs and quantities (not fictional game cards)', () => {
     const r = defaultRequest();
     r.mode = 'inventory';
     r.current.equips.bronze = c.orbs[0]!.id;
-    expect([...generateBuilds(r, c)]).toHaveLength(2); // empty or retained in bronze
+    expect([...generateBuilds(r, E(c))]).toHaveLength(2); // empty or retained in bronze
     expect(
-      [...generateBuilds(r, c)].every((b) => b.equips.silver === null),
+      [...generateBuilds(r, E(c))].every((b) => b.equips.silver === null),
     ).toBe(true);
   });
   it('retains alternative legal allocations that give the same evaluated totals', () => {
     const { c, r } = graph();
     c.profile.nodes[1]!.options = ['additional', 'critical'];
-    const result = compareBuilds(r, c);
+    const result = compareBuilds(r, E(c));
     expect(result.search.evaluated).toBe(4);
     expect(result.groups).toHaveLength(3);
     expect(
@@ -441,7 +448,7 @@ describe('abstract graphs and quantities (not fictional game cards)', () => {
   it('fails closed on cyclic prerequisites', () => {
     const { c, r } = graph();
     c.profile.nodes[0]!.prerequisites = ['test-b'];
-    expect(requestErrors(r, c)).toContain(
+    expect(requestErrors(r, E(c))).toContain(
       'Cyclic choice prerequisites are unsupported.',
     );
   });
@@ -477,7 +484,7 @@ describe('comparisons, ties, equivalence, context and search scope', () => {
   it('ranks only the selected metric and preserves four first-place ties', () => {
     const r = defaultRequest();
     r.objective = 'attack';
-    const result = compareBuilds(r, characterCatalog);
+    const result = compareBuilds(r, gokuEntry);
     expect(result.groups.filter((g) => g.rank === 1)).toHaveLength(4);
     expect(result.groups[0]!.evaluation.stats.attack).toBe(14411);
     expect(result.groups[0]!.deltas.attack).toBe(500);
@@ -487,7 +494,7 @@ describe('comparisons, ties, equivalence, context and search scope', () => {
   it('deduplicates equivalent evaluations while retaining all alternative legal equips', () => {
     const r = defaultRequest();
     r.context.evasionAllowed = false;
-    const result = compareBuilds(r, characterCatalog);
+    const result = compareBuilds(r, gokuEntry);
     expect(result.search.evaluated).toBe(16);
     expect(result.groups).toHaveLength(12);
     expect(result.groups.reduce((n, g) => n + g.alternatives.length, 0)).toBe(
@@ -505,7 +512,7 @@ describe('comparisons, ties, equivalence, context and search scope', () => {
     const r = defaultRequest();
     r.maxCandidates = 2;
     r.current.equips.bronze = ORB_IDS.attack;
-    const result = compareBuilds(r, characterCatalog);
+    const result = compareBuilds(r, gokuEntry);
     expect(result.search).toMatchObject({
       evaluated: 2,
       limit: 2,
@@ -517,27 +524,24 @@ describe('comparisons, ties, equivalence, context and search scope', () => {
   it('does not call a complete search truncated at its exact size', () => {
     const r = defaultRequest();
     r.maxCandidates = 16;
-    expect(compareBuilds(r, characterCatalog).search.truncated).toBe(false);
+    expect(compareBuilds(r, gokuEntry).search.truncated).toBe(false);
   });
   it('includes the current baseline when checking truncated frontier dominance', () => {
     const r = defaultRequest();
     r.maxCandidates = 2;
     r.current.equips.bronze = ORB_IDS.attack;
     r.frontierMetrics = ['attack'];
-    const result = compareBuilds(r, characterCatalog);
+    const result = compareBuilds(r, gokuEntry);
     expect(result.groups.every((g) => !g.frontier)).toBe(true);
   });
   it('is deterministic and does not mutate the request or source catalog', () => {
     const r = defaultRequest();
     const before = JSON.stringify([r, characterCatalog]);
-    expect(compareBuilds(r, characterCatalog)).toEqual(
-      compareBuilds(r, characterCatalog),
-    );
+    expect(compareBuilds(r, gokuEntry)).toEqual(compareBuilds(r, gokuEntry));
     expect(JSON.stringify([r, characterCatalog])).toBe(before);
   });
   it('does not invent numeric deltas for unknown metrics', () => {
-    for (const group of compareBuilds(defaultRequest(), characterCatalog)
-      .groups)
+    for (const group of compareBuilds(defaultRequest(), gokuEntry).groups)
       for (const key of ['damage', 'battleDefense'] as MetricKey[])
         expect(group.deltas[key]).toBeNull();
   });
@@ -546,7 +550,7 @@ describe('comparisons, ties, equivalence, context and search scope', () => {
 describe('candidate-space estimate before search (hand-counted)', () => {
   it('counts four bronze × four silver × one locked gold option for the real profile', () => {
     // Empty + three AGL bronze items; empty + three silver items; gold empty only.
-    expect(estimateCandidateSpace(defaultRequest(), characterCatalog)).toEqual({
+    expect(estimateCandidateSpace(defaultRequest(), gokuEntry)).toEqual({
       allocations: 1,
       slotOptions: { bronze: 4, silver: 4, gold: 1 },
       upperBound: 16,
@@ -556,10 +560,8 @@ describe('candidate-space estimate before search (hand-counted)', () => {
   it('is an upper bound: inventory checks can only remove targets', () => {
     const request = defaultRequest();
     request.mode = 'inventory';
-    expect(estimateCandidateSpace(request, characterCatalog)!.upperBound).toBe(
-      16,
-    );
-    expect([...generateBuilds(request, characterCatalog)]).toHaveLength(1);
+    expect(estimateCandidateSpace(request, gokuEntry)!.upperBound).toBe(16);
+    expect([...generateBuilds(request, gokuEntry)]).toHaveLength(1);
   });
   it('multiplies abstract allocation options and flags a limit that will truncate', () => {
     const c = cloneCatalog();
@@ -582,7 +584,7 @@ describe('candidate-space estimate before search (hand-counted)', () => {
     r.current.choices = { 'test-a': 'critical', 'test-b': 'critical' };
     r.maxCandidates = 100;
     // 3 × 3 allocations × 16 equip combinations = 144.
-    expect(estimateCandidateSpace(r, c)).toMatchObject({
+    expect(estimateCandidateSpace(r, E(c))).toMatchObject({
       allocations: 9,
       upperBound: 144,
       exceedsLimit: true,
@@ -591,6 +593,6 @@ describe('candidate-space estimate before search (hand-counted)', () => {
   it('returns no estimate for an ineligible request', () => {
     const request = defaultRequest();
     request.superAttackLevel = 14;
-    expect(estimateCandidateSpace(request, characterCatalog)).toBeNull();
+    expect(estimateCandidateSpace(request, gokuEntry)).toBeNull();
   });
 });

@@ -75,7 +75,12 @@ test('details keep identity, stat layers and missing fields separate', async ({
   await expect(details).toContainText('0 independently confirmed');
 
   await details.getByRole('link', { name: 'Optimize this character' }).click();
-  await expect(page).toHaveURL(/\?workbench=character-build$/);
+  await expect(page).toHaveURL(
+    /\?workbench=character-build&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15$/,
+  );
+  await expect(
+    page.getByRole('heading', { name: /Optimize Super Saiyan 3 Goku/ }),
+  ).toBeVisible();
 });
 
 test('exact state URLs survive reload and history; unknown states are not substituted', async ({

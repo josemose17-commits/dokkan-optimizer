@@ -1,6 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { optimizerHref } from '../character-build/BuildOptimizerPage';
+import { resolveEvaluator } from '../character-build/registry';
 import { CHARACTER_STORAGE_KEY } from '../character-build/storage';
-import { CARD_STATE_ID } from '../data/real/character-build/goku';
+import { productionRegistry } from '../data/real/character-build/registry';
 import { catalogSnapshot as bundled } from '../data/real/catalog';
 import {
   catalogCounts,
@@ -140,10 +142,11 @@ function CatalogDetails({
     ['Pre-battle total', layers.preBattle],
     ['Battle stats after modifiers', layers.battle],
   ];
-  const canOptimize =
-    isBundled &&
-    state.id === CARD_STATE_ID &&
-    state.optimization.evaluatorId === 'goku-initial-check-v1';
+  // The registry decides from the state's own evaluator ID; session files
+  // are never resolved against it.
+  const resolution = isBundled
+    ? resolveEvaluator(productionRegistry, snapshot, state.id)
+    : null;
   return (
     <article
       className="catalog-panel catalog-details"
@@ -289,14 +292,18 @@ function CatalogDetails({
             : `Declared by the file: ${state.optimization.status} — not offered in this app`}
         </h3>
         <p>{state.optimization.reason}</p>
-        {canOptimize && (
-          <a
-            className="catalog-action"
-            href={`${import.meta.env.BASE_URL}?workbench=character-build`}
-          >
+        {resolution?.ok && (
+          <a className="catalog-action" href={optimizerHref(state.id)}>
             Optimize this character
           </a>
         )}
+        {resolution &&
+          !resolution.ok &&
+          resolution.code !== 'not-supported' && (
+            <p className="catalog-unsupported" role="note">
+              <strong>Optimization unavailable:</strong> {resolution.reason}
+            </p>
+          )}
         {!isBundled && (
           <>
             <button

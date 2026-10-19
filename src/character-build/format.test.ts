@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Metric } from './domain';
-import { formatDelta, formatMetric } from './format';
+import { formatDelta, formatDeltaInfo, formatMetric } from './format';
+import { deltaInfo } from './explanation';
 
 const metric = (value: number | null, unit: Metric['unit']): Metric => ({
   value,
@@ -38,5 +39,32 @@ describe('metric and delta presentation (hand-written expected strings)', () => 
     expect(formatDelta(0, metric(0.05, 'probability'))).toBe('No change');
     expect(formatDelta(null, metric(0.05, 'probability'))).toBe('Unavailable');
     expect(formatDelta(1, metric(null, 'damage'))).toBe('Unavailable');
+  });
+});
+
+describe('structured deltas used by explanations (hand-written expectations)', () => {
+  it('reports percentage points and relative change separately', () => {
+    // 5% → 7%
+    expect(deltaInfo(0.07, 0.05, 'probability')).toEqual({
+      absolute: 0.07 - 0.05,
+      unit: 'pp',
+      relative: (0.07 - 0.05) / 0.05,
+    });
+    expect(formatDeltaInfo(deltaInfo(0.07, 0.05, 'probability'))).toBe(
+      '+2.0 percentage points (+40.0% relative change)',
+    );
+  });
+  it('leaves relative change undefined against a zero baseline', () => {
+    const info = deltaInfo(0.04, 0, 'probability');
+    expect(info.relative).toBeNull();
+    expect(formatDeltaInfo(info)).toBe(
+      '+4.0 percentage points (relative change undefined: zero baseline)',
+    );
+  });
+  it('formats stat changes with two-decimal relative change', () => {
+    expect(formatDeltaInfo(deltaInfo(14411, 13911, 'stat'))).toBe(
+      '+500 (+3.59% relative change)',
+    );
+    expect(formatDeltaInfo(deltaInfo(13911, 13911, 'stat'))).toBe('no change');
   });
 });

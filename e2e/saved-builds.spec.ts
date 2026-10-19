@@ -1,9 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import type { Page } from '@playwright/test';
-import { expect, LIBRARY_KEY, test } from './fixtures';
+import { expect, LIBRARY_KEY, test, GOKU_OPTIMIZER } from './fixtures';
 
 const open = async (page: Page) => {
-  await page.goto('?workbench=character-build');
+  await page.goto(GOKU_OPTIMIZER);
   await expect(page.locator('.cb-search')).toBeVisible();
 };
 const library = (page: Page) =>
