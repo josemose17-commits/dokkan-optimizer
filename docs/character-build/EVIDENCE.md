@@ -115,3 +115,9 @@ A useful first user capture, if available, is the **current card identity/state,
 5. Passive expiry counter and combat-stage rounding before later-turn battle-stat calculations.
 
 Updates are manual reviewed snapshots. A card/EZA/SEZA, orb or mechanics change invalidates affected claims until re-reviewed. Record evidence and terms revisions; no background importer ships.
+
+## Reviewed Gohan kit guidance — 2026-10-19
+
+One new exact EZA state is admitted for **qualitative** kit/assignment/priority guidance, not an allocation or combat evaluator. See the [field matrix, disagreements, policy and paper cases](../KIT_GUIDANCE.md). Source-documented guard before attacking and lasting Super DEF support a reviewed defensive-buildup inference. No independent confirmation date is recorded. The 99-turn/infinite wording discrepancy and guard/received-attack semantics remain explicit. Region, numeric EZA step and raw stats are not inferred.
+
+The focused pass did not establish the complete attainable choice/increment/prerequisite set bound to Gohan and a named progression. No arbitrary node map, level slider, real allocation winner, baseline improvement, native chain probability or exact compatible equip recommendation is added. Existing unresolved silver records remain unresolved and no verified-only mode exists. Kit policy tests prove the reviewed rule's implementation only.

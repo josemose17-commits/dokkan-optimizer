@@ -1,45 +1,56 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, WORKING_KEY, GOKU_OPTIMIZER } from './fixtures';
+import {
+  expect,
+  test,
+  WORKING_KEY,
+  LEGACY_KEY,
+  GOKU_OPTIMIZER,
+} from './fixtures';
 
-test('corrupt working settings warn and are kept until an explicit edit', async ({
+test('corrupt older working settings remain downloadable and no longer autosave over them', async ({
   page,
 }) => {
   await page.goto(GOKU_OPTIMIZER);
   await page.evaluate(
-    (key) => window.localStorage.setItem(key, 'not-json'),
-    WORKING_KEY,
+    ([working, legacy]) => {
+      localStorage.setItem(working!, 'not-json');
+      localStorage.setItem(legacy!, 'legacy-owned');
+    },
+    [WORKING_KEY, LEGACY_KEY],
   );
   await page.reload();
   await expect(
-    page.getByText('Saved character settings could not be read'),
+    page.getByText(/Saved character settings could not be read/),
   ).toBeVisible();
-  // Browsing the catalog does not write it either.
-  await page.goto('?workbench=catalog');
-  await page.goto(GOKU_OPTIMIZER);
-  expect(
-    await page.evaluate((key) => window.localStorage.getItem(key), WORKING_KEY),
-  ).toBe('not-json');
-  // A copy can be downloaded before an edit replaces it.
   const downloadPromise = page.waitForEvent('download');
   await page
     .getByRole('button', { name: 'Download stored settings copy' })
     .click();
-  const copy = await downloadPromise;
-  expect(await readFile((await copy.path())!, 'utf8')).toBe('not-json');
-  await page
-    .getByLabel('Sort by supported objective')
-    .selectOption({ label: 'Card ATK' });
-  await expect(
-    page.getByRole('button', { name: 'Download stored settings copy' }),
-  ).toHaveCount(0);
-  const stored = await page.evaluate(
-    (key) => window.localStorage.getItem(key),
-    WORKING_KEY,
+  expect(await readFile((await (await downloadPromise).path())!, 'utf8')).toBe(
+    'not-json',
   );
-  expect(JSON.parse(stored!).request.objective).toBe('attack');
+  await page
+    .getByLabel('Current silver equipment')
+    .selectOption('generic:silver:critical:2');
+  await page.getByRole('radio', { name: /^Critical chance/ }).check();
+  await page.getByRole('button', { name: 'Optimize', exact: true }).click();
+  await expect(
+    page.getByRole('region', { name: 'Optimize and result' }),
+  ).toContainText('4.0% (no change)');
+  await page.goto('?workbench=catalog');
+  await page.goto(GOKU_OPTIMIZER);
+  expect(
+    await page.evaluate(
+      ([working, legacy]) => [
+        localStorage.getItem(working!),
+        localStorage.getItem(legacy!),
+      ],
+      [WORKING_KEY, LEGACY_KEY],
+    ),
+  ).toEqual(['not-json', 'legacy-owned']);
 });
 
-test('blocked storage is reported while calculations stay usable', async ({
+test('blocked storage is reported while calculations and factual browsing stay usable', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -53,19 +64,18 @@ test('blocked storage is reported while calculations stay usable', async ({
   await page.goto(GOKU_OPTIMIZER);
   await expect(
     page.getByText(
-      'Local storage is unavailable; changes last for this session.',
+      /Local storage is unavailable; changes last for this session./,
     ),
   ).toBeVisible();
   await expect(
-    page.getByText('Local storage is unavailable. Saved builds cannot be kept'),
+    page.getByText(/Local storage is unavailable. Saved builds cannot be kept/),
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save build' })).toBeDisabled();
-  await page
-    .getByRole('button', { name: 'Compare compatible configurations' })
-    .click();
-  await expect(page.locator('.cb-search')).toContainText(
-    '16 compatible targets evaluated',
-  );
+  await page.getByRole('radio', { name: /^Critical chance/ }).check();
+  await page.getByRole('button', { name: 'Optimize', exact: true }).click();
+  await expect(
+    page.getByRole('region', { name: 'Optimize and result' }),
+  ).toContainText('0.0% → 4.0%');
   await page.goto('?workbench=catalog');
   await expect(
     page.getByRole('heading', { name: 'Super Saiyan 3 Goku', level: 2 }),

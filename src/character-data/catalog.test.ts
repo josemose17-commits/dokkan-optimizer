@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { BASE_STATE_ID } from '../data/real/catalog-states/1003211-base';
+import {
+  GOHAN_CARD_ID,
+  GOHAN_STATE_ID,
+} from '../data/real/character-build/gohan-kit';
 import { CATALOG_CARD_ID } from '../data/real/character-build/goku';
 import { productionRegistry } from '../data/real/character-build/registry';
 import { resolveEvaluator } from '../character-build/registry';
@@ -32,17 +36,17 @@ import { fixtureFact, fixtureSnapshot } from './catalog.fixtures';
 import { validateCatalog } from './validation';
 
 describe('normalized import contract (fixtures are fictional, not game verification)', () => {
-  it('admits one card with two exact states and invents no missing fields', () => {
+  it('admits two cards with three exact states and invents no missing fields', () => {
     expect(validateCatalog(catalogSnapshot).ok).toBe(true);
     expect(catalogCounts(catalogSnapshot)).toEqual({
-      cards: 1,
+      cards: 2,
       startingForms: 0,
       awakenedForms: 0,
       transformedForms: 0,
-      unclassifiedForms: 1,
-      states: 2,
+      unclassifiedForms: 2,
+      states: 3,
       baseStates: 1,
-      ezaStates: 1,
+      ezaStates: 2,
       sezaStates: 0,
       unknownStates: 0,
       excluded: 0,
@@ -129,7 +133,7 @@ describe('normalized import contract (fixtures are fictional, not game verificat
       true,
     );
   });
-  it('adds the base state as a compatible update that keeps every existing ID', () => {
+  it('adds base Goku and kit-guidance Gohan as compatible updates that keep existing IDs', () => {
     const previous = fromAdmittedRecord(characterCatalog, CATALOG_CARD_ID);
     const update = assessCatalogUpdate(previous, catalogSnapshot);
     expect(update).toMatchObject({
@@ -138,9 +142,9 @@ describe('normalized import contract (fixtures are fictional, not game verificat
       changes: [],
       cardChanges: [],
       sourceChanges: [],
-      addedCards: [],
+      addedCards: [GOHAN_CARD_ID],
       removedCards: [],
-      addedStates: [BASE_STATE_ID],
+      addedStates: [BASE_STATE_ID, GOHAN_STATE_ID],
       removedStates: [],
     });
   });

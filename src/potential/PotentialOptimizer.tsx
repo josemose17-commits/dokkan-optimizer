@@ -2,12 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CatalogSnapshot, CatalogState } from '../character-data/domain';
 import {
   METRIC_LABELS,
+  SLOTS,
   type AvailableMetric,
   type BuildRequest,
   type EvaluatorEntry,
 } from '../character-build/domain';
 import { allocationSpace } from '../character-build/allocation';
 import { resolveEvaluator } from '../character-build/registry';
+import { resolveKit } from '../character-build/kit';
+import { gohanKit } from '../data/real/character-build/gohan-kit';
+import CatalogBrowser from '../characters/CatalogBrowser';
+import CharacterAnalysis from './CharacterAnalysis';
+import '../character-build/character.css';
 import { loadCharacterState } from '../character-build/storage';
 import { estimateCandidateSpace } from '../character-build/generation';
 import { requestErrors } from '../character-build/legality';
@@ -17,6 +23,9 @@ import {
   type SearchProgress,
 } from '../character-build/search';
 import SavedBuilds from '../character-build/SavedBuilds';
+import { itemLabel } from '../character-build/explanation';
+import { download } from '../character-build/download';
+import { browserStorage } from '../storage/browser';
 import {
   loadDefinitions,
   latestDocuments,
@@ -173,7 +182,7 @@ function Workspace({
     return { entry, capabilities: resolveCapabilities(entry, progressions) };
   }, [original, progressions]);
   // Older working settings are read but never written here; saves are explicit.
-  const [initial] = useState(() => loadCharacterState(storage, entry));
+  const [initial] = useState(() => loadCharacterState(browserStorage(), entry));
   const [stored] = useState(() => {
     try {
       return storage.getItem(entry.storageKey) !== null;
@@ -307,7 +316,7 @@ function Workspace({
     setTimeout(() => resultHeading.current?.focus(), 0);
   };
   const describe = (r: BuildRequest) =>
-    `${entry.model.card.name} · ${r.customPotential ? 'your entered values' : entry.model.profile.label} · ${METRIC_LABELS[r.objective]}`;
+    `${entry.model.card.name} · ${r.customPotential ? 'your entered values' : entry.model.profile.label} · ${SLOTS.map((s) => itemLabel(entry, r.current.equips[s])).join(' / ')} · ${METRIC_LABELS[r.objective]}`;
   const answerObjective = answer
     ? (capabilities.objectives.find(
         (o) => o.metric === answer.request.objective,
@@ -317,10 +326,24 @@ function Workspace({
     <>
       <SupportSummary capabilities={capabilities} />
       {initial.warning && (
-        <p className="po-notice">
+        <div className="po-notice">
           {initial.warning} The optimizer reads this older working copy without
           writing it; named build saves are explicit below.
-        </p>
+          {initial.raw !== null && (
+            <button
+              type="button"
+              className="cb-secondary"
+              onClick={() =>
+                download(
+                  'dokkan-working-settings-unreadable.json',
+                  initial.raw!,
+                )
+              }
+            >
+              Download stored settings copy
+            </button>
+          )}
+        </div>
       )}
       <div className="po-workspace">
         <div className="po-inputs" ref={inputs}>
@@ -401,18 +424,27 @@ function Workspace({
           />
         </div>
       </div>
-      <SavedBuilds
-        entry={entry}
-        available={registry}
-        request={request}
-        describe={describe}
-        inputIssues={errors.length + Number(!validBudget)}
-        onReplace={(r) => {
-          setObjectiveChosen(true);
-          update(r);
-        }}
-        onOpen={(e, r) => onOpen(e, r)}
-      />
+      <details
+        className="po-saved"
+        open={
+          new URLSearchParams(window.location.search).get('saved') === '1' ||
+          undefined
+        }
+      >
+        <summary>Saved builds · save, load or export</summary>
+        <SavedBuilds
+          entry={entry}
+          available={registry}
+          request={request}
+          describe={describe}
+          inputIssues={errors.length + Number(!validBudget)}
+          onReplace={(r) => {
+            setObjectiveChosen(true);
+            update(r);
+          }}
+          onOpen={(e, r) => onOpen(e, r)}
+        />
+      </details>
     </>
   );
 }
@@ -440,6 +472,14 @@ export default function PotentialOptimizer({
   const resolution = selected
     ? resolveEvaluator(registry, snapshot, selected)
     : null;
+  const kit = selected ? resolveKit(snapshot, [gohanKit], selected) : null;
+  const params = new URLSearchParams(window.location.search);
+  const browsing =
+    params.get('workbench') === 'catalog' ||
+    params.get('browse') === '1' ||
+    (params.get('workbench') === null && params.has('state'));
+  // Mount on first request, then preserve local catalog imports/filters.
+  const [browseMounted, setBrowseMounted] = useState(browsing);
   useEffect(() => {
     const pop = () => {
       setSelected(
@@ -465,6 +505,10 @@ export default function PotentialOptimizer({
     (s) => resolveEvaluator(registry, snapshot, s.id).ok,
   );
   const others = snapshot.states.filter((s) => !supported.includes(s));
+  const guided = others.filter(
+    (s) => resolveKit(snapshot, [gohanKit], s.id).ok,
+  );
+  const unsupported = others.filter((s) => !guided.includes(s));
   const state = snapshot.states.find((s) => s.id === selected) ?? null;
   const name = state ? stateName(snapshot, state) : null;
   const isLocal = local.some((d) => d.definition.id === selected);
@@ -480,13 +524,20 @@ export default function PotentialOptimizer({
     <main className="po-page">
       <header className="po-hero">
         <p className="po-eyebrow">DOKKAN POTENTIAL OPTIMIZER</p>
-        <h1>Find the best Hidden Potential build.</h1>
+        <h1>Build around the character’s kit.</h1>
         <p>
-          Choose a character, describe the build it has now and pick a goal. The
-          optimizer searches the allocations and equipment it can verify for
-          that character and shows what to change, and why.
+          Kit facts → intended slot and role → potential emphasis → equip
+          priorities. Start with reviewed character guidance; exact build search
+          is offered only within its documented support.
         </p>
       </header>
+      {(params.get('workbench') === 'legacy-team' ||
+        params.get('retired') === 'team') && (
+        <p className="po-notice">
+          The synthetic team demo has been retired. Its browser storage has not
+          been deleted.
+        </p>
+      )}
       <section
         className="po-card po-character"
         aria-labelledby="po-character-title"
@@ -498,12 +549,19 @@ export default function PotentialOptimizer({
           <span>Character and exact state</span>
           <select value={selected} onChange={(e) => select(e.target.value)}>
             <option value="">Choose a character</option>
-            {supported.length > 0 && (
-              <optgroup label="Optimizable">{supported.map(option)}</optgroup>
+            {guided.length > 0 && (
+              <optgroup label="Reviewed kit guidance">
+                {guided.map(option)}
+              </optgroup>
             )}
-            {others.length > 0 && (
+            {supported.length > 0 && (
+              <optgroup label="Limited equipment comparison">
+                {supported.map(option)}
+              </optgroup>
+            )}
+            {unsupported.length > 0 && (
               <optgroup label="Not supported yet">
-                {others.map(option)}
+                {unsupported.map(option)}
               </optgroup>
             )}
             {local.length > 0 && (
@@ -531,10 +589,11 @@ export default function PotentialOptimizer({
         {!selected && (
           <div className="po-quick">
             <p className="po-muted">
-              {supported.length} of {snapshot.states.length} recorded states can
-              be optimized today:
+              {guided.length} state with reviewed kit guidance ·{' '}
+              {supported.length} with a limited equipment evaluator. No complete
+              allocation search yet.
             </p>
-            {supported.map((s) => {
+            {[...guided, ...supported].map((s) => {
               const n = stateName(snapshot, s);
               return (
                 <button
@@ -543,24 +602,51 @@ export default function PotentialOptimizer({
                   className="cb-secondary"
                   onClick={() => select(s.id)}
                 >
-                  {n.name} · {n.detail}
+                  {n.name} · {n.detail} ·{' '}
+                  {guided.includes(s) ? 'Kit guidance' : 'Equipment comparison'}
                 </button>
               );
             })}
           </div>
         )}
       </section>
+      <details
+        className="po-browse"
+        open={browsing || undefined}
+        onToggle={(e) => {
+          if (e.currentTarget.open) setBrowseMounted(true);
+        }}
+      >
+        <summary>Search characters and inspect details</summary>
+        {browseMounted && (
+          <CatalogBrowser
+            embedded
+            initialState={selected || null}
+            onChoose={(id) => select(id)}
+          />
+        )}
+      </details>
+      {kit?.ok && <CharacterAnalysis key={kit.kit.revision} kit={kit.kit} />}
       {resolution?.ok && (
-        <Workspace
-          key={`${resolution.entry.id}:${nonce}`}
-          entry={resolution.entry}
-          progressions={progressions}
-          registry={registry}
-          pending={pending}
-          onOpen={(e, r) => select(e.stateId, r)}
-        />
+        <section aria-label="Limited progression-profile and equipment comparison">
+          <h2 className="po-comparison-title">
+            Limited progression-profile / equipment comparison
+          </h2>
+          <p className="po-muted">
+            This evaluator is separate from kit guidance. It does not select
+            potential nodes or model a full attack chain, damage or survival.
+          </p>
+          <Workspace
+            key={`${resolution.entry.id}:${nonce}`}
+            entry={resolution.entry}
+            progressions={progressions}
+            registry={registry}
+            pending={pending}
+            onOpen={(e, r) => select(e.stateId, r)}
+          />
+        </section>
       )}
-      {resolution && !resolution.ok && (
+      {resolution && !resolution.ok && !kit?.ok && (
         <section
           className="po-card po-unsupported"
           aria-label="Build recommendation"
@@ -578,7 +664,7 @@ export default function PotentialOptimizer({
               return (
                 <li key={s.id}>
                   <a href={optimizerHref(s.id)}>
-                    Optimize {n.name} ({n.detail})
+                    Compare equipment for {n.name} ({n.detail})
                   </a>
                 </li>
               );
@@ -602,7 +688,10 @@ export default function PotentialOptimizer({
           </ul>
         </section>
       )}
-      <details className="po-coverage">
+      <details
+        className="po-coverage"
+        open={params.get('about') === '1' || undefined}
+      >
         <summary>Character catalog coverage</summary>
         <dl>
           {Object.entries(coverage).map(([key, count]) => (
@@ -623,6 +712,16 @@ export default function PotentialOptimizer({
         <a href={`${import.meta.env.BASE_URL}?workbench=catalog`}>
           Browse factual details and completeness
         </a>
+        <p>
+          Bulk catalog acquisition needs an approved Dokkan Info text
+          export/schema and terms covering caching, public distribution and
+          updates. No provider integration is connected.
+        </p>
+        <p>
+          The retired synthetic team key{' '}
+          <code>dokkan-team-lab.collection.v1</code> is left untouched. Existing
+          Goku working settings and named build formats are preserved.
+        </p>
       </details>
     </main>
   );

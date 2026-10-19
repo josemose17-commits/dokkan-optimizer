@@ -1,122 +1,112 @@
-import { expect, GOKU_OPTIMIZER, test } from './fixtures';
+import { expect, GOKU_OPTIMIZER, GOKU_STATE, test } from './fixtures';
 
-const SYNTHETIC = 'Synthetic demonstration — not real Dokkan recommendations.';
+const GOHAN = 'unknown-region:1020091:eza:lv140:sa15';
 
-test('navigation keeps the Pages prefix and marks the current page', async ({
+test('one workspace with a compact secondary menu, not competing workbench tabs', async ({
   page,
 }) => {
   await page.goto('./');
   await expect(page).toHaveTitle('Dokkan Potential Optimizer');
-  const nav = page.getByRole('navigation', { name: 'Main' });
-  // Three destinations; secondary workbenches live under Tools.
+  await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0);
+  await page.getByText('Menu', { exact: true }).click();
+  const nav = page.getByRole('navigation', { name: 'Secondary' });
   await expect(nav.getByRole('link')).toHaveText([
-    'Optimize',
-    'Characters',
-    'Tools',
+    'Add, edit or import character data',
+    'Character details and catalog import',
+    'About and sources',
   ]);
-  await expect(nav.getByRole('link', { name: 'Optimize' })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
-
-  await nav.getByRole('link', { name: 'Tools' }).click();
-  await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=tools$/);
-  await expect(page).toHaveTitle('Tools · Dokkan Potential Optimizer');
-  await page.getByRole('link', { name: 'Source build examples' }).click();
-  await expect(page).toHaveURL(
-    /\/dokkan-optimizer\/\?workbench=character-build$/,
-  );
-  await expect(page).toHaveTitle(
-    'Source build examples · Dokkan Potential Optimizer',
-  );
-  await expect(nav.getByRole('link', { name: 'Tools' })).toHaveAttribute(
-    'aria-current',
-    'page',
-  );
-
-  await nav.getByRole('link', { name: 'Tools' }).click();
-  await page.getByRole('link', { name: 'Legacy synthetic team demo' }).click();
-  await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=legacy-team$/);
-  await expect(page).toHaveTitle(
-    'Legacy synthetic team demo · Dokkan Potential Optimizer',
-  );
-
-  await nav.getByRole('link', { name: 'Tools' }).click();
-  await page.getByRole('link', { name: 'Character maintenance' }).click();
+  await nav
+    .getByRole('link', { name: 'Add, edit or import character data' })
+    .click();
   await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=definitions$/);
-
-  await nav.getByRole('link', { name: 'Characters' }).click();
-  await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=catalog$/);
-  await expect(page).toHaveTitle('Characters · Dokkan Potential Optimizer');
+  await expect(page).toHaveTitle(
+    'Character maintenance · Dokkan Potential Optimizer',
+  );
 });
 
-test('production assets load from the Pages prefix', async ({ page }) => {
+test('retired URLs redirect intentionally and preserve exact states and browser storage', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.evaluate(() =>
+    localStorage.setItem('dokkan-team-lab.collection.v1', 'older-team-data'),
+  );
+  for (const path of [
+    '?workbench=legacy-team',
+    '?workbench=tools',
+    `?workbench=character-build&state=${encodeURIComponent(GOKU_STATE)}`,
+  ]) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/workbench=optimizer/);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+      'Build around the character’s kit.',
+    );
+    await expect(
+      page.getByRole('button', { name: /Generate teams/ }),
+    ).toHaveCount(0);
+  }
+  await expect(page.getByLabel('Character and exact state')).toHaveValue(
+    GOKU_STATE,
+  );
+  expect(
+    await page.evaluate(() =>
+      localStorage.getItem('dokkan-team-lab.collection.v1'),
+    ),
+  ).toBe('older-team-data');
+  await page.goto(`?state=${encodeURIComponent(GOHAN)}`);
+  await expect(page).toHaveURL(/workbench=optimizer/);
+  await expect(page.locator('#character-catalog')).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Character analysis' }),
+  ).toBeVisible();
+});
+
+test('production assets load from the Pages prefix; removed demo and test fixtures are absent', async ({
+  page,
+  request,
+}) => {
   const assets: string[] = [];
   page.on('response', (response) => {
-    if (response.url().includes('/assets/'))
-      assets.push(new URL(response.url()).pathname);
+    if (response.url().includes('/assets/')) assets.push(response.url());
   });
   await page.goto('./');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   expect(assets.some((path) => path.endsWith('.js'))).toBe(true);
   expect(assets.some((path) => path.endsWith('.css'))).toBe(true);
   expect(
-    assets.every((path) => path.startsWith('/dokkan-optimizer/assets/')),
+    assets.every((url) =>
+      new URL(url).pathname.startsWith('/dokkan-optimizer/assets/'),
+    ),
   ).toBe(true);
-});
-
-test('legacy demo keeps its exact warning and reference search', async ({
-  page,
-}) => {
-  await page.goto('?workbench=legacy-team');
-  await expect(page.getByText(SYNTHETIC, { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Generate teams/ }).click();
-  await expect(page.getByText('21 eligible', { exact: true })).toBeVisible();
-});
-
-test('genuine character pages do not carry the synthetic warning', async ({
-  page,
-}) => {
-  for (const path of ['./', GOKU_OPTIMIZER]) {
-    await page.goto(path);
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByText(SYNTHETIC)).toHaveCount(0);
+  for (const url of assets.filter((url) => url.endsWith('.js'))) {
+    const body = await (await request.get(url)).text();
+    for (const removed of [
+      'test-only-node-v1',
+      'TEST ONLY',
+      'Generate teams',
+      'Synthetic demonstration — not real Dokkan recommendations.',
+    ])
+      expect(body).not.toContain(removed);
   }
 });
 
-test('no page scrolls horizontally', async ({ page }) => {
+test('primary, browsing and maintenance layouts fit the viewport', async ({
+  page,
+}) => {
   for (const path of [
     './',
     '?workbench=catalog',
     '?workbench=definitions',
-    '?workbench=character-build',
     GOKU_OPTIMIZER,
-    '?workbench=legacy-team',
+    `?workbench=optimizer&state=${encodeURIComponent(GOHAN)}`,
   ]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - window.innerWidth,
-    );
-    expect(overflow, path).toBeLessThanOrEqual(0);
-  }
-});
-
-test('test-only characters are not shipped in the production bundle', async ({
-  page,
-  request,
-}) => {
-  const scripts: string[] = [];
-  page.on('response', (response) => {
-    if (new URL(response.url()).pathname.endsWith('.js'))
-      scripts.push(response.url());
-  });
-  await page.goto('./');
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  expect(scripts.length).toBeGreaterThan(0);
-  for (const url of scripts) {
-    const body = await (await request.get(url)).text();
-    expect(body).not.toContain('TEST ONLY');
-    expect(body).not.toContain('test-only-node-v1');
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - innerWidth,
+      ),
+      path,
+    ).toBeLessThanOrEqual(0);
   }
 });

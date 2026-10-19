@@ -1,6 +1,6 @@
 # Character definitions: first working slice
 
-The secondary **Character maintenance** workbench (**Tools**, `?workbench=definitions`) is a local character-definition editor. The primary page is the [Dokkan Potential Optimizer](OPTIMIZER.md). It is independent of catalog acquisition and accepts any **user-authored** character. It does not add real characters to the bundled catalog. Existing catalog browsing, exact-state registry, result explanations, Goku saved builds and the synthetic team demo are preserved.
+The secondary **Character maintenance** workbench (**Menu → Add, edit or import character data**, `?workbench=definitions`) is a local character-definition editor. The primary page is the [Dokkan Potential Optimizer](OPTIMIZER.md). It is independent of catalog acquisition and accepts any **user-authored** character. It does not add real characters to the bundled catalog. Existing catalog browsing, exact-state registry, result explanations, Goku saved builds are preserved. The team demo is retired; its stored data is left untouched.
 
 ## Reproduce a comparison without writing JSON
 

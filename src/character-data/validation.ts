@@ -375,7 +375,8 @@ export function validateCatalog(
       check(
         awakening.kind === 'base' || awakening.kind === 'unknown'
           ? awakening.step === null
-          : integer(awakening.step) && awakening.step > 0,
+          : awakening.step === null ||
+              (integer(awakening.step) && awakening.step > 0),
         `${p}.awakening.step`,
       );
     }

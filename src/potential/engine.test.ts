@@ -567,18 +567,18 @@ it('reconciles coverage without turning partial data into full evaluator support
       snapshotProgressions(productionRegistry),
     ),
   ).toEqual({
-    cardForms: 1,
+    cardForms: 2,
     awakeningRelationships: 0,
     // The admitted EZA state and the individually recorded base state.
-    exactStates: 2,
+    exactStates: 3,
     baseStates: 1,
-    ezaStates: 1,
+    ezaStates: 2,
     sezaStates: 0,
     completeRequiredRecords: 0,
     // Only the EZA state resolves; the base state has no evaluator.
     evaluatorStates: 1,
-    incompleteRecords: 2,
-    ambiguousFormMappings: 1,
+    incompleteRecords: 3,
+    ambiguousFormMappings: 2,
     unparsedRecords: 0,
     completeBoardTemplates: 0,
     sourceTotal: null,

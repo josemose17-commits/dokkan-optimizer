@@ -47,7 +47,7 @@ export function loadCharacterState(
     return { state: request, warning: null, raw: null };
   } catch {
     return fallback(
-      'Saved character settings could not be read or use a different catalog. Defaults are shown. The stored copy is kept until you edit a control; editing replaces it, so download it first if you need it.',
+      'Saved character settings could not be read or use a different catalog. Defaults are shown. The stored copy is preserved; download it before explicitly replacing it.',
     );
   }
 }

@@ -1,10 +1,10 @@
 # Provider-independent catalog
 
-The catalog is preserved at `?workbench=catalog`; the default product is now the [character-definition editor](CHARACTER_DEFINITIONS.md). The catalog milestone supplies working search/details and normalized JSON tooling. **Dokkan Info acquisition is paused pending an approved method.** No acquisition adapter, provider requests, bulk data, artwork, source calculator implementation or new source review is included. Provider preference and schema validity are not permission grants. Outreach requires explicit user authorization.
+The catalog is integrated into the [primary character workspace](OPTIMIZER.md); old `?workbench=catalog` links open its browsing disclosure. The catalog milestone supplies working search/details and normalized JSON tooling. **Dokkan Info acquisition is paused pending an approved method.** No acquisition adapter, provider requests, bulk data, artwork, source calculator implementation or new source review is included. Provider preference and schema validity are not permission grants. Outreach requires explicit user authorization.
 
 ## Bundled coverage
 
-**1 card form; 2 exact states: 1 EZA state and 1 base state; 0 SEZA states.** Ordinary starting/awakened/transformed classification remains unknown rather than guessed. The exact existing saved-build ID is preserved: `global-en:1003211:eza-7:lv140:sa15`.
+**2 card identities; 3 exact states: 2 EZA states and 1 base state; 0 SEZA states.** The new Gohan state supplies reviewed kit guidance, with no numerical evaluator. Unknown EZA step is null, never assumed to be a particular stage. Ordinary starting/awakened/transformed classification remains unknown rather than guessed. The exact existing saved-build ID is preserved: `global-en:1003211:eza-7:lv140:sa15`.
 
 The base state, `unknown-region:1003211:base:lv120:sa10`, is an individually recorded, single-source record from `src/data/real/catalog-states/1003211-base.ts`. Of its 11 detail fields, 8 are complete, 1 is partial and 2 are missing; it has no evaluator. See the [evidence ledger](character-build/EVIDENCE.md).
 
@@ -66,12 +66,12 @@ The existing `dokkan.character-builds.v1` payload and evaluator catalog revision
 
 ## Reproduce the UI
 
-1. Open **Characters** (`/dokkan-optimizer/?workbench=catalog`). Search `Goku` or `1003211`; AGL/UR/EZA matches one card/state. SEZA yields no admitted result. Clear filters to restore it.
+1. Open **Search characters and inspect details** in the primary workspace (`/dokkan-optimizer/?workbench=catalog`). Search `Goku` or `1003211`; AGL/UR/EZA matches one card/state. SEZA yields no admitted result. Clear filters to restore it.
 2. Select the state. Its exact ID stays in the URL through reload/back/forward. An unknown `state` reports unavailable without substituting Goku.
 3. Expand field evidence to see completeness, references, limitations and uncaptured retrieval/verification dates.
 4. Select the admitted 55% stat illustration. Raw, potential, explicit no-equip totals and unavailable battle stats remain separate.
 5. Set **Optimization support** to _Unavailable_ (no match) or _Limited evaluator available_ (Goku). **Optimize this character** opens the optimizer on that exact state.
 6. Export the admitted record with the CLI, then inspect it via **Inspect a local normalized catalog file**. It is schema-valid, keeps every bundled ID and alias, and can be browsed for the session. A file with `origin: "test-fixtures"` is rejected.
-7. Open **Tools → Source build examples** (it lists the one registered state), then return to **Characters**. Saved identity resolves without changing the payload or evaluator scope. The legacy demo retains its exact synthetic warning.
+7. Open the retained Goku comparison in the primary workspace (it lists the one registered state), then return to **Characters**. Saved identity resolves without changing the payload or evaluator scope. The synthetic demo is retired; its storage key is retained without reads or deletion.
 
 No new verified-only orb mode is added, and unresolved silver items are not promoted by this catalog. Legal node respec, damage objectives, probability refinement, purchases, merge and deployment remain outside this milestone.

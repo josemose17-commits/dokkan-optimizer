@@ -39,4 +39,4 @@ export const LEGACY_KEY = 'dokkan-team-lab.collection.v1';
 
 export const GOKU_STATE = 'global-en:1003211:eza-7:lv140:sa15';
 // The optimizer for one exact state; the bare workbench URL lists states.
-export const GOKU_OPTIMIZER = `?workbench=character-build&state=${encodeURIComponent(GOKU_STATE)}`;
+export const GOKU_OPTIMIZER = `?workbench=optimizer&state=${encodeURIComponent(GOKU_STATE)}&saved=1`;
