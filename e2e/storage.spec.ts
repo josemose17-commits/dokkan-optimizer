@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { expect, test, WORKING_KEY } from './fixtures';
 
 test('corrupt working settings warn and are kept until an explicit edit', async ({
@@ -18,9 +19,19 @@ test('corrupt working settings warn and are kept until an explicit edit', async 
   expect(
     await page.evaluate((key) => window.localStorage.getItem(key), WORKING_KEY),
   ).toBe('not-json');
+  // A copy can be downloaded before an edit replaces it.
+  const downloadPromise = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Download stored settings copy' })
+    .click();
+  const copy = await downloadPromise;
+  expect(await readFile((await copy.path())!, 'utf8')).toBe('not-json');
   await page
     .getByLabel('Sort by supported objective')
     .selectOption({ label: 'Card ATK' });
+  await expect(
+    page.getByRole('button', { name: 'Download stored settings copy' }),
+  ).toHaveCount(0);
   const stored = await page.evaluate(
     (key) => window.localStorage.getItem(key),
     WORKING_KEY,

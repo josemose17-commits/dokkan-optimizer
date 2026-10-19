@@ -392,6 +392,13 @@
   color: #a8dcf0;
   font-weight: 650;
 }
+.cb-unreadable {
+  margin: -12px 0 24px;
+}
+.cb-library-head h2:focus {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
+}
 .cb-library {
   margin-bottom: 24px;
 }

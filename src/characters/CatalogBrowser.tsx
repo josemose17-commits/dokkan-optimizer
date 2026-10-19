@@ -73,7 +73,7 @@ function Field({
               <div className="catalog-reference" key={i}>
                 <p>
                   {!source ? (
-                    'Unknown source'
+                    `Unknown source (${clip(ref.sourceId, 80)})`
                   ) : source.url ? (
                     <a href={source.url} target="_blank" rel="noreferrer">
                       {source.label} ↗
@@ -284,7 +284,9 @@ function CatalogDetails({
         aria-labelledby="optimization-support"
       >
         <h3 id="optimization-support">
-          Optimization support: {state.optimization.status}
+          {isBundled
+            ? `Optimization support: ${state.optimization.status}`
+            : `Declared by the file: ${state.optimization.status} — not offered in this app`}
         </h3>
         <p>{state.optimization.reason}</p>
         {canOptimize && (
@@ -658,8 +660,14 @@ export default function CatalogBrowser() {
                 onChange={(e) => filter('optimization', e.target.value)}
               >
                 <option value="">All support levels</option>
-                <option value="limited">Limited evaluator available</option>
-                <option value="unavailable">Unavailable</option>
+                <option value="limited">
+                  {isBundled
+                    ? 'Limited evaluator available'
+                    : 'Declared limited (not offered here)'}
+                </option>
+                <option value="unavailable">
+                  {isBundled ? 'Unavailable' : 'Declared unavailable'}
+                </option>
               </select>
             </label>
             <label>
@@ -716,8 +724,10 @@ export default function CatalogBrowser() {
                 >
                   {stateLabel(state)}
                   <span>
-                    {state.optimization.status} optimization ·{' '}
-                    {completeness(state.fields).missing} missing fields
+                    {isBundled
+                      ? `${state.optimization.status} optimization`
+                      : `declared ${state.optimization.status} · not offered here`}{' '}
+                    · {completeness(state.fields).missing} missing fields
                   </span>
                 </button>
               ))}

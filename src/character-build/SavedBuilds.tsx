@@ -1,6 +1,7 @@
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { browserStorage } from '../storage/collection';
 import ConfirmDialog from './ConfirmDialog';
+import { download } from './download';
 import type { BuildRequest, CharacterCatalog } from './domain';
 import { requestErrors } from './legality';
 import {
@@ -12,8 +13,10 @@ import {
   MAX_NAME_LENGTH,
   mergeImported,
   parseImport,
+  planImport,
   saveLibrary,
   type BuildStatus,
+  type ImportAction,
   type ImportPreview,
   type LibraryState,
   type SavedBuild,
@@ -32,24 +35,18 @@ const newId = () =>
     ? crypto.randomUUID()
     : `build-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
-function download(fileName: string, text: string) {
-  const url = URL.createObjectURL(
-    new Blob([text], { type: 'application/json' }),
-  );
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = fileName;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
 const statusLabel: Record<BuildStatus['kind'], string> = {
   ready: 'Ready',
-  stale: 'Stale revision',
+  stale: 'Stale',
   invalid: 'Invalid settings',
 };
+const actionLabel: Record<ImportAction, string> = {
+  add: 'will be added',
+  'add-new-id':
+    'will be added with a new ID (its ID matches a different saved build)',
+  'skip-duplicate': 'skipped: exact duplicate of a saved build',
+};
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 export default function SavedBuilds({
   catalog,
@@ -81,13 +78,31 @@ export default function SavedBuilds({
     (ImportPreview & { ok: true; fileName: string }) | null
   >(null);
   const [replaceWorking, setReplaceWorking] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const report = (text: string, error = false) => setMessage({ text, error });
-  function persist(builds: SavedBuild[], success: string) {
+  // Optimistic concurrency: if another tab changed the stored builds since
+  // they were loaded here, reload instead of overwriting that change.
+  function changedElsewhere() {
+    const current = loadLibrary(browserStorage());
+    if (current.raw === library.raw) return false;
+    setLibrary(current);
+    report(
+      'Saved builds changed in another tab or window. The latest list was loaded and nothing was changed; repeat the action if you still want it.',
+      true,
+    );
+    return true;
+  }
+  function persist(builds: SavedBuild[], success: string): boolean {
+    if (changedElsewhere()) return false;
     const failure = saveLibrary(browserStorage(), builds);
-    if (failure) return report(failure, true);
+    if (failure) {
+      report(failure, true);
+      return false;
+    }
     setLibrary(loadLibrary(browserStorage()));
     report(success);
+    return true;
   }
   function confirm(next: Confirmation) {
     setConfirmation({
@@ -118,15 +133,20 @@ export default function SavedBuilds({
       return;
     }
     setNameError(null);
-    setName('');
-    persist(
-      [...library.builds, created.build],
-      `Saved “${created.build.name}”.`,
-    );
+    // Keep the typed name when the write is refused, so a retry is one click.
+    if (
+      persist(
+        [...library.builds, created.build],
+        `Saved “${created.build.name}”.`,
+      )
+    )
+      setName('');
   }
 
   function exportAll() {
-    const valid = !requestErrors(request, catalog).length;
+    // A pending field error means the stored settings differ from what is
+    // shown; never export that hidden value.
+    const valid = !inputIssues && !requestErrors(request, catalog).length;
     download(
       `dokkan-character-builds-${new Date().toISOString().slice(0, 10)}.json`,
       exportBundle({
@@ -137,7 +157,7 @@ export default function SavedBuilds({
       }),
     );
     report(
-      `Exported ${library.builds.length} saved build${library.builds.length === 1 ? '' : 's'}${valid ? ' and the working settings' : '; working settings were omitted because they are invalid'}. The file includes inventory quantities.`,
+      `Exported ${library.builds.length} saved build${library.builds.length === 1 ? '' : 's'}${valid ? ' and the working settings' : '; working settings were omitted because the highlighted inputs are invalid'}. The file includes inventory quantities.`,
     );
   }
 
@@ -164,6 +184,7 @@ export default function SavedBuilds({
     if (!preview) return;
     const incoming = preview.builds.map((b) => b.build);
     let summary = 'No saved builds were added.';
+    if (incoming.length && changedElsewhere()) return setPreview(null);
     if (incoming.length) {
       const merged = mergeImported(library.builds, incoming, newId);
       if (!merged.ok) {
@@ -176,7 +197,7 @@ export default function SavedBuilds({
         return report(failure, true);
       }
       setLibrary(loadLibrary(browserStorage()));
-      summary = `Added ${merged.added} build${merged.added === 1 ? '' : 's'}; skipped ${merged.duplicates} exact duplicate${merged.duplicates === 1 ? '' : 's'}; ${merged.reassigned} received a new ID because of an ID conflict.`;
+      summary = `Added ${plural(merged.added, 'build')}; skipped ${plural(merged.duplicates, 'exact duplicate')}; ${merged.reassigned} received a new ID because of an ID conflict.`;
     }
     if (replaceWorking && preview.working?.status.kind === 'ready') {
       onReplace(
@@ -189,12 +210,27 @@ export default function SavedBuilds({
   }
 
   const readyWorking = preview?.working?.status.kind === 'ready';
+  // The preview shows the same plan that the merge applies.
+  const plan = preview
+    ? planImport(
+        library.builds,
+        preview.builds.map((b) => b.build),
+      )
+    : null;
+  const notLoadable = preview
+    ? preview.builds.filter(
+        (b, i) =>
+          plan!.actions[i] !== 'skip-duplicate' && b.status.kind !== 'ready',
+      ).length
+    : 0;
   return (
     <section className="cb-card cb-library" aria-labelledby="library-title">
       <div className="cb-library-head">
         <div>
           <p className="cb-eyebrow">SAVED BUILDS & BACKUP</p>
-          <h2 id="library-title">Your saved builds</h2>
+          <h2 id="library-title" tabIndex={-1} ref={headingRef}>
+            Your saved builds
+          </h2>
         </div>
         <p className="cb-muted">
           {library.builds.length} saved · stored in this browser only. Saved
@@ -408,6 +444,7 @@ export default function SavedBuilds({
         title={confirmation?.title ?? ''}
         confirmLabel={confirmation?.confirmLabel ?? 'Confirm'}
         destructive={confirmation?.destructive ?? false}
+        fallbackFocus={headingRef}
         onConfirm={() => confirmation?.onConfirm()}
         onCancel={() => setConfirmation(null)}
       >
@@ -416,12 +453,19 @@ export default function SavedBuilds({
       <ConfirmDialog
         open={preview !== null}
         title="Review import"
-        confirmLabel="Import"
-        confirmDisabled={!preview?.builds.length && !replaceWorking}
+        confirmLabel={
+          plan?.added
+            ? `Import ${plural(plan.added, 'build')}`
+            : 'Replace working settings'
+        }
+        confirmDisabled={
+          !plan || plan.exceedsLimit || (!plan.added && !replaceWorking)
+        }
+        fallbackFocus={headingRef}
         onConfirm={applyImport}
         onCancel={() => setPreview(null)}
       >
-        {preview && (
+        {preview && plan && (
           <>
             <p>
               <strong>{preview.fileName}</strong> · exported{' '}
@@ -429,17 +473,29 @@ export default function SavedBuilds({
               <code>{preview.catalogRevision}</code>
             </p>
             <p>
-              {preview.builds.length} saved build
-              {preview.builds.length === 1 ? '' : 's'} will be added (exact
-              duplicates are skipped).
+              {plural(plan.added, 'build')} will be added
+              {plan.reassigned > 0 &&
+                ` (${plan.reassigned} with a new ID)`};{' '}
+              {plural(plan.duplicates, 'exact duplicate')} skipped
               {preview.rejected > 0 &&
-                ` ${preview.rejected} malformed entr${preview.rejected === 1 ? 'y was' : 'ies were'} rejected.`}
+                `; ${plural(preview.rejected, 'malformed entry')} rejected`}
+              .
+              {notLoadable > 0 &&
+                ` ${notLoadable} of the added builds cannot be loaded (stale or invalid) but will be kept.`}
             </p>
+            {plan.exceedsLimit && (
+              <p className="cb-field-error" role="alert">
+                This import would bring the library to {plan.total} builds,
+                above the limit of 100. Delete builds first; nothing will be
+                added.
+              </p>
+            )}
             {preview.builds.length > 0 && (
               <ul className="cb-import-list">
                 {preview.builds.map(({ build, status }, i) => (
                   <li key={i}>
-                    {build.name} — {statusLabel[status.kind]}
+                    <strong>{build.name}</strong> —{' '}
+                    {actionLabel[plan.actions[i]!]} · {statusLabel[status.kind]}
                     {status.reason && (
                       <span className="cb-muted"> · {status.reason}</span>
                     )}

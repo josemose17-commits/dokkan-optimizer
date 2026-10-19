@@ -292,6 +292,70 @@ describe('normalized import contract (fixtures are fictional, not game verificat
       result.errors.some((error) => error.includes('fields.__proto__')),
     ).toBe(true);
   });
+  it.each([
+    ['snapshot', (s: any) => (s.extra = 1), 'snapshot.extra'],
+    ['card', (s: any) => (s.cards[0].unexpected = 1), 'cards[0].unexpected'],
+    [
+      'alias',
+      (s: any) => (s.cards[0].aliases[0].note = 'x'),
+      'cards[0].aliases[0].note',
+    ],
+    [
+      'state',
+      (s: any) => (s.states[0].damageFormula = 'x'),
+      'states[0].damageFormula',
+    ],
+    [
+      'fact',
+      (s: any) => (s.states[0].fields.type.verified = true),
+      'states[0].fields.type.verified',
+    ],
+    [
+      'provenance',
+      (s: any) => (s.states[0].fields.type.provenance[0].trusted = true),
+      'states[0].fields.type.provenance[0].trusted',
+    ],
+    [
+      'optimization',
+      (s: any) => (s.states[0].optimization.objective = 'damage'),
+      'states[0].optimization.objective',
+    ],
+    ['source', (s: any) => (s.sources[0].token = 'x'), 'sources[0].token'],
+    ['coverage', (s: any) => (s.coverage.total = 1), 'coverage.total'],
+  ])(
+    'rejects an unknown %s key instead of carrying unvalidated content',
+    (_level, mutate, path) => {
+      const snapshot = JSON.parse(JSON.stringify(catalogSnapshot));
+      mutate(snapshot);
+      const result = validateCatalog(snapshot);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((error) => error.startsWith(path))).toBe(true);
+    },
+  );
+  it('rejects deeply nested unknown content without throwing', () => {
+    const depth = 200_000;
+    const text = JSON.stringify(catalogSnapshot).replace(
+      /}$/,
+      `,"extra":${'['.repeat(depth)}${']'.repeat(depth)}}`,
+    );
+    const parsed: unknown = JSON.parse(text);
+    let result: ReturnType<typeof validateCatalog> | null = null;
+    expect(() => (result = validateCatalog(parsed))).not.toThrow();
+    expect(result!.ok).toBe(false);
+  });
+  it('bounds link and category lists', () => {
+    const snapshot = JSON.parse(JSON.stringify(fixtureSnapshot()));
+    snapshot.states[0].fields.links = {
+      ...snapshot.states[0].fields.links,
+      value: Array.from({ length: 1001 }, (_, i) => `TEST ONLY link ${i}`),
+      completeness: 'complete',
+    };
+    const result = validateCatalog(snapshot, { allowTestFixtures: true });
+    expect(result.ok).toBe(false);
+    expect(
+      result.errors.some((e) => e.startsWith('states[0].fields.links.value')),
+    ).toBe(true);
+  });
   it('counts confirmed evidence only with its separate dated confirmation, not completeness or test success', () => {
     const f = fixtureFact('TEST ONLY — value');
     expect(evidenceStatus(f)).toBe('source-documented');

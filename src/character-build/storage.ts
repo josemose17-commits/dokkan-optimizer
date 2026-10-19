@@ -10,16 +10,20 @@ export function loadCharacterState(
   defaults: BuildRequest,
   catalog: CharacterCatalog,
 ) {
+  // `raw` is returned only when stored data exists but cannot be used, so the
+  // page can offer a copy before an explicit edit replaces it.
+  let raw: string | null = null;
   const fallback = (warning: string | null) => ({
     state: structuredClone(defaults),
     warning,
+    raw,
   });
   if (!storage)
     return fallback(
       'Local storage is unavailable; changes last for this session.',
     );
   try {
-    const raw = storage.getItem(CHARACTER_STORAGE_KEY);
+    raw = storage.getItem(CHARACTER_STORAGE_KEY);
     if (raw === null) return fallback(null);
     const parsed: unknown = JSON.parse(raw);
     if (
@@ -36,10 +40,10 @@ export function loadCharacterState(
     const request = parseBuildRequest(parsed.request);
     if (!request || requestErrors(request, catalog).length)
       throw new Error('Invalid saved build.');
-    return { state: request, warning: null };
+    return { state: request, warning: null, raw: null };
   } catch {
     return fallback(
-      'Saved character settings could not be read or use a different catalog. Defaults are shown; saved data is not replaced until you edit a control.',
+      'Saved character settings could not be read or use a different catalog. Defaults are shown. The stored copy is kept until you edit a control; editing replaces it, so download it first if you need it.',
     );
   }
 }

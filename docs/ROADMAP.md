@@ -23,6 +23,8 @@ Status on branch `claude/tender-maxwell-o43x7j`, 2026-10-19. A checked item is i
 - [x] Builds from another catalog revision are retained and marked stale, never auto-loaded.
 - [ ] Before adding the first non-Goku record, add an evaluator registry keyed by exact state ID and evaluator version. Today the workbench imports the Goku record directly.
 
+- [x] PR #5 review follow-up: catalog validation rejects unknown keys at every level (deep nesting under an unknown key previously crashed validation); saved-build duplicates are compared independent of key order; the import preview shows the exact merge plan; evaluator-version mismatches are stale; autosave, save and export pause while a field is invalid; a second tab cannot overwrite saved builds; unreadable working settings can be downloaded first.
+
 ### Product functionality
 
 - [x] Catalog: optimization-support filter, deterministic name sort, paged results, and session-only local file inspection with an update report.

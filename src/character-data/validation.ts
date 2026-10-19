@@ -31,7 +31,10 @@ const url = (v: unknown) => {
 const enumValue = (values: readonly string[]) => (v: unknown) =>
   typeof v === 'string' && values.includes(v);
 const strings = (v: unknown) =>
-  Array.isArray(v) && v.every(text) && new Set(v).size === v.length;
+  Array.isArray(v) &&
+  v.length <= 1000 &&
+  v.every(text) &&
+  new Set(v).size === v.length;
 const stats = (v: unknown) =>
   object(v) &&
   Object.keys(v).length === 3 &&
@@ -57,8 +60,34 @@ export function validateCatalog(
   ) => {
     if (!condition) fail(path, reason);
   };
+  // Every object has a closed key set: unknown content (including deeply
+  // nested data under an unexpected key) is rejected, never carried along.
+  const known = (value: Obj, allowed: readonly string[], path: string) => {
+    for (const key of Object.keys(value))
+      if (!allowed.includes(key))
+        fail(
+          `${path}.${key.length > 60 ? `${key.slice(0, 59)}…` : key}`,
+          'field is not in this schema; normalize explicitly rather than silently dropping it',
+        );
+  };
   if (!object(input))
     return { ok: false, snapshot: null, errors: ['snapshot: object required'] };
+  known(
+    input,
+    [
+      'schemaVersion',
+      'id',
+      'revision',
+      'createdAt',
+      'origin',
+      'coverage',
+      'sources',
+      'cards',
+      'states',
+      'stateAliases',
+    ],
+    'snapshot',
+  );
   check(
     input.schemaVersion === 1,
     'schemaVersion',
@@ -113,6 +142,19 @@ export function validateCatalog(
   });
   sources.forEach((source, i) => {
     const path = `sources[${i}]`;
+    known(
+      source,
+      [
+        'id',
+        'label',
+        'url',
+        'access',
+        'license',
+        'permissionReference',
+        'note',
+      ],
+      path,
+    );
     check(text(source.label), `${path}.label`);
     check(
       url(source.url),
@@ -150,6 +192,7 @@ export function validateCatalog(
       fail(path, 'fact object required');
       return;
     }
+    known(value, ['value', 'completeness', 'provenance', 'note'], path);
     check(
       enumValue(['complete', 'partial', 'missing'])(value.completeness),
       `${path}.completeness`,
@@ -177,6 +220,19 @@ export function validateCatalog(
     }
     list(value.provenance, `${path}.provenance`).forEach((ref, i) => {
       const p = `${path}.provenance[${i}]`;
+      known(
+        ref,
+        [
+          'sourceId',
+          'locator',
+          'sourceRevision',
+          'retrievedAt',
+          'reviewedAt',
+          'status',
+          'independentConfirmation',
+        ],
+        p,
+      );
       check(
         text(ref.sourceId) && sourceIds.has(ref.sourceId),
         `${p}.sourceId`,
@@ -195,6 +251,12 @@ export function validateCatalog(
         `${p}.status`,
       );
       const confirmation = ref.independentConfirmation;
+      if (object(confirmation))
+        known(
+          confirmation,
+          ['reference', 'date'],
+          `${p}.independentConfirmation`,
+        );
       if (confirmation !== null)
         check(
           object(confirmation) &&
@@ -216,6 +278,7 @@ export function validateCatalog(
   const sourceAliases = new Set<string>();
   cards.forEach((card, i) => {
     const p = `cards[${i}]`;
+    known(card, ['id', 'name', 'title', 'aliases', 'form', 'fromCardId'], p);
     fact(card.name, `${p}.name`, text);
     fact(card.title, `${p}.title`, text);
     check(
@@ -232,6 +295,7 @@ export function validateCatalog(
       `${p}.fromCardId`,
     );
     list(card.aliases, `${p}.aliases`).forEach((alias, j) => {
+      known(alias, ['sourceId', 'recordId', 'region'], `${p}.aliases[${j}]`);
       check(
         text(alias.sourceId) &&
           sourceIds.has(alias.sourceId) &&
@@ -284,6 +348,20 @@ export function validateCatalog(
   };
   states.forEach((state, i) => {
     const p = `states[${i}]`;
+    known(
+      state,
+      [
+        'id',
+        'cardId',
+        'awakening',
+        'region',
+        'gameVersion',
+        'fields',
+        'potentialProfiles',
+        'optimization',
+      ],
+      p,
+    );
     check(
       text(state.cardId) && cardIds.has(state.cardId),
       `${p}.cardId`,
@@ -292,6 +370,7 @@ export function validateCatalog(
     const awakening = state.awakening;
     if (!object(awakening)) fail(`${p}.awakening`, 'object required');
     else {
+      known(awakening, ['kind', 'step'], `${p}.awakening`);
       check(enumValue(AWAKENINGS)(awakening.kind), `${p}.awakening.kind`);
       check(
         awakening.kind === 'base' || awakening.kind === 'unknown'
@@ -304,18 +383,18 @@ export function validateCatalog(
     check(nullableText(state.gameVersion), `${p}.gameVersion`);
     if (!object(state.fields)) fail(`${p}.fields`, 'object required');
     else {
-      for (const key of Object.keys(state.fields))
-        if (!Object.hasOwn(fieldChecks, key))
-          fail(
-            `${p}.fields.${key}`,
-            'field is not in this schema; normalize explicitly rather than silently dropping it',
-          );
+      known(state.fields, Object.keys(fieldChecks), `${p}.fields`);
       for (const [key, valid] of Object.entries(fieldChecks))
         fact(state.fields[key], `${p}.fields.${key}`, valid);
     }
     const profiles = list(state.potentialProfiles, `${p}.potentialProfiles`);
     ids(profiles, `${p}.potentialProfiles`);
     profiles.forEach((profile, j) => {
+      known(
+        profile,
+        ['id', 'label', 'assumptions', 'statAdditions'],
+        `${p}.potentialProfiles[${j}]`,
+      );
       check(
         text(profile.label) && text(profile.assumptions),
         `${p}.potentialProfiles[${j}]`,
@@ -330,6 +409,11 @@ export function validateCatalog(
       fail(`${p}.optimization`, 'object required');
     else {
       const optimization = state.optimization;
+      known(
+        optimization,
+        ['status', 'evaluatorId', 'reason'],
+        `${p}.optimization`,
+      );
       check(
         enumValue(['unavailable', 'limited'])(optimization.status) &&
           text(optimization.reason),
@@ -345,6 +429,7 @@ export function validateCatalog(
   });
   const aliasNames = new Set<string>();
   aliases.forEach((alias, i) => {
+    known(alias, ['alias', 'stateId'], `stateAliases[${i}]`);
     check(
       text(alias.alias) &&
         !stateIds.has(alias.alias) &&
@@ -361,6 +446,7 @@ export function validateCatalog(
   });
   if (!object(input.coverage)) fail('coverage', 'object required');
   else {
+    known(input.coverage, ['sourceCardCount', 'scope', 'excluded'], 'coverage');
     check(
       input.coverage.sourceCardCount === null ||
         integer(input.coverage.sourceCardCount),
@@ -369,6 +455,11 @@ export function validateCatalog(
     check(text(input.coverage.scope), 'coverage.scope');
     const exclusions = new Set<string>();
     list(input.coverage.excluded, 'coverage.excluded').forEach((entry, i) => {
+      known(
+        entry,
+        ['sourceId', 'recordId', 'reason'],
+        `coverage.excluded[${i}]`,
+      );
       check(
         text(entry.sourceId) &&
           sourceIds.has(entry.sourceId) &&

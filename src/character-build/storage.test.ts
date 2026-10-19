@@ -50,6 +50,8 @@ it.each([
     characterCatalog,
   );
   expect(loaded.warning).toContain('could not be read');
+  // The unusable copy is offered for download and left in storage.
+  expect(loaded.raw).toBe(raw);
   expect(storage.values.get(CHARACTER_STORAGE_KEY)).toBe(raw);
 });
 it('rejects a malformed object even with the correct schema revision', () => {
@@ -91,4 +93,23 @@ it('does not save invalid progression', () => {
   request.progression.routes = ['bottomRight'];
   expect(saveCharacterState(storage, request, characterCatalog)).not.toBeNull();
   expect(storage.values.has(CHARACTER_STORAGE_KEY)).toBe(false);
+});
+it('offers no stored copy when nothing was saved, storage is blocked or the data loads', () => {
+  expect(
+    loadCharacterState(memory(), defaultRequest(), characterCatalog).raw,
+  ).toBeNull();
+  const blocked = {
+    getItem: () => {
+      throw new Error('blocked');
+    },
+    setItem: () => undefined,
+  };
+  expect(
+    loadCharacterState(blocked, defaultRequest(), characterCatalog).raw,
+  ).toBeNull();
+  const storage = memory();
+  saveCharacterState(storage, defaultRequest(), characterCatalog);
+  expect(
+    loadCharacterState(storage, defaultRequest(), characterCatalog).raw,
+  ).toBeNull();
 });

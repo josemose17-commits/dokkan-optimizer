@@ -15,8 +15,13 @@ import {
 } from './domain';
 import { formatDelta as delta, formatMetric as format } from './format';
 import { estimateCandidateSpace } from './generation';
+import { download } from './download';
 import SavedBuilds from './SavedBuilds';
-import { loadCharacterState, saveCharacterState } from './storage';
+import {
+  INVALID_SETTINGS_NOTICE,
+  loadCharacterState,
+  saveCharacterState,
+} from './storage';
 import './character.css';
 
 const labels: Record<MetricKey, string> = {
@@ -34,7 +39,8 @@ const MAX_LIMIT = 20000;
 const shortOrb = (id: string | null) =>
   id === null
     ? 'Empty'
-    : (catalog.orbs.find((orb) => orb.id === id)?.label ?? 'Unknown item');
+    : (catalog.orbs.find((orb) => orb.id === id)?.label ??
+      `Unknown item (${id})`);
 const quantityIssue = (n: number | undefined) =>
   n === undefined || (Number.isSafeInteger(n) && n >= 0 && n <= 999)
     ? null
@@ -62,6 +68,8 @@ export default function CharacterWorkbench() {
   );
   const [request, setRequest] = useState(initial.state);
   const [notice, setNotice] = useState(initial.warning);
+  // Unusable stored settings stay downloadable until an edit replaces them.
+  const [unreadable, setUnreadable] = useState(initial.raw);
   const [result, setResult] = useState<ComparisonResult | null>(() =>
     compareBuilds(initial.state, catalog),
   );
@@ -82,18 +90,30 @@ export default function CharacterWorkbench() {
     observer.observe(unit);
     return () => observer.disconnect();
   }, []);
-  function change(next: BuildRequest) {
+  // While a field draft is invalid, nothing is autosaved: the stored value
+  // would otherwise differ from what the field shows.
+  function persist(
+    next: BuildRequest,
+    success: string | null,
+    draftValid: boolean,
+  ) {
+    if (!draftValid) return setNotice(INVALID_SETTINGS_NOTICE);
+    const failure = saveCharacterState(browserStorage(), next, catalog);
+    if (!failure) setUnreadable(null);
+    setNotice(failure ?? success);
+  }
+  function change(next: BuildRequest, draftValid = limitIssue === null) {
     setRequest(next);
     setResult(null);
     setFailure(null);
-    setNotice(saveCharacterState(browserStorage(), next, catalog));
+    persist(next, null, draftValid);
   }
   function replaceRequest(next: BuildRequest, message: string) {
     setRequest(next);
     setResult(null);
     setFailure(null);
     setLimitDraft(String(next.maxCandidates));
-    setNotice(saveCharacterState(browserStorage(), next, catalog) ?? message);
+    persist(next, message, true);
   }
   const limitNumber = Number(limitDraft);
   const limitIssue =
@@ -187,6 +207,19 @@ export default function CharacterWorkbench() {
         <p className="cb-notice" role="status">
           {notice}
         </p>
+      )}
+      {unreadable !== null && (
+        <div className="cb-button-row cb-unreadable">
+          <button
+            type="button"
+            className="cb-secondary"
+            onClick={() =>
+              download('dokkan-character-settings-unreadable.json', unreadable)
+            }
+          >
+            Download stored settings copy
+          </button>
+        </div>
       )}
 
       <section
@@ -487,10 +520,11 @@ export default function CharacterWorkbench() {
                     n >= 1 &&
                     n <= MAX_LIMIT
                   )
-                    change({ ...request, maxCandidates: n });
+                    change({ ...request, maxCandidates: n }, true);
                   else {
                     setResult(null);
                     setFailure(null);
+                    setNotice(INVALID_SETTINGS_NOTICE);
                   }
                 }}
               />

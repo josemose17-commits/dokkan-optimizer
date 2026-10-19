@@ -117,6 +117,20 @@ test('local catalog files are validated as data and browsed only for the session
     'does not match the normalized catalog schema',
   );
 
+  // Deeply nested unknown content is rejected, not left "validating".
+  const depth = 100_000;
+  await input.setInputFiles(
+    jsonFile(
+      'deep.json',
+      JSON.stringify(catalogSnapshot).replace(
+        /}$/,
+        `,"extra":${'['.repeat(depth)}${']'.repeat(depth)}}`,
+      ),
+    ),
+  );
+  await expect(alert).toContainText('Rejected: deep.json');
+  await expect(alert).toContainText('snapshot.extra');
+
   const fixture = {
     ...structuredClone(catalogSnapshot),
     origin: 'test-fixtures',
@@ -144,6 +158,15 @@ test('local catalog files are validated as data and browsed only for the session
   });
   await expect(banner).toBeVisible();
   await expect(banner).toContainText('not reviewed by this project');
+  // A file's declared support is not presented as support in this app.
+  await expect(
+    page.getByRole('heading', {
+      name: 'Declared by the file: limited — not offered in this app',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /declared limited · not offered here/ }),
+  ).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Optimize this character' }),
   ).toBeDisabled();

@@ -119,7 +119,7 @@ export function buildErrors(
     const id = build.equips[slot];
     if (id === null) continue;
     const orb = catalog.orbs.find((o) => o.id === id);
-    if (!orb) errors.push(`Unknown equip in ${slot}.`);
+    if (!orb) errors.push(`Unknown equip in ${slot}: ${id}.`);
     else errors.push(...orbErrors(orb, slot, request, catalog));
   }
   if (enforceInventory && Object.keys(missingInventory(build, request)).length)

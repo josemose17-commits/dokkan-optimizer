@@ -209,6 +209,11 @@ export function buildStatus(
       kind: 'stale',
       reason: `Saved against catalog ${build.catalogRevision}; this app uses ${catalog.revision}. Retained but not loadable; no substitution is made.`,
     };
+  if (build.evaluatorVersion !== EVALUATOR_VERSION)
+    return {
+      kind: 'stale',
+      reason: `Saved for evaluator ${build.evaluatorVersion}; this app uses ${EVALUATOR_VERSION}. Retained but not loadable; results could differ.`,
+    };
   const errors = requestErrors(build.request, catalog);
   return errors.length
     ? { kind: 'invalid', reason: errors.join(' ') }
@@ -464,11 +469,53 @@ export function parseImport(
   };
 }
 
+// Content comparison independent of object key order (arrays stay ordered).
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    object(v)
+      ? Object.fromEntries(
+          Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+        )
+      : v,
+  );
+}
+
+export type ImportAction = 'add' | 'add-new-id' | 'skip-duplicate';
+
 /**
- * Adds imported builds. Exact duplicates (same ID and content) are skipped; an
- * ID collision with different content keeps both under a new ID. Existing
- * builds are never replaced by an import.
+ * Identity rule for saved builds: a build is identified by its `id`. An
+ * imported build is an exact duplicate only when a build with the same `id`
+ * has identical content (name, time, revisions and settings; object key order
+ * ignored). The same `id` with different content is a conflict: the imported
+ * build is kept under a new ID. A different `id` is always a separate build,
+ * even with identical settings. Existing builds are never replaced.
  */
+export function planImport(existing: SavedBuild[], imported: SavedBuild[]) {
+  const seen = new Map(existing.map((b) => [b.id, canonical(b)]));
+  const actions: ImportAction[] = imported.map((build) => {
+    const content = canonical(build);
+    const known = seen.get(build.id);
+    if (known === content) return 'skip-duplicate';
+    if (known === undefined) {
+      seen.set(build.id, content);
+      return 'add';
+    }
+    return 'add-new-id';
+  });
+  const count = (action: ImportAction) =>
+    actions.filter((a) => a === action).length;
+  const added = count('add') + count('add-new-id');
+  return {
+    actions,
+    added,
+    duplicates: count('skip-duplicate'),
+    reassigned: count('add-new-id'),
+    total: existing.length + added,
+    exceedsLimit: existing.length + added > MAX_SAVED_BUILDS,
+  };
+}
+
+/** Applies planImport; the preview and the merge therefore always agree. */
 export function mergeImported(
   existing: SavedBuild[],
   imported: SavedBuild[],
@@ -482,32 +529,30 @@ export function mergeImported(
       reassigned: number;
     }
   | { ok: false; error: string } {
-  const builds = [...existing];
-  const ids = new Map(existing.map((b) => [b.id, JSON.stringify(b)]));
-  let added = 0,
-    duplicates = 0,
-    reassigned = 0;
-  for (const build of imported) {
-    const known = ids.get(build.id);
-    if (known === JSON.stringify(build)) {
-      duplicates++;
-      continue;
-    }
-    let id = build.id;
-    if (known !== undefined) {
-      do id = newId();
-      while (ids.has(id));
-      reassigned++;
-    }
-    const copy = { ...structuredClone(build), id };
-    builds.push(copy);
-    ids.set(id, JSON.stringify(copy));
-    added++;
-  }
-  if (builds.length > MAX_SAVED_BUILDS)
+  const plan = planImport(existing, imported);
+  if (plan.exceedsLimit)
     return {
       ok: false,
       error: `Import would exceed ${MAX_SAVED_BUILDS} saved builds. Nothing was added.`,
     };
-  return { ok: true, builds, added, duplicates, reassigned };
+  const builds = [...existing];
+  const ids = new Set(existing.map((b) => b.id));
+  imported.forEach((build, i) => {
+    const action = plan.actions[i]!;
+    if (action === 'skip-duplicate') return;
+    let id = build.id;
+    if (action === 'add-new-id') {
+      do id = newId();
+      while (ids.has(id) || imported.some((b) => b.id === id));
+    }
+    ids.add(id);
+    builds.push({ ...structuredClone(build), id });
+  });
+  return {
+    ok: true,
+    builds,
+    added: plan.added,
+    duplicates: plan.duplicates,
+    reassigned: plan.reassigned,
+  };
 }

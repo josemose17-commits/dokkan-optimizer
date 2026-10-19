@@ -147,6 +147,23 @@ test('invalid inputs are reported on their fields and block comparison', async (
   await expect(page.locator('.cb-results')).toHaveCount(0);
 });
 
+test('an invalid field pauses autosave so no hidden value is stored', async ({
+  page,
+}) => {
+  await open(page);
+  await page.getByLabel('Candidate limit').fill('');
+  await page
+    .getByLabel('Current silver equip')
+    .selectOption({ label: 'Critical Hit +2 · silver' });
+  await expect(
+    page.getByText('Not saved: fix the highlighted input.'),
+  ).toBeVisible();
+  await page.reload();
+  // Nothing after the invalid edit was stored.
+  await expect(page.getByLabel('Current silver equip')).toHaveValue('');
+  await expect(page.getByLabel('Candidate limit')).toHaveValue('20000');
+});
+
 test('settings persist across reload and navigation without touching other keys', async ({
   page,
 }) => {
@@ -192,14 +209,14 @@ test('keyboard users can submit and the identity bar follows scrolling', async (
   await open(page);
   const bar = page.locator('.cb-identity-bar');
   // Hidden while the full identity card is on screen.
-  await expect(bar).toHaveAttribute('data-pinned', 'false');
+  await expect(bar).toBeHidden();
   await page.getByLabel('Candidate limit').focus();
   await page.keyboard.press('Control+A');
   await page.keyboard.type('20000');
   await page.keyboard.press('Enter');
   await expect(search(page)).toContainText('16 legal targets evaluated');
   await page.locator('.cb-results').scrollIntoViewIfNeeded();
-  await expect(bar).toHaveAttribute('data-pinned', 'true');
+  await expect(bar).toBeVisible();
   await expect(bar).toContainText('EZA step 7 · Lv.140 · SA15 · not SEZA');
 });
 
@@ -212,9 +229,24 @@ test('results fit the viewport without horizontal table scrolling on narrow scre
   const wrap = page.locator('.cb-table-wrap');
   const overflow = await wrap.evaluate((el) => el.scrollWidth - el.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
-  // Each metric keeps its visible label in card layout.
-  await expect(rows(page).first().locator('td').first()).toHaveAttribute(
-    'data-label',
-    'Card ATK',
-  );
+  // Card layout keeps table relationships for assistive technology...
+  const table = page.getByRole('table', { name: /Sorted by/ });
+  await expect(table.getByRole('columnheader')).toHaveCount(7);
+  const first = table.getByRole('row').nth(1);
+  await expect(first.getByRole('rowheader')).toHaveCount(1);
+  await expect(first.getByRole('cell')).toHaveCount(6);
+  // ...and a visible metric label on every cell.
+  const labels = await first
+    .getByRole('cell')
+    .evaluateAll((cells) =>
+      cells.map((cell) => getComputedStyle(cell, '::before').content),
+    );
+  expect(labels).toEqual([
+    '"Card ATK"',
+    '"Card DEF"',
+    '"Card HP"',
+    '"Initial extra Super"',
+    '"Critical chance"',
+    '"Evasion chance"',
+  ]);
 });

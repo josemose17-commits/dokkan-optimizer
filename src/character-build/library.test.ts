@@ -14,6 +14,7 @@ import {
   mergeImported,
   parseBuildRequest,
   parseImport,
+  planImport,
   saveLibrary,
   type SavedBuild,
 } from './library';
@@ -124,6 +125,12 @@ describe('saved-build records', () => {
   it('marks a different catalog revision stale instead of loading it', () => {
     const build = { ...saved('a'), catalogRevision: 'older-revision' };
     expect(buildStatus(build, characterCatalog).kind).toBe('stale');
+  });
+  it('marks a build saved for another evaluator version stale', () => {
+    const build = { ...saved('a'), evaluatorVersion: 'goku-initial-check-v0' };
+    const status = buildStatus(build, characterCatalog);
+    expect(status.kind).toBe('stale');
+    expect(status.reason).toContain('goku-initial-check-v0');
   });
   it('marks same-revision settings that fail legality as invalid', () => {
     const build = saved('a');
@@ -321,6 +328,49 @@ describe('merging imported builds', () => {
       ['c', 'Build c'],
     ]);
     expect(existing).toHaveLength(2);
+  });
+  it('compares content independent of object key order', () => {
+    const a = saved('a');
+    const reordered = JSON.parse(JSON.stringify(a));
+    // Same entries, different insertion order.
+    a.request.inventory = { [ORB_IDS.attack]: 2, [ORB_IDS.hp]: 1 };
+    reordered.request.inventory = { [ORB_IDS.hp]: 1, [ORB_IDS.attack]: 2 };
+    expect(Object.keys(a.request.inventory)).not.toEqual(
+      Object.keys(reordered.request.inventory),
+    );
+    const result = mergeImported([a], [reordered], () => 'new');
+    expect(result.ok && [result.added, result.duplicates]).toEqual([0, 1]);
+  });
+  it('keeps identical settings saved under a different ID as a separate build', () => {
+    const result = mergeImported(
+      [saved('a')],
+      [saved('b', 'Build a')],
+      () => 'n',
+    );
+    expect(result.ok && result.builds.map((b) => b.id)).toEqual(['a', 'b']);
+  });
+  it('plans exactly what the merge does, per imported build', () => {
+    const existing = [saved('a', 'Mine')];
+    const incoming = [
+      saved('a', 'Mine'), // exact duplicate
+      saved('a', 'Theirs'), // same ID, different content
+      saved('c'), // new
+    ];
+    const plan = planImport(existing, incoming);
+    expect(plan).toEqual({
+      actions: ['skip-duplicate', 'add-new-id', 'add'],
+      added: 2,
+      duplicates: 1,
+      reassigned: 1,
+      total: 3,
+      exceedsLimit: false,
+    });
+    const merged = mergeImported(existing, incoming, () => 'fresh');
+    expect(merged.ok && merged.builds.map((b) => [b.id, b.name])).toEqual([
+      ['a', 'Mine'],
+      ['fresh', 'Theirs'],
+      ['c', 'Build c'],
+    ]);
   });
   it('refuses an import that would exceed the limit', () => {
     const existing = Array.from({ length: MAX_SAVED_BUILDS }, (_, i) =>

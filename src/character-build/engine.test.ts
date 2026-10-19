@@ -274,9 +274,10 @@ describe('eligibility before evaluation', () => {
     expect(compareBuilds(r, characterCatalog).errors.join(' ')).toContain(
       'wrong equip slot',
     );
-    r.current.equips.bronze = 'unknown';
+    r.current.equips.bronze = 'not-a-catalog-item';
+    // The unknown ID stays identifiable instead of reading as an empty slot.
     expect(compareBuilds(r, characterCatalog).errors.join(' ')).toContain(
-      'Unknown equip',
+      'Unknown equip in bronze: not-a-catalog-item.',
     );
   });
   it.each(['type', 'category', 'cardState', 'unsupported', 'invented'])(

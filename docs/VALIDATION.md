@@ -1,5 +1,24 @@
 # Prototype validation
 
+## PR #5 review follow-up — 2026-10-19
+
+PR #5's first GitHub Actions run (head `710c664`) passed both jobs: **Test and build (Node 24)** and **Playwright (Chromium, production build, Node 24)**; the deploy job was skipped as expected for a pull request. There were no review comments. This follow-up comes from an implementation review, not from CI failures.
+
+Defects found and fixed, each with a regression test:
+
+- `validateCatalog` accepted unknown keys outside `fields`, and a deeply nested value under an unknown key made it throw `RangeError: Maximum call stack size exceeded` (reproduced with 200,000 levels), which would have left the browser panel stuck. Every object now has a closed key set; the browser also catches any validation failure.
+- Saved-build duplicate detection compared JSON text, so identical builds whose inventory keys were in a different order were treated as an ID conflict and imported twice. Comparison is now independent of key order, and the identity rule is documented.
+- The import preview said "N will be added" without checking duplicates, conflicts or the 100-build limit. It now shows the same plan the merge applies, per build.
+- With an invalid limit draft, editing another control autosaved the previous, hidden limit, and **Export JSON** exported it. Autosave, save and export of working settings now pause while a field is invalid.
+- A second tab could overwrite saved builds written by another tab. Writes now check that the stored list is unchanged since it was loaded.
+- Unknown item IDs could appear as "Empty" or "Unknown item"; they now show the ID. Builds saved for another evaluator version are stale. Session catalog files show "declared" support, never as support offered here. Confirmation dialogs return focus to their opener, or to the section heading when the opener was removed.
+
+Results on Node 24.22.0:
+
+- `npm test`: **240/240 passed**.
+- `npm run typecheck`, `npm run build`, `npm run format:check`, `git diff --check`: **passed**.
+- `npm run test:e2e`: **55 passed, 1 skipped** (mobile-only check on desktop), 28 tests × 2 projects. New browser coverage: keyboard-only dialog use and focus return, accurate re-import preview, unknown-item import, export with an invalid field, paused autosave, two-tab conflict, unreadable-settings download, deep-nesting rejection, declared session support, and table roles plus visible labels on mobile cards.
+
 ## Saved builds, catalog search and browser suite — 2026-10-19
 
 Validated locally on Node **24.22.0** (installed with nvm; the container's default Node 22 was not used). No provider acquisition, new real records or evidence changes were involved. The bundled catalog is still **1 card form / 1 exact EZA state**.

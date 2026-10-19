@@ -74,23 +74,30 @@ export default function LocalCatalogImport({
       reject('The file could not be read as JSON.');
       return;
     }
-    // Default validation: test-fixture snapshots are rejected here.
-    const result = validateCatalog(parsed);
-    if (token !== request.current) return;
-    if (!result.ok) {
-      reject(
-        'The file does not match the normalized catalog schema. Nothing was loaded.',
-        result.errors,
-      );
+    let inspected: Extract<Inspection, { status: 'valid' }>;
+    try {
+      // Default validation: test-fixture snapshots are rejected here.
+      const result = validateCatalog(parsed);
+      if (!result.ok) {
+        reject(
+          'The file does not match the normalized catalog schema. Nothing was loaded.',
+          result.errors,
+        );
+        return;
+      }
+      inspected = {
+        status: 'valid',
+        fileName,
+        snapshot: result.snapshot,
+        counts: catalogCounts(result.snapshot),
+        update: assessCatalogUpdate(bundled, result.snapshot),
+      };
+    } catch {
+      // A pathological file must never leave the panel stuck "validating".
+      reject('The file could not be validated. Nothing was loaded.');
       return;
     }
-    setInspection({
-      status: 'valid',
-      fileName,
-      snapshot: result.snapshot,
-      counts: catalogCounts(result.snapshot),
-      update: assessCatalogUpdate(bundled, result.snapshot),
-    });
+    if (token === request.current) setInspection(inspected);
   }
 
   return (
