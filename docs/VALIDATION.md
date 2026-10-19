@@ -1,5 +1,17 @@
 # Prototype validation
 
+## Structured-source audit — 2026-10-19 UTC
+
+Research-only update on `codex/structured-data-source-audit`, based on merged main `01480ea`. No application code, fixtures, card/orb records, dependency, workflow or graph changes. No source JSON/code was vendored. See the [focused source audit](character-build/STRUCTURED_SOURCES.md) for inspected records, authentication results and unresolved gates.
+
+- Node.js **24.19.0**.
+- `npm test`: **114/114 passed**, four files; all existing engine and storage tests. No new tests were added for this documentation-only change.
+- `npm run typecheck`: **passed**.
+- `npm run build`: **passed**; prefixed assets generated successfully.
+- Production-prefix Chromium checks: **20/20 passed**, using the existing task-workspace harness against the new `dist/` bundle. Both workbenches, exact synthetic warning, baseline/equip comparison, persistence, truncation, supported objectives, mobile overflow and prefixed assets were checked. No uncaught page errors or external data requests.
+
+The browser checks are regression checks of the existing documented model, not graph, orb-restriction or combat verification. No independent game confirmation, authenticated GachaData dataset inspection, adapter or allocation optimization was added. Nothing was merged or deployed.
+
 ## Primary character workbench — 2026-10-19 task validation
 
 Research snapshot dated 2026-10-18; validation completed during the task spanning the UTC date change. Node.js **24.19.0**, headless Chromium **153.0.8010.0**.

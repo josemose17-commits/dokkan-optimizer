@@ -47,7 +47,9 @@ Independent passive-combination probability arithmetic and hypothetical damage b
 
 ## Remaining gates
 
-1. An in-game record of Goku's exact node option/prerequisite graph before any node-respec UI.
+Focused structured-source recheck on 2026-10-19 UTC: [GachaData and MNprojects audit](STRUCTURED_SOURCES.md). MNprojects' pinned JSON/schema has no graph/orb fields and mixes Goku state metadata with conflicting stat values. GachaData's public summary tables are insufficient; its authenticated full schema remains uninspected after an HTTP 401 response. This is an access/schema gate, not a finding that its API lacks the graph. No graph, card state, orb ID/restriction or confidence level is promoted. The three generic silver records remain unresolved and must be excluded from any future verified-only comparison mode. Game captures remain paused while a permitted targeted API sample is sought.
+
+1. A source-supported exact Goku node option/prerequisite graph before any node-respec UI, followed by independent interpretation checks. A permitted structured dataset may supply the graph; in-game observations remain a separate kind of evidence.
 2. Independent card/orb/initial-probability confirmation, with reproducible method/date and region/build.
 3. Current direct confirmation of the generic silver item labels/restrictions and source item aliases.
 4. Exact attack-chain and outgoing damage calculation validation before full-turn or damage objectives.
