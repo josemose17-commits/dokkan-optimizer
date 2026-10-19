@@ -3,11 +3,14 @@ import {
   METRIC_LABELS as labels,
   type EvaluatorEntry,
   type MetricKey,
-  type ProbabilityStep,
   type Skill,
 } from './domain';
 import { itemLabel, type Explanation } from './explanation';
-import { formatDeltaInfo, formatPercent } from './format';
+import {
+  formatDeltaInfo,
+  formatFormula as formula,
+  formatPercent,
+} from './format';
 
 const STAT_LABELS = { hp: 'HP', attack: 'ATK', defense: 'DEF' } as const;
 const SKILL_LABELS: Record<Skill, string> = {
@@ -23,22 +26,6 @@ const EVIDENCE_STATUS = {
 const list = (metrics: MetricKey[]) =>
   metrics.map((m) => labels[m]).join(', ') || 'none';
 const number = (n: number) => n.toLocaleString('en-US');
-
-function formula(step: {
-  factors: ProbabilityStep['factors'];
-  value: number;
-  note: string;
-}) {
-  if (!step.factors.length)
-    return `${formatPercent(step.value)} (${step.note})`;
-  return `${step.factors
-    .map((f) =>
-      f.kind === 'level'
-        ? `${f.value} (${f.label})`
-        : `${formatPercent(f.value)} (${f.label})`,
-    )
-    .join(' × ')} = ${formatPercent(step.value)}`;
-}
 
 // Renders a computed Explanation. All numbers and relations come from it.
 export default function ResultExplanation({

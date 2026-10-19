@@ -110,7 +110,7 @@ test('primary editor is empty until the user creates records, and saves revision
 }) => {
   await newCharacter(page);
   await expect(page).toHaveTitle(
-    'Dokkan Character Lab · Definitions and custom builds',
+    'Character maintenance · Dokkan Potential Optimizer',
   );
   await expect(
     page.getByText('Custom allocation — board compatibility not checked.', {
@@ -342,9 +342,7 @@ test('unsaved navigation can be canceled and a copied catalog state is detached'
   page,
 }) => {
   await newCharacter(page);
-  await page
-    .getByRole('link', { name: 'Character catalog', exact: true })
-    .click();
+  await page.getByRole('link', { name: 'Characters', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Discard unsaved changes?' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -366,9 +364,7 @@ test('unsaved navigation can be canceled and a copied catalog state is detached'
     page.getByLabel('Hidden Potential additions ATK', { exact: true }),
   ).toHaveValue('');
   await page.getByRole('button', { name: 'Save as new revision' }).click();
-  await page
-    .getByRole('link', { name: 'Character catalog', exact: true })
-    .click();
+  await page.getByRole('link', { name: 'Characters', exact: true }).click();
   // Saving a user copy never adds to the bundled catalog (EZA + base state).
   await expect(page.locator('.catalog-result-count')).toHaveText(
     '1 card form · 2 matching states',

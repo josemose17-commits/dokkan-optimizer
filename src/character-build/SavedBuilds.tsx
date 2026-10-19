@@ -59,6 +59,7 @@ export default function SavedBuilds({
   inputIssues,
   onReplace,
   onOpen,
+  refuse,
 }: {
   // The open evaluator; `available` lists every evaluator this app can open.
   entry: EvaluatorEntry;
@@ -74,6 +75,9 @@ export default function SavedBuilds({
     request: BuildRequest,
     message: string,
   ) => void;
+  // A page that cannot show some valid settings (e.g. entered potential
+  // values) names the reason instead of loading them partially.
+  refuse?: (request: BuildRequest) => string | null;
 }) {
   // Applies settings to the evaluator bound to their exact state, never to
   // whichever workbench happens to be open.
@@ -231,7 +235,11 @@ export default function SavedBuilds({
       setLibrary(loadLibrary(browserStorage()));
       summary = `Added ${plural(merged.added, 'build')}; skipped ${plural(merged.duplicates, 'exact duplicate')}; ${merged.reassigned} received a new ID because of an ID conflict.`;
     }
-    if (replaceWorking && preview.working?.status.kind === 'ready') {
+    if (
+      replaceWorking &&
+      preview.working?.status.kind === 'ready' &&
+      !refuse?.(preview.working.request)
+    ) {
       apply(
         preview.working.request,
         `${summary} Working settings replaced from ${preview.fileName}.`,
@@ -241,7 +249,9 @@ export default function SavedBuilds({
     setPreview(null);
   }
 
-  const readyWorking = preview?.working?.status.kind === 'ready';
+  const readyWorking =
+    preview?.working?.status.kind === 'ready' &&
+    !refuse?.(preview.working.request);
   // The preview shows the same plan that the merge applies.
   const plan = preview
     ? planImport(
@@ -349,6 +359,10 @@ export default function SavedBuilds({
         <ul className="cb-saved-list">
           {library.builds.map((build) => {
             const status = buildStatus(build, available);
+            const refusal =
+              status.kind === 'ready'
+                ? (refuse?.(build.request) ?? null)
+                : null;
             return (
               <li key={build.id}>
                 <div>
@@ -368,12 +382,13 @@ export default function SavedBuilds({
                   {status.kind === 'invalid' && (
                     <p className="cb-muted">{status.reason}</p>
                   )}
+                  {refusal && <p className="cb-muted">{refusal}</p>}
                 </div>
                 <div className="cb-button-row">
                   <button
                     type="button"
                     className="cb-secondary"
-                    disabled={status.kind !== 'ready'}
+                    disabled={status.kind !== 'ready' || refusal !== null}
                     aria-label={`Load ${build.name}`}
                     onClick={() =>
                       confirm({

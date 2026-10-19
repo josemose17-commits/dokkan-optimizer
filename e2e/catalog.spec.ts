@@ -76,15 +76,19 @@ test('details keep identity, stat layers and missing fields separate', async ({
   );
   await expect(details).toContainText('0 independently confirmed');
 
-  await details
-    .getByRole('link', { name: 'Compare documented profile' })
-    .click();
+  await details.getByRole('link', { name: 'Optimize this character' }).click();
   await expect(page).toHaveURL(
     /\?workbench=optimizer&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15$/,
   );
   await expect(
-    page.getByRole('heading', { name: /Find what to change/ }),
+    page.getByRole('heading', {
+      name: 'Find the best Hidden Potential build.',
+    }),
   ).toBeVisible();
+  // The optimizer opens on the same exact state.
+  await expect(page.getByLabel('Character and exact state')).toHaveValue(
+    'global-en:1003211:eza-7:lv140:sa15',
+  );
 });
 
 test('exact state URLs survive reload and history; unknown states are not substituted', async ({
@@ -177,7 +181,7 @@ test('local catalog files are validated as data and browsed only for the session
     page.getByRole('button', { name: /declared limited · not offered here/ }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Compare documented profile' }),
+    page.getByRole('button', { name: 'Optimize this character' }),
   ).toBeDisabled();
   expect(new URL(page.url()).searchParams.has('state')).toBe(false);
   expect(await page.evaluate(() => Object.keys(window.localStorage))).toEqual(
@@ -189,7 +193,7 @@ test('local catalog files are validated as data and browsed only for the session
     .click();
   await expect(banner).toHaveCount(0);
   await expect(
-    page.getByRole('link', { name: 'Compare documented profile' }),
+    page.getByRole('link', { name: 'Optimize this character' }),
   ).toBeVisible();
 });
 
@@ -218,7 +222,7 @@ test('the individually recorded base state shows its own facts and why it cannot
   );
   // Same card as the EZA state with an evaluator, but none is borrowed.
   await expect(
-    details.getByRole('link', { name: 'Compare documented profile' }),
+    details.getByRole('link', { name: 'Optimize this character' }),
   ).toHaveCount(0);
   const rawField = details
     .locator('.catalog-field')

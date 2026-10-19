@@ -6,65 +6,57 @@ import { catalogSnapshot } from './data/real/catalog';
 import { productionRegistry } from './data/real/character-build/registry';
 import DefinitionWorkbench from './character-definitions/DefinitionWorkbench';
 import PotentialOptimizer from './potential/PotentialOptimizer';
+import ToolsPage from './ToolsPage';
+
+const PRODUCT = 'Dokkan Potential Optimizer';
 
 export default function Workbench() {
-  const legacy =
-    new URLSearchParams(window.location.search).get('workbench') ===
-    'legacy-team';
-  const builds =
-    new URLSearchParams(window.location.search).get('workbench') ===
-    'character-build';
   const params = new URLSearchParams(window.location.search);
+  const workbench = params.get('workbench');
+  const legacy = workbench === 'legacy-team';
+  const builds = workbench === 'character-build';
+  // Old bare `?state=...` links keep opening the catalog.
   const catalog =
-    params.get('workbench') === 'catalog' ||
-    (params.get('workbench') === null && params.has('state'));
-  const definitions = params.get('workbench') === 'definitions';
-  const optimizer = !legacy && !builds && !catalog && !definitions;
+    workbench === 'catalog' || (workbench === null && params.has('state'));
+  const definitions = workbench === 'definitions';
+  const tools = workbench === 'tools';
+  const tool = legacy || builds || definitions || tools;
+  const optimizer = !tool && !catalog;
   useEffect(() => {
     document.title = legacy
-      ? 'Dokkan Team Lab · Legacy synthetic demo'
+      ? `Legacy synthetic team demo · ${PRODUCT}`
       : builds
-        ? 'Dokkan Character Builds · Equip comparison'
+        ? `Source build examples · ${PRODUCT}`
         : catalog
-          ? 'Dokkan Character Catalog · Admitted records'
+          ? `Characters · ${PRODUCT}`
           : definitions
-            ? 'Dokkan Character Lab · Definitions and custom builds'
-            : 'Dokkan · Profile/equipment comparison';
-  }, [legacy, builds, catalog, definitions]);
+            ? `Character maintenance · ${PRODUCT}`
+            : tools
+              ? `Tools · ${PRODUCT}`
+              : PRODUCT;
+  }, [legacy, builds, catalog, definitions, tools]);
+  const base = import.meta.env.BASE_URL;
   return (
     <>
       <header className="workbench-switch">
-        <strong>DOKKAN / PROFILE COMPARISON</strong>
-        <nav aria-label="Workbench">
-          <a
-            href={import.meta.env.BASE_URL}
-            aria-current={optimizer ? 'page' : undefined}
-          >
-            Profile/equipment comparison
+        <a className="app-brand" href={base}>
+          {PRODUCT}
+        </a>
+        <nav aria-label="Main">
+          <a href={base} aria-current={optimizer ? 'page' : undefined}>
+            Optimize
           </a>
           <a
-            href={`${import.meta.env.BASE_URL}?workbench=definitions`}
-            aria-current={definitions ? 'page' : undefined}
-          >
-            Character maintenance
-          </a>
-          <a
-            href={`${import.meta.env.BASE_URL}?workbench=catalog`}
+            href={`${base}?workbench=catalog`}
             aria-current={catalog ? 'page' : undefined}
           >
-            Character catalog
+            Characters
           </a>
           <a
-            href={`${import.meta.env.BASE_URL}?workbench=character-build`}
-            aria-current={builds ? 'page' : undefined}
+            href={`${base}?workbench=tools`}
+            aria-current={tool ? 'page' : undefined}
           >
-            Source build examples
-          </a>
-          <a
-            href={`${import.meta.env.BASE_URL}?workbench=legacy-team`}
-            aria-current={legacy ? 'page' : undefined}
-          >
-            Legacy synthetic team demo
+            Tools
           </a>
         </nav>
       </header>
@@ -79,6 +71,8 @@ export default function Workbench() {
         <CatalogBrowser />
       ) : definitions ? (
         <DefinitionWorkbench />
+      ) : tools ? (
+        <ToolsPage />
       ) : (
         <PotentialOptimizer
           snapshot={catalogSnapshot}

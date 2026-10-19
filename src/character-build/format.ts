@@ -1,4 +1,4 @@
-import type { Metric } from './domain';
+import type { Metric, ProbabilityStep } from './domain';
 
 // Presentation of evaluated metrics. Probabilities are shown in percent;
 // their absolute differences are percentage points (pp), not percent change.
@@ -47,4 +47,22 @@ export function formatDeltaInfo(info: {
       ? 'relative change undefined: zero baseline'
       : `${sign}${Math.abs(info.relative * 100).toFixed(info.unit === 'pp' ? 1 : 2)}% relative change`;
   return `${absolute} (${relative})`;
+}
+
+// A probability step as written arithmetic: "2 (Critical Hit levels) × 2.0%
+// (chance per level) = 4.0%". A context-fixed value shows its note instead.
+export function formatFormula(step: {
+  factors: ProbabilityStep['factors'];
+  value: number;
+  note: string;
+}): string {
+  if (!step.factors.length)
+    return `${formatPercent(step.value)} (${step.note})`;
+  return `${step.factors
+    .map((f) =>
+      f.kind === 'level'
+        ? `${f.value} (${f.label})`
+        : `${formatPercent(f.value)} (${f.label})`,
+    )
+    .join(' × ')} = ${formatPercent(step.value)}`;
 }

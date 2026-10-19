@@ -12,6 +12,14 @@
   letter-spacing: 1px;
   font-size: 12px;
 }
+.workbench-switch .app-brand {
+  padding: 0;
+  border: 0;
+  color: #e3f1fb;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  font-size: 15px;
+}
 .workbench-switch nav {
   display: flex;
   gap: 8px;

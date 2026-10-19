@@ -1,122 +1,599 @@
-.potential-workbench {
-  max-width: 1100px;
+/* Dokkan Potential Optimizer: one workspace (inputs left, result right) on
+   wide screens and a single top-to-bottom flow on phones. */
+.po-page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 34px 24px 48px;
+  color: #e7edf7;
 }
-.potential-workbench > header {
-  max-width: 780px;
-  margin-bottom: 2rem;
+.po-hero {
+  max-width: 760px;
+  margin-bottom: 22px;
 }
-.potential-workbench h1 {
-  font-size: clamp(2.2rem, 5vw, 3.6rem);
-  letter-spacing: -0.04em;
-  line-height: 1.1;
+.po-hero h1 {
+  font-size: clamp(2rem, 4.4vw, 3.1rem);
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 0 0 12px;
 }
-.potential-workbench section {
-  border: 1px solid #334b63;
-  background: #111e2e;
-  border-radius: 0.8rem;
-  padding: 1.3rem;
-  margin-block: 1.2rem;
+.po-hero p {
+  color: #c4cfde;
+  line-height: 1.6;
+  margin: 0;
+}
+.po-eyebrow {
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  color: #98bcb9;
+  font-weight: 650;
+  margin: 0 0 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.po-card {
+  border: 1px solid #2a3b50;
+  background: #111e30;
+  border-radius: 12px;
+  padding: 22px;
   min-width: 0;
 }
-.potential-workbench label {
+.po-card h2 {
+  font-size: 1.15rem;
+  margin: 0 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.po-step {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #203c3c;
+  color: #a5f5d8;
+  font-size: 13px;
+  flex: none;
+}
+.po-character {
+  margin-bottom: 16px;
+}
+.po-identity .po-name {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 14px 0 2px;
+}
+.po-identity p {
+  margin: 2px 0;
+}
+.po-muted {
+  color: #a7b5c8;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.po-support {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 16px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.po-support > li {
+  border: 1px solid #2a3b50;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #0f1a2a;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  margin-block: 1rem;
+  gap: 4px;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  min-width: 0;
 }
-.potential-workbench select,
-.potential-workbench input[type='number'] {
+.po-support > li[data-status='unavailable'] {
+  border-color: #5b4a29;
+  background: #1d1912;
+}
+.po-support details p,
+.po-support details ul {
+  margin: 6px 0;
+}
+.po-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+.po-inputs,
+.po-output {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.po-group {
+  border: 0;
+  padding: 0;
+  margin: 0 0 18px;
+  min-width: 0;
+}
+.po-group legend {
+  font-weight: 650;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  padding: 0;
+}
+.po-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.po-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #364054;
+  border-radius: 8px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+.po-radio:has(input:checked),
+.po-objective:has(input:checked) {
+  border-color: #6fd2b0;
+  background: #16302c;
+}
+/* The global form rules size every non-checkbox input as a full-width
+   field; radios and checkboxes here are plain controls. */
+.po-page input[type='radio'],
+.po-page input[type='checkbox'] {
+  display: inline-block;
+  width: 1.05rem;
+  height: 1.05rem;
+  min-height: 0;
+  padding: 0;
+  margin: 0.15rem 0 0;
+  border: 0;
+  background: none;
+  accent-color: #8be8c6;
+  flex: none;
+}
+.po-page label {
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+.po-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  min-width: 0;
+}
+.po-field select,
+.po-field input {
   width: 100%;
   min-width: 0;
-  padding: 0.65rem;
+  min-height: 40px;
+  margin: 0;
+  padding: 9px 12px;
   border: 1px solid #4b627b;
-  border-radius: 0.4rem;
+  border-radius: 7px;
   background: #0b1626;
   color: #e7eff8;
   font: inherit;
 }
 /* WebKit paints a long selected option past the control's edge, widening the
    page on phones. Clip it inside the control; its focus outline stays visible. */
-.potential-workbench select {
+.po-field select {
   contain: paint;
 }
-.potential-workbench input[type='checkbox'] {
-  width: 1.2rem;
-  height: 1.2rem;
-  accent-color: #8be8c6;
+.po-field select:disabled {
+  opacity: 0.6;
 }
-.potential-workbench p,
-.potential-workbench li {
-  line-height: 1.6;
+.po-field input[aria-invalid='true'] {
+  border-color: #f08a7b;
 }
-.potential-workbench details {
-  margin-block: 1.2rem;
+.po-field-error {
+  color: #f6b1a7;
 }
-.potential-workbench summary {
-  color: #b5ebd8;
-  cursor: pointer;
-  padding-block: 0.4rem;
+.po-field-compact {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.po-field-compact input,
+.po-field-compact select {
+  width: 6rem;
+}
+.po-field-compact .po-field-error {
+  flex-basis: 100%;
+}
+.po-grid-3,
+.po-grid-2 {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.po-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.po-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.po-note,
+.po-warning,
+.po-notice {
+  border-left: 3px solid #e9bd7a;
+  background: #2a2518;
+  padding: 8px 12px;
+  margin: 0 0 12px;
+  border-radius: 0 6px 6px 0;
+}
+.po-note {
+  font-weight: 650;
+}
+.po-profile p {
+  margin: 4px 0;
+}
+.po-check {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 6px 0;
+}
+.po-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+.po-context {
+  margin: -6px 0 16px;
+}
+.po-nodes {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 8px;
+}
+.po-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 6px 0 12px;
+}
+.po-table caption {
+  text-align: left;
+  color: #a7b5c8;
+  font-size: 0.8rem;
+  padding-bottom: 6px;
+}
+.po-table th,
+.po-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #22324a;
+  text-align: right;
+}
+.po-table th[scope='row'],
+.po-table thead th:first-child {
+  text-align: left;
+}
+.po-table thead th {
+  color: #a7b5c8;
   font-weight: 600;
+  font-size: 0.78rem;
 }
-.potential-steps {
+.po-stat-line {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
 }
-.potential-result {
-  border: 2px solid #79c5a7 !important;
+.po-stat-line > div {
+  background: #0f1a2a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-width: 0;
 }
-.potential-result h2 {
-  font-size: 1.7rem;
+.po-stat-line dt {
+  color: #a7b5c8;
+  font-size: 0.78rem;
 }
-.potential-build {
+.po-stat-line dd {
+  margin: 2px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+.po-stat-line dd span {
+  color: #a7b5c8;
+  font-size: 0.74rem;
+}
+.po-current-totals {
+  border-top: 1px solid #22324a;
+  padding-top: 12px;
+}
+.po-objective-group {
+  margin-bottom: 16px;
+}
+.po-objective-group > .po-muted {
+  margin: 0 0 4px;
+}
+.po-group-title {
+  font-weight: 650;
+  margin: 0 0 4px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.po-objective {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  border: 1px solid #2c3d55;
+  border-radius: 9px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  cursor: pointer;
+}
+.po-objective[data-status='unavailable'] {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+.po-objective > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.po-objective-name {
+  font-weight: 650;
+}
+.po-objective-summary {
+  color: #b6c3d4;
+  font-size: 0.84rem;
+}
+.po-objective-reason {
+  color: #f2c98c;
+  font-size: 0.82rem;
+}
+.po-gaps ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: #b6c3d4;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+.po-badge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10.5px;
+  letter-spacing: 0.4px;
+  font-weight: 650;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.po-badge-supported {
+  background: #1c3638;
+  color: #9be9ce;
+  border: 1px solid #3c625e;
+}
+.po-badge-experimental {
+  background: #33290f;
+  color: #f5cf7c;
+  border: 1px solid #6b5521;
+}
+.po-badge-unavailable {
+  background: #2b2230;
+  color: #dcc2e0;
+  border: 1px solid #5a4562;
+}
+.po-inventory p {
+  margin: 4px 0;
+}
+.po-inventory-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
 }
-.potential-build dl > div {
+.po-run {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #2a3b50;
+  background: #111e30;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.po-run p,
+.po-run ul {
+  margin: 0;
+}
+.po-output:focus-visible {
+  outline: 2px solid #a8ebd3;
+  outline-offset: 2px;
+}
+.po-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.po-quick p {
+  margin: 0;
+  flex-basis: 100%;
+}
+/* On wide screens the action and the answer stay in view while the inputs
+   scroll; a long result scrolls inside its column. */
+@media (min-width: 1021px) {
+  .po-output {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+}
+.po-errors {
+  color: #f6b1a7;
+  margin: 0;
+  padding-left: 18px;
+}
+.po-placeholder {
+  border: 1px dashed #3a4d66;
+  border-radius: 12px;
+  padding: 22px;
+  color: #c9d4e3;
+}
+.po-placeholder h2 {
+  margin: 4px 0 8px;
+  font-size: 1.3rem;
+}
+.po-result {
+  border: 2px solid #79c5a7;
+  background: #0f2128;
+  border-radius: 12px;
+  padding: 22px;
+  min-width: 0;
+}
+.po-result h2 {
+  font-size: 1.55rem;
+  margin: 4px 0 12px;
+  letter-spacing: -0.01em;
+}
+.po-result h3 {
+  font-size: 0.95rem;
+  margin: 16px 0 6px;
+  color: #d3f3e7;
+}
+.po-improvement {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #0b1a20;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 0 0 10px;
+}
+.po-improvement span {
+  color: #a7b5c8;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.po-improvement strong {
+  font-size: 1.3rem;
+}
+.po-result-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 18px;
+}
+.po-equipment {
+  margin: 0;
+}
+.po-equipment > div {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
-  margin-block: 0.8rem;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #22324a;
 }
-.potential-build dd {
+.po-equipment dd {
   margin: 0;
   text-align: right;
 }
-.potential-notice {
-  border-left: 3px solid #e9bd7a;
-  background: #302b20;
-  padding: 1rem;
+.po-changes,
+.po-reasons,
+.po-alternatives {
+  margin: 4px 0;
+  padding-left: 20px;
+  line-height: 1.55;
 }
-.potential-workbench code {
-  overflow-wrap: anywhere;
+.po-why {
+  margin: 4px 0;
+  line-height: 1.55;
 }
-.potential-workbench > details > dl {
+.po-result details {
+  border-top: 1px solid #22324a;
+  padding-top: 2px;
+  margin-top: 8px;
+}
+.po-page summary {
+  cursor: pointer;
+  color: #b5ebd8;
+  font-weight: 600;
+  padding: 6px 0;
+}
+.po-unsupported {
+  border-color: #5b4a29;
+  margin-bottom: 18px;
+}
+.po-coverage {
+  margin-top: 24px;
+}
+.po-coverage dl {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
-.potential-workbench > details > dl dd {
-  margin: 0.4rem 0;
+.po-coverage dd {
+  margin: 2px 0 0;
 }
-.potential-workbench :focus-visible {
+.po-tools {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.po-tools h2 a {
+  color: #a5f5d8;
+}
+.po-tools p {
+  color: #c4cfde;
+  line-height: 1.55;
+  margin: 0;
+}
+.po-page :focus-visible {
   outline: 3px solid #a8ebd3;
   outline-offset: 3px;
 }
-@media (max-width: 700px) {
-  .potential-steps,
-  .potential-build {
+@media (max-width: 1020px) {
+  .po-workspace {
     grid-template-columns: 1fr;
   }
-  .potential-workbench {
-    padding-inline: 0.9rem;
+  .po-support {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .potential-workbench section {
-    padding: 1rem;
+}
+@media (max-width: 640px) {
+  .po-page {
+    padding: 22px 16px 32px;
   }
-  .potential-workbench > details > dl {
+  .po-card,
+  .po-result,
+  .po-placeholder {
+    padding: 16px;
+  }
+  .po-support,
+  .po-grid-3,
+  .po-result-grid,
+  .po-stat-line,
+  .po-inventory-list,
+  .po-tools,
+  .po-check-grid {
+    grid-template-columns: 1fr;
+  }
+  .po-grid-2,
+  .po-coverage dl {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
