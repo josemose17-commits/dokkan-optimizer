@@ -222,11 +222,9 @@ function Workspace({
   const scope = scopeFor(request, capabilities);
   const objective =
     capabilities.objectives.find((o) => o.metric === request.objective) ?? null;
-  const ready =
-    objectiveChosen &&
-    !errors.length &&
-    validBudget &&
-    objective?.status !== 'unavailable';
+  // A blocked objective still runs through the gates, so its exact reason is
+  // shown as the result instead of a silent no-op.
+  const ready = objectiveChosen && !errors.length && validBudget;
   const space = errors.length ? null : estimateCandidateSpace(request, entry);
   const allocations = errors.length
     ? null

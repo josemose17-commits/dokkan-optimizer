@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useRef, useState, type RefObject } from 'react';
 import {
   KIT_MECHANICS,
   KIT_MECHANIC_LABELS,
@@ -152,8 +152,8 @@ export default function ResultPanel({
   resultRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const traceHeading = useRef<HTMLHeadingElement>(null);
+  // Mirrors the disclosure's own open state; the trace renders only when open.
   const [traceOpen, setTraceOpen] = useState(false);
-  useEffect(() => setTraceOpen(false), [answer]);
   if (running)
     return (
       <div className="po-placeholder" aria-busy="true">
