@@ -1,5 +1,9 @@
 # Character snapshot: access and reuse assessment
 
+## Provider-independent catalog status — 2026-10-19
+
+Dokkan Info is the preferred prospective provider, but bulk acquisition is paused pending an approved method. The catalog implementation migrates existing admitted local facts only. No provider acquisition adapter, source request, expanded dataset, artwork or new permission grant is included. The normalized schema, fixture tests and local validation/update commands confer no integration rights. Existing source assessments below are historical records, not a new source review for this milestone. See [catalog scope](../CATALOG.md).
+
 Reviewed 2026-10-18. This separates access conditions, expressive content, compiled-dataset reuse and mechanics verification. It is a record of the acquisition decision, not a legal opinion or a claim to rights over game content.
 
 ## What is actually included

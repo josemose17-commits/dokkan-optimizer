@@ -1,6 +1,10 @@
-# Dokkan Character Builds
+# Dokkan Character Catalog
 
-The primary page is a **limited real-data character workbench** for **[Mystery Super Technique] Super Saiyan 3 Goku — Super AGL, Global English, fully EZA step 7, Lv.140 / SA15, without Super EZA**. It compares a small skill-orb catalog against a current build, using card stats and initial Hidden Potential probabilities. It has no damage objective or universal score.
+The primary page is a **provider-independent character catalog**, containing **one existing admitted card form and one exact state**: **[Mystery Super Technique] Super Saiyan 3 Goku — Super AGL, Global English, fully EZA step 7, Lv.140 / SA15, without Super EZA**. Search/filter by name/title/ID, type, rarity, category coverage and awakening. Details show field completeness, references, evidence status and separate stat layers. Missing leader details, links and categories stay unavailable. This is not an expanded real-character catalog.
+
+**Dokkan Info acquisition is paused pending an approved method.** No scraper, endpoint probe, live provider connection or bulk import is connected. The reusable schema, local JSON validation and update report are described in [catalog documentation](docs/CATALOG.md).
+
+The existing limited equip comparison remains at **`/dokkan-optimizer/?workbench=character-build`**. Its evaluation scope and saved-build key/revision are preserved. Catalog browsing does not write build storage. Descriptive completeness and executable optimization support are separate.
 
 **Source-documented model; no independent in-game verification recorded.** Source documentation, independent confirmation of game behavior, and passing mathematical tests are separate. All current field-level independent-verification dates are null. See the [evidence ledger](docs/character-build/EVIDENCE.md).
 
@@ -30,7 +34,7 @@ Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The project uses 
 
 ## Reproduce the first-unit comparison
 
-1. Open the primary URL. Confirm that your intended comparison is the exact **EZA, not SEZA**, Lv.140/SA15 **55% no-dupe** profile. Other states are not supported. The Hidden Potential system must already be unlocked and the base board filled; this app does not assess unlock affordability.
+1. Select **Limited build comparison** in navigation, or open `/dokkan-optimizer/?workbench=character-build`. Confirm the exact **EZA, not SEZA**, Lv.140/SA15 **55% no-dupe** profile. Other evaluation states are not supported. The Hidden Potential system must already be unlocked and the base board filled; this app does not assess unlock affordability.
 2. Leave both current slots **Empty** for the reference baseline, or select your actual matching equips. Gold is locked. An item absent from this catalog cannot be approximated by another item.
 3. Select **Ownership ignored within this catalog**. This is hypothetical access to the six listed items, not a claim that you own them or that every game equip is considered. For inventory mode, enter **unequipped** quantities; current attached items remain available to retain.
 4. Use **Evasion allowed**, **Initial extra Super** as the objective, all six frontier metrics, and a candidate limit of at least **16**. Click **Compare legal builds**. Turn 1, first appearance, initial Super available and no external effects are fixed.
@@ -65,13 +69,17 @@ Deferred: complex kits, stacking/transformations, collection-wide equipment allo
 
 | Path                                                 | Responsibility                                                                         |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `src/character-data/`                                | Normalized contract, validation, search, identity, stat layers and update assessment   |
+| `src/characters/CatalogBrowser.tsx`                  | Primary search/details, completeness, evidence and read-only saved-build identity      |
+| `src/data/real/catalog.ts`                           | Migration of the existing admitted Goku record; no provider acquisition                |
+| `scripts/catalog.mjs`                                | Local normalized JSON export/validation and compatibility report                       |
 | `src/character-build/domain.ts`                      | Separate real-card/evidence/build/context/metric contracts                             |
 | `src/character-build/legality.ts`, `generation.ts`   | Fail-closed restrictions, node prerequisites, inventory and lazy legal generation      |
 | `src/character-build/evaluation.ts`, `comparison.ts` | Card stats, supported probabilities, baselines, equivalence, ranks and Pareto frontier |
 | `src/character-build/engine.test.ts`                 | Independent arithmetic, enumeration, eligibility and comparison oracles                |
 | `src/character-build/storage.ts`, `storage.test.ts`  | Validated versioned character state; catalog-revision checks and visible failures      |
-| `src/character-build/CharacterWorkbench.tsx`         | Primary inputs/results/evidence UI                                                     |
-| `src/Workbench.tsx`                                  | Primary/legacy navigation without server routing                                       |
+| `src/character-build/CharacterWorkbench.tsx`         | Preserved limited comparison inputs/results/evidence UI                                |
+| `src/Workbench.tsx`                                  | Catalog, comparison and legacy navigation without server routing                       |
 | `src/data/real/`                                     | Source-documented real facts, separate from fictional fixtures                         |
 | `src/App.tsx`, `src/engine/`, `src/data/fixtures/`   | Preserved legacy team prototype and tests                                              |
 | `AGENTS.md`                                          | Rules for future tasks and evidence admission                                          |
@@ -82,7 +90,7 @@ Tests using abstract graphs and invented branch-damage values are **mathematical
 
 ## GitHub Pages
 
-Vite retains `base: '/dokkan-optimizer/'`. Navigation uses the same prefix and a query parameter for the legacy page, so no SPA fallback/404 rewrite is required. Check both workbenches, asset requests, settings reload and mobile table scrolling at the production prefix.
+Vite retains `base: '/dokkan-optimizer/'`. Navigation uses prefix-preserving query parameters for workbenches and exact catalog states, so no SPA fallback/404 rewrite is required. Check the catalog and both workbenches, assets, saved settings and mobile layouts at the production prefix.
 
 The existing [workflow](.github/workflows/pages.yml) uses Node 24, `npm ci`, `npm test` and `npm run build` (including type checking). PRs to main validate only. Deployment is guarded to pushes to `main` or manual runs of `main`, with the `github-pages` environment and deployment-only `pages: write` / `id-token: write` permissions. This feature PR does not merge or deploy.
 
