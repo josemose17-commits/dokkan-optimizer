@@ -66,12 +66,12 @@ The existing `dokkan.character-builds.v1` payload and evaluator catalog revision
 
 ## Reproduce the UI
 
-1. Open `/dokkan-optimizer/`. Search `Goku` or `1003211`; AGL/UR/EZA matches one card/state. SEZA yields no admitted result. Clear filters to restore it.
+1. Open **Characters** (`/dokkan-optimizer/?workbench=catalog`). Search `Goku` or `1003211`; AGL/UR/EZA matches one card/state. SEZA yields no admitted result. Clear filters to restore it.
 2. Select the state. Its exact ID stays in the URL through reload/back/forward. An unknown `state` reports unavailable without substituting Goku.
 3. Expand field evidence to see completeness, references, limitations and uncaptured retrieval/verification dates.
 4. Select the admitted 55% stat illustration. Raw, potential, explicit no-equip totals and unavailable battle stats remain separate.
-5. Set **Optimization support** to _Unavailable_ (no match) or _Limited evaluator available_ (Goku). **Optimize this character** opens the limited comparison.
+5. Set **Optimization support** to _Unavailable_ (no match) or _Limited evaluator available_ (Goku). **Optimize this character** opens the optimizer on that exact state.
 6. Export the admitted record with the CLI, then inspect it via **Inspect a local normalized catalog file**. It is schema-valid, keeps every bundled ID and alias, and can be browsed for the session. A file with `origin: "test-fixtures"` is rejected.
-7. Open **Build optimizer** (it lists the one registered state), then return to **Character catalog**. Saved identity resolves without changing the payload or evaluator scope. The legacy demo retains its exact synthetic warning.
+7. Open **Tools → Source build examples** (it lists the one registered state), then return to **Characters**. Saved identity resolves without changing the payload or evaluator scope. The legacy demo retains its exact synthetic warning.
 
 No new verified-only orb mode is added, and unresolved silver items are not promoted by this catalog. Legal node respec, damage objectives, probability refinement, purchases, merge and deployment remain outside this milestone.
