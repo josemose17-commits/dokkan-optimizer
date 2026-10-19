@@ -1,6 +1,9 @@
 # Dokkan Character Catalog
 
-The primary page is a **provider-independent character catalog**, containing **one existing admitted card form and one exact state**: **[Mystery Super Technique] Super Saiyan 3 Goku — Super AGL, Global English, fully EZA step 7, Lv.140 / SA15, without Super EZA**. Search/filter by name/title/ID, type, rarity, category coverage, awakening and optimization support, and sort by catalog order or name. Details show field completeness, references, evidence status and separate stat layers. Missing leader details, links and categories stay unavailable. This is not an expanded real-character catalog.
+The primary page is a **provider-independent character catalog** with **one card form and two exact states** of **[Mystery Super Technique] Super Saiyan 3 Goku (Super AGL UR)**:
+
+- **Global English, fully EZA step 7, Lv.140 / SA15, without Super EZA.** This is the admitted state, and the only one with an evaluator.
+- **The pre-EZA base state, Lv.120 / SA10.** It is individually recorded from a single public page, its region is unknown, and it has no evaluator. Search/filter by name/title/ID, type, rarity, category coverage, awakening and optimization support, and sort by catalog order or name. Details show field completeness, references, evidence status and separate stat layers. Missing leader details, links and categories stay unavailable. This is not a complete or expanded roster.
 
 **Dokkan Info acquisition is paused pending an approved method.** No scraper, endpoint probe, live provider connection or bulk import is connected. The reusable schema, local JSON validation and update report are described in [catalog documentation](docs/CATALOG.md). You can also **inspect your own normalized catalog file in the browser for one session**. It is validated and compared with the bundled revision, but never stored, merged into the admitted catalog or offered optimization.
 

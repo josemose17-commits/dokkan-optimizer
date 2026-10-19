@@ -1,5 +1,17 @@
 # Prototype validation
 
+## Individually recorded base state — 2026-10-19
+
+The catalog adds one real state: the pre-EZA base state of card 1003211. It comes from a single public page, retrieved once, and its values were checked against that saved page. The production registry is unchanged; the new state has no evaluator.
+
+- `npm test`: **284/284 passed**. Three new tests:
+  - field values with provenance pinned to the page hash and retrieval date;
+  - state separation, with no reuse of the EZA evaluator for the same card;
+  - a compatible update that keeps every existing ID.
+- `npm run typecheck`, `npm run build`, `npm run format:check`: **passed**.
+- `npm run test:e2e`: **71 passed, 1 skipped**. New: the base-state details, the exact reason optimization is unavailable, no Optimize link, and retrieval-date evidence. Catalog counts were updated to 1 card form / 2 states.
+- Catalog CLI: export → validate against the previous export reports `compatible: true`, added state `unknown-region:1003211:base:lv120:sa10`, no removals, no changed fields.
+
 ## Evaluator registry and result explanations — 2026-10-19
 
 Node 24.22.0, headless Chromium 141 (Playwright 1.56.1). No new real data, evidence or mechanics; the production registry has one entry (the admitted Goku state).
