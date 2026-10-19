@@ -292,6 +292,70 @@ describe('normalized import contract (fixtures are fictional, not game verificat
       result.errors.some((error) => error.includes('fields.__proto__')),
     ).toBe(true);
   });
+  it.each([
+    ['snapshot', (s: any) => (s.extra = 1), 'snapshot.extra'],
+    ['card', (s: any) => (s.cards[0].unexpected = 1), 'cards[0].unexpected'],
+    [
+      'alias',
+      (s: any) => (s.cards[0].aliases[0].note = 'x'),
+      'cards[0].aliases[0].note',
+    ],
+    [
+      'state',
+      (s: any) => (s.states[0].damageFormula = 'x'),
+      'states[0].damageFormula',
+    ],
+    [
+      'fact',
+      (s: any) => (s.states[0].fields.type.verified = true),
+      'states[0].fields.type.verified',
+    ],
+    [
+      'provenance',
+      (s: any) => (s.states[0].fields.type.provenance[0].trusted = true),
+      'states[0].fields.type.provenance[0].trusted',
+    ],
+    [
+      'optimization',
+      (s: any) => (s.states[0].optimization.objective = 'damage'),
+      'states[0].optimization.objective',
+    ],
+    ['source', (s: any) => (s.sources[0].token = 'x'), 'sources[0].token'],
+    ['coverage', (s: any) => (s.coverage.total = 1), 'coverage.total'],
+  ])(
+    'rejects an unknown %s key instead of carrying unvalidated content',
+    (_level, mutate, path) => {
+      const snapshot = JSON.parse(JSON.stringify(catalogSnapshot));
+      mutate(snapshot);
+      const result = validateCatalog(snapshot);
+      expect(result.ok).toBe(false);
+      expect(result.errors.some((error) => error.startsWith(path))).toBe(true);
+    },
+  );
+  it('rejects deeply nested unknown content without throwing', () => {
+    const depth = 200_000;
+    const text = JSON.stringify(catalogSnapshot).replace(
+      /}$/,
+      `,"extra":${'['.repeat(depth)}${']'.repeat(depth)}}`,
+    );
+    const parsed: unknown = JSON.parse(text);
+    let result: ReturnType<typeof validateCatalog> | null = null;
+    expect(() => (result = validateCatalog(parsed))).not.toThrow();
+    expect(result!.ok).toBe(false);
+  });
+  it('bounds link and category lists', () => {
+    const snapshot = JSON.parse(JSON.stringify(fixtureSnapshot()));
+    snapshot.states[0].fields.links = {
+      ...snapshot.states[0].fields.links,
+      value: Array.from({ length: 1001 }, (_, i) => `TEST ONLY link ${i}`),
+      completeness: 'complete',
+    };
+    const result = validateCatalog(snapshot, { allowTestFixtures: true });
+    expect(result.ok).toBe(false);
+    expect(
+      result.errors.some((e) => e.startsWith('states[0].fields.links.value')),
+    ).toBe(true);
+  });
   it('counts confirmed evidence only with its separate dated confirmation, not completeness or test success', () => {
     const f = fixtureFact('TEST ONLY — value');
     expect(evidenceStatus(f)).toBe('source-documented');
@@ -355,6 +419,145 @@ describe('search and exact identity with independently enumerated fixture sets',
     );
     expect(resolveState(snapshot, 'TEST ONLY — Écho Ranger')).toBeNull();
     expect(resolveState(snapshot, 'unknown-state')).toBeNull();
+  });
+  const withLimitedEza = () => {
+    const snapshot = fixtureSnapshot();
+    const eza = snapshot.states.find((s) => s.id === 'fixture-ranger-eza')!;
+    eza.optimization = {
+      status: 'limited',
+      evaluatorId: 'TEST ONLY — fixture evaluator id',
+      reason: 'TEST ONLY — limited support declaration',
+    };
+    return snapshot;
+  };
+  it.each([
+    [{ optimization: 'limited' }, [['fixture-ranger', ['fixture-ranger-eza']]]],
+    [
+      { optimization: 'unavailable' },
+      [
+        ['fixture-seed', ['fixture-seed-base']],
+        ['fixture-ranger', ['fixture-ranger-base', 'fixture-ranger-seza']],
+        ['fixture-other', ['fixture-other-base']],
+      ],
+    ],
+    // The limited state is EZA; a base filter must not borrow its support status.
+    [{ optimization: 'limited', awakening: 'base' }, []],
+    [{ optimization: 'limited', category: 'Fixture Blue' }, []],
+    [
+      { optimization: 'limited', category: 'Fixture Red' },
+      [['fixture-ranger', ['fixture-ranger-eza']]],
+    ],
+  ] as const)(
+    'filters optimization support %j on the same state as other filters',
+    (filters, expected) => {
+      expect(
+        searchCatalog(withLimitedEza(), filters).map((row) => [
+          row.card.id,
+          row.states.map((s) => s.id),
+        ]),
+      ).toEqual(expected);
+    },
+  );
+  it('sorts by normalized name, then title, then card ID, with unknown names last', () => {
+    const snapshot = fixtureSnapshot();
+    // Hand order: "echo ranger" (awakened… < same-name…) before "echo seed".
+    expect(
+      searchCatalog(snapshot, { sort: 'name' }).map((r) => r.card.id),
+    ).toEqual(['fixture-ranger', 'fixture-other', 'fixture-seed']);
+    expect(searchCatalog(snapshot).map((r) => r.card.id)).toEqual([
+      'fixture-seed',
+      'fixture-ranger',
+      'fixture-other',
+    ]);
+    expect(
+      searchCatalog(snapshot, { sort: 'catalog' }).map((r) => r.card.id),
+    ).toEqual(['fixture-seed', 'fixture-ranger', 'fixture-other']);
+
+    const tied = fixtureSnapshot();
+    tied.cards[1]!.title = fixtureFact('Fixture identical title');
+    tied.cards[2]!.title = fixtureFact('Fixture identical title');
+    // Equal names and titles: "fixture-other" < "fixture-ranger" by ID.
+    expect(searchCatalog(tied, { sort: 'name' }).map((r) => r.card.id)).toEqual(
+      ['fixture-other', 'fixture-ranger', 'fixture-seed'],
+    );
+
+    const unknownName = fixtureSnapshot();
+    unknownName.cards[0]!.name = {
+      value: null,
+      completeness: 'missing',
+      provenance: [],
+      note: 'TEST ONLY — name not admitted',
+    };
+    unknownName.cards[1]!.title = {
+      value: null,
+      completeness: 'missing',
+      provenance: [],
+      note: 'TEST ONLY — title not admitted',
+    };
+    // fixture-seed has no name: last. Same-name pair: known title before unknown title.
+    expect(
+      searchCatalog(unknownName, { sort: 'name' }).map((r) => r.card.id),
+    ).toEqual(['fixture-other', 'fixture-ranger', 'fixture-seed']);
+    expect(
+      searchCatalog(unknownName, { sort: 'name', query: 'fixture-seed' }).map(
+        (r) => r.card.id,
+      ),
+    ).toEqual(['fixture-seed']);
+  });
+  it('is deterministic across repeated calls and does not mutate snapshot order', () => {
+    const snapshot = fixtureSnapshot();
+    const before = JSON.stringify(snapshot);
+    const first = searchCatalog(snapshot, { sort: 'name', query: 'echo' });
+    const second = searchCatalog(snapshot, { sort: 'name', query: 'echo' });
+    expect(second.map((r) => r.card.id)).toEqual(first.map((r) => r.card.id));
+    expect(JSON.stringify(snapshot)).toBe(before);
+    expect(snapshot.cards.map((c) => c.id)).toEqual([
+      'fixture-seed',
+      'fixture-ranger',
+      'fixture-other',
+    ]);
+  });
+  it('keeps the memoized index per snapshot object, matching hand-listed results', () => {
+    const a = fixtureSnapshot();
+    const b = fixtureSnapshot();
+    b.cards[0]!.name = fixtureFact('TEST ONLY — Different Sprout');
+    // Repeated searches over the cached index of snapshot A.
+    for (let i = 0; i < 3; i++) {
+      expect(searchCatalog(a, { query: 'seed' }).map((r) => r.card.id)).toEqual(
+        ['fixture-seed'],
+      );
+      expect(searchCatalog(a, { query: 'ECHO' }).map((r) => r.card.id)).toEqual(
+        ['fixture-seed', 'fixture-ranger', 'fixture-other'],
+      );
+    }
+    // Snapshot B has its own index: its renamed card no longer matches "seed" by name,
+    // but still matches by card ID "fixture-seed".
+    expect(searchCatalog(b, { query: 'sprout' }).map((r) => r.card.id)).toEqual(
+      ['fixture-seed'],
+    );
+    expect(searchCatalog(a, { query: 'sprout' })).toEqual([]);
+    expect(searchCatalog(b, { query: 'echo seed' })).toEqual([]);
+    // A replaced cards array is re-indexed rather than served from a stale cache.
+    a.cards = [a.cards[1]!, a.cards[2]!];
+    a.states = a.states.filter((s) => s.cardId !== 'fixture-seed');
+    expect(searchCatalog(a, { query: 'echo' }).map((r) => r.card.id)).toEqual([
+      'fixture-ranger',
+      'fixture-other',
+    ]);
+  });
+  it('rejects test-fixture-origin files on the default (local file import) validation path', () => {
+    const parsed: unknown = JSON.parse(JSON.stringify(fixtureSnapshot()));
+    const result = validateCatalog(parsed);
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain(
+      'origin: test fixtures are not admitted to the application catalog',
+    );
+    // Relabelling the origin does not launder a fixture source either.
+    const relabelled = JSON.parse(JSON.stringify(fixtureSnapshot()));
+    relabelled.origin = 'normalized-export';
+    expect(validateCatalog(relabelled).errors).toContain(
+      'sources[0].access: fixture source in a non-fixture snapshot',
+    );
   });
   it('keeps raw, potential, equip and unknown battle stats separate (arithmetic only)', () => {
     const state = catalogSnapshot.states[0]!;

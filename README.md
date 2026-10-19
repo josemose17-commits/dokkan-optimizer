@@ -1,10 +1,10 @@
 # Dokkan Character Catalog
 
-The primary page is a **provider-independent character catalog**, containing **one existing admitted card form and one exact state**: **[Mystery Super Technique] Super Saiyan 3 Goku — Super AGL, Global English, fully EZA step 7, Lv.140 / SA15, without Super EZA**. Search/filter by name/title/ID, type, rarity, category coverage and awakening. Details show field completeness, references, evidence status and separate stat layers. Missing leader details, links and categories stay unavailable. This is not an expanded real-character catalog.
+The primary page is a **provider-independent character catalog**, containing **one existing admitted card form and one exact state**: **[Mystery Super Technique] Super Saiyan 3 Goku — Super AGL, Global English, fully EZA step 7, Lv.140 / SA15, without Super EZA**. Search/filter by name/title/ID, type, rarity, category coverage, awakening and optimization support, and sort by catalog order or name. Details show field completeness, references, evidence status and separate stat layers. Missing leader details, links and categories stay unavailable. This is not an expanded real-character catalog.
 
-**Dokkan Info acquisition is paused pending an approved method.** No scraper, endpoint probe, live provider connection or bulk import is connected. The reusable schema, local JSON validation and update report are described in [catalog documentation](docs/CATALOG.md).
+**Dokkan Info acquisition is paused pending an approved method.** No scraper, endpoint probe, live provider connection or bulk import is connected. The reusable schema, local JSON validation and update report are described in [catalog documentation](docs/CATALOG.md). You can also **inspect your own normalized catalog file in the browser for one session**. It is validated and compared with the bundled revision, but never stored, merged into the admitted catalog or offered optimization.
 
-The existing limited equip comparison remains at **`/dokkan-optimizer/?workbench=character-build`**. Its evaluation scope and saved-build key/revision are preserved. Catalog browsing does not write build storage. Descriptive completeness and executable optimization support are separate.
+The existing limited equip comparison remains at **`/dokkan-optimizer/?workbench=character-build`**. Its evaluation scope and saved-build key/revision are preserved. It now adds **named saved builds, JSON export/import and a confirmed reset** (see [Saved builds](#saved-builds-and-backups)), field-level input errors, and a search-space estimate before comparing. Catalog browsing does not write build storage. Descriptive completeness and executable optimization support are separate.
 
 **Source-documented model; no independent in-game verification recorded.** Source documentation, independent confirmation of game behavior, and passing mathematical tests are separate. All current field-level independent-verification dates are null. See the [evidence ledger](docs/character-build/EVIDENCE.md).
 
@@ -28,9 +28,10 @@ npm test
 npm run typecheck
 npm run build
 npm run preview -- --host 127.0.0.1
+npm run test:e2e   # builds, serves dist/ and runs the Playwright suite
 ```
 
-Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The project uses React, TypeScript, Vite and Vitest. No backend, telemetry, game-account connection, runtime scraper or external asset requests are needed.
+Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The browser suite needs Chromium for `@playwright/test` 1.56.1 (`npx playwright install chromium` once; containers with a preinstalled build can set `PLAYWRIGHT_BROWSERS_PATH`). It runs desktop (1366×900) and mobile (390×844) projects and fails on page errors, failed requests or requests outside `/dokkan-optimizer/`. The project uses React, TypeScript, Vite and Vitest. No backend, telemetry, game-account connection, runtime scraper or external asset requests are needed.
 
 ## Reproduce the first-unit comparison
 
@@ -45,6 +46,17 @@ Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The project uses 
 
 With inventory mode and zero unequipped/current items, only the empty target is available. Counts never imply ownership. Legal target changes may consume resources or destroy/replace equipment; replacement economics and respec affordability are deferred. No action changes the game.
 
+## Saved builds and backups
+
+- **Save build** stores the current workbench settings under a name. Each record keeps the exact card state, level/SA, catalog revision (`goku-initial-check-2026-10-18.1`), evaluator version (`goku-initial-check-v1`), progression, equips, inventory quantities, context, objective and limit. It saves inputs, not results; loading and comparing re-evaluates them.
+- **Load**, **Delete** and **Reset working settings** each ask for confirmation in a modal dialog; Escape cancels.
+- A build saved against another catalog revision or evaluator version is kept and marked **stale**. It cannot be loaded and no substitute is made. Same-revision settings that fail legality are marked **invalid**, and unknown item IDs are shown as `Unknown item (<id>)`, never as an empty slot.
+- **Export JSON** downloads the saved builds and valid working settings, including inventory quantities, as `dokkan-optimizer.character-builds` version 1. **Import JSON** treats the file as untrusted: 1 MiB limit, strict structure, and a preview before anything changes. The preview lists, per build, exactly what the import will do; the import applies that same plan. Replacing the working settings is a separate opt-in.
+- **Identity rule:** a saved build is identified by its `id`. An imported build is skipped as an exact duplicate only when a saved build has the same `id` and identical content (object key order ignored). The same `id` with different content is kept under a new ID. A different `id` is always a separate build, even with identical settings. Existing builds are never replaced.
+- While any field shows an error, autosave pauses and **Save build** and the working-settings part of **Export JSON** are refused, so a stored or exported value never differs from what the form shows.
+- If another tab changed the saved builds, a write is refused and the latest list is loaded instead of overwriting that change. Unreadable working settings can be downloaded (**Download stored settings copy**) before an edit replaces them.
+- If stored builds are unreadable or from a newer version, they are left untouched and saving is disabled. You can **Download stored copy** or explicitly **Replace with empty library**.
+
 ## Metrics and comparisons
 
 - **Card HP/ATK/DEF:** card base + the fixed +2800 potential bonus + flat equips. They exclude leader, passive, link, support, Ki and Super Attack combat multipliers. Card ATK is not damage; card DEF is not survivability.
@@ -53,6 +65,8 @@ With inventory mode and zero unequipped/current items, only the empty target is 
 - **Damage and battle DEF:** unavailable/null with explanations, never zero or replaced by a fixture rating. The objective selector offers supported metrics only.
 - Ranking sorts the selected metric and preserves ties. The frontier uses the same context and the common available selected metrics: no worse on all, better on at least one. Unknown metrics are omitted explicitly, never filled with zeros. There are no universal weights.
 - Equivalent exposed evaluations are grouped with **all** legal allocation/equip alternatives retained. Equivalence is limited to the modeled metrics and does not mean equal costs. Inventory quantities and current attached items are checked before evaluation.
+- Before comparing, the workbench shows the generator's search-space upper bound: per-slot options including empty × allocations. That is 16 for the released profile, and inventory checks can only reduce it. The limit warning appears when the bound exceeds the candidate limit.
+- Deltas: probabilities show percentage points (pp) and relative change; stats show absolute and percentage change. A zero baseline reports relative change as `n/a` instead of dividing by zero.
 - Search generation is independent of evaluation. Counts, limits and truncation are reported. If truncated, total legal count is unknown and ranks/frontier apply only to evaluated targets. No global optimum is claimed.
 
 ## Evidence, data path and remaining gates
@@ -62,6 +76,8 @@ Read [field evidence](docs/character-build/EVIDENCE.md), [current access/reuse a
 `src/data/real/character-build/goku.ts` contains one manually normalized card profile and six numeric orb records with stable internal IDs. Source game item IDs are unknown and remain null. Source confidence and retrieval limitations, including indexed silver item labels, are visible. No artwork, long card descriptions, compiled third-party dataset, source calculator code or internal endpoint response is bundled.
 
 Remaining gates: exact Goku node options/prerequisites; independent card/orb/probability confirmation; direct current confirmation of generic silver restrictions/IDs; attack-chain behavior; outgoing damage stages and rounding; passive expiry and battle stats. Broader or paid dataset integration requires a separately established access/reuse path. Updates are manual, versioned and reviewed; there is no live updater.
+
+The current task checklist and blockers are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Deferred: complex kits, stacking/transformations, collection-wide equipment allocation, investment priorities, resource-cost optimization, full battle simulation, clear probabilities and survival estimates.
 
@@ -79,12 +95,16 @@ Deferred: complex kits, stacking/transformations, collection-wide equipment allo
 | `src/character-build/engine.test.ts`                 | Independent arithmetic, enumeration, eligibility and comparison oracles                |
 | `src/character-build/storage.ts`, `storage.test.ts`  | Validated versioned character state; catalog-revision checks and visible failures      |
 | `src/character-build/CharacterWorkbench.tsx`         | Preserved limited comparison inputs/results/evidence UI                                |
+| `src/character-build/library.ts`, `SavedBuilds.tsx`  | Saved-build records, strict parsing, export/import, merge rules and their UI           |
+| `src/character-build/format.ts`                      | Metric and delta presentation (pp, relative change, zero baseline)                     |
+| `src/characters/LocalCatalogImport.tsx`              | Session-only inspection of a user-supplied normalized catalog file                     |
+| `e2e/`, `playwright.config.ts`                       | Checked-in browser suite against the production build                                  |
 | `src/Workbench.tsx`                                  | Catalog, comparison and legacy navigation without server routing                       |
 | `src/data/real/`                                     | Source-documented real facts, separate from fictional fixtures                         |
 | `src/App.tsx`, `src/engine/`, `src/data/fixtures/`   | Preserved legacy team prototype and tests                                              |
 | `AGENTS.md`                                          | Rules for future tasks and evidence admission                                          |
 
-Character settings use `dokkan.character-builds.v1`. The legacy collection retains `dokkan-team-lab.collection.v1`. Both are local to the browser origin. Invalid/newer schemas, changed catalog revisions, blocked storage and quota errors are surfaced. Reading an invalid character save does not overwrite it until an edit. No saved user state is committed or sent anywhere.
+Character settings use `dokkan.character-builds.v1` (contract unchanged). Named saved builds use the separate `dokkan.character-library.v1`. The legacy collection retains `dokkan-team-lab.collection.v1`. Both are local to the browser origin. Invalid/newer schemas, changed catalog revisions, blocked storage and quota errors are surfaced. Reading an invalid character save does not overwrite it until an edit. No saved user state is committed or sent anywhere.
 
 Tests using abstract graphs and invented branch-damage values are **mathematical tests, not combat verification or fictional product data**. Existing legacy tests remain unchanged. See [validation](docs/VALIDATION.md) for actual run results.
 
@@ -92,7 +112,7 @@ Tests using abstract graphs and invented branch-damage values are **mathematical
 
 Vite retains `base: '/dokkan-optimizer/'`. Navigation uses prefix-preserving query parameters for workbenches and exact catalog states, so no SPA fallback/404 rewrite is required. Check the catalog and both workbenches, assets, saved settings and mobile layouts at the production prefix.
 
-The existing [workflow](.github/workflows/pages.yml) uses Node 24, `npm ci`, `npm test` and `npm run build` (including type checking). PRs to main validate only. Deployment is guarded to pushes to `main` or manual runs of `main`, with the `github-pages` environment and deployment-only `pages: write` / `id-token: write` permissions. This feature PR does not merge or deploy.
+The existing [workflow](.github/workflows/pages.yml) uses Node 24, `npm ci`, `npm test` and `npm run build` (including type checking). PRs to main validate only. A separate [browser-test workflow](.github/workflows/browser-tests.yml) runs the Playwright suite on PRs and main with read-only permissions. It does not gate deployment. Deployment is guarded to pushes to `main` or manual runs of `main`, with the `github-pages` environment and deployment-only `pages: write` / `id-token: write` permissions. Feature PRs do not merge or deploy.
 
 **Manual repository setting:** [Settings → Pages](https://github.com/josemose17-commits/dokkan-optimizer/settings/pages) → **Build and deployment → Source → GitHub Actions**. If repository policies restrict Actions or the deployment environment, allow the checked-in official actions and deployment from `main`. No new secret or setting is introduced by the character feature.
 

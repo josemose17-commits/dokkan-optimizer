@@ -58,8 +58,12 @@ function changes(
   current: Build,
   catalog: CharacterCatalog,
 ): string[] {
+  // An unknown ID stays identifiable; it is never shown as an empty slot.
   const label = (id: string | null) =>
-    catalog.orbs.find((o) => o.id === id)?.label ?? 'Empty';
+    id === null
+      ? 'Empty'
+      : (catalog.orbs.find((o) => o.id === id)?.label ??
+        `Unknown item (${id})`);
   return [
     ...Object.entries(build.choices)
       .filter(([id, skill]) => current.choices[id] !== skill)

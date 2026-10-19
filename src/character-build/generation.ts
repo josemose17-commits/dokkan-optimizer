@@ -4,8 +4,55 @@ import {
   type BuildRequest,
   type CharacterCatalog,
   type Skill,
+  type Slot,
 } from './domain';
 import { buildErrors, orbErrors, requestErrors } from './legality';
+
+// Per-slot candidates before inventory checks: empty plus every eligible item.
+function slotPools(
+  request: BuildRequest,
+  catalog: CharacterCatalog,
+): Record<Slot, (string | null)[]> {
+  return Object.fromEntries(
+    SLOTS.map((slot) => [
+      slot,
+      [
+        null,
+        ...catalog.orbs
+          .filter((orb) => !orbErrors(orb, slot, request, catalog).length)
+          .map((orb) => orb.id)
+          .sort(),
+      ],
+    ]),
+  ) as Record<Slot, (string | null)[]>;
+}
+
+// Counts the generator's search space without enumerating it. Inventory and
+// one-copy checks can only remove targets, so this is an upper bound.
+export function estimateCandidateSpace(
+  request: BuildRequest,
+  catalog: CharacterCatalog,
+) {
+  const errors = requestErrors(request, catalog);
+  if (errors.length) return null;
+  const allocations = request.progression.activatedNodes.reduce(
+    (product, id) =>
+      product * catalog.profile.nodes.find((n) => n.id === id)!.options.length,
+    1,
+  );
+  const pools = slotPools(request, catalog);
+  const options = Object.fromEntries(
+    SLOTS.map((slot) => [slot, pools[slot].length]),
+  ) as Record<Slot, number>;
+  const upperBound =
+    allocations * SLOTS.reduce((product, slot) => product * options[slot], 1);
+  return {
+    allocations,
+    slotOptions: options,
+    upperBound,
+    exceedsLimit: upperBound > request.maxCandidates,
+  };
+}
 
 // Pure, lazy candidate generation. No scoring/evaluation dependency.
 export function* generateBuilds(
@@ -17,13 +64,7 @@ export function* generateBuilds(
   const nodes = request.progression.activatedNodes.map((id) =>
     catalog.profile.nodes.find((n) => n.id === id)!,
   );
-  const pools = SLOTS.map((slot) => [
-    null,
-    ...catalog.orbs
-      .filter((orb) => !orbErrors(orb, slot, request, catalog).length)
-      .map((orb) => orb.id)
-      .sort(),
-  ]);
+  const pools = slotPools(request, catalog);
   function* choices(
     index: number,
     selected: Record<string, Skill>,
@@ -37,9 +78,9 @@ export function* generateBuilds(
       yield* choices(index + 1, { ...selected, [node.id]: option });
   }
   for (const selected of choices(0, {})) {
-    for (const bronze of pools[0]!)
-      for (const silver of pools[1]!)
-        for (const gold of pools[2]!) {
+    for (const bronze of pools.bronze)
+      for (const silver of pools.silver)
+        for (const gold of pools.gold) {
           const build: Build = {
             choices: selected,
             equips: { bronze, silver, gold },

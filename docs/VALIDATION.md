@@ -1,5 +1,50 @@
 # Prototype validation
 
+## PR #5 review follow-up — 2026-10-19
+
+PR #5's first GitHub Actions run (head `710c664`) passed both jobs: **Test and build (Node 24)** and **Playwright (Chromium, production build, Node 24)**; the deploy job was skipped as expected for a pull request. There were no review comments. This follow-up comes from an implementation review, not from CI failures.
+
+Defects found and fixed, each with a regression test:
+
+- `validateCatalog` accepted unknown keys outside `fields`, and a deeply nested value under an unknown key made it throw `RangeError: Maximum call stack size exceeded` (reproduced with 200,000 levels), which would have left the browser panel stuck. Every object now has a closed key set; the browser also catches any validation failure.
+- Saved-build duplicate detection compared JSON text, so identical builds whose inventory keys were in a different order were treated as an ID conflict and imported twice. Comparison is now independent of key order, and the identity rule is documented.
+- The import preview said "N will be added" without checking duplicates, conflicts or the 100-build limit. It now shows the same plan the merge applies, per build.
+- With an invalid limit draft, editing another control autosaved the previous, hidden limit, and **Export JSON** exported it. Autosave, save and export of working settings now pause while a field is invalid.
+- A second tab could overwrite saved builds written by another tab. Writes now check that the stored list is unchanged since it was loaded.
+- Unknown item IDs could appear as "Empty" or "Unknown item"; they now show the ID. Builds saved for another evaluator version are stale. Session catalog files show "declared" support, never as support offered here. Confirmation dialogs return focus to their opener, or to the section heading when the opener was removed.
+
+Results on Node 24.22.0:
+
+- `npm test`: **240/240 passed**.
+- `npm run typecheck`, `npm run build`, `npm run format:check`, `git diff --check`: **passed**.
+- `npm run test:e2e`: **55 passed, 1 skipped** (mobile-only check on desktop), 28 tests × 2 projects. New browser coverage: keyboard-only dialog use and focus return, accurate re-import preview, unknown-item import, export with an invalid field, paused autosave, two-tab conflict, unreadable-settings download, deep-nesting rejection, declared session support, and table roles plus visible labels on mobile cards.
+
+## Saved builds, catalog search and browser suite — 2026-10-19
+
+Validated locally on Node **24.22.0** (installed with nvm; the container's default Node 22 was not used). No provider acquisition, new real records or evidence changes were involved. The bundled catalog is still **1 card form / 1 exact EZA state**.
+
+- `npm ci`: passed; `found 0 vulnerabilities`. The lockfile change only adds `@playwright/test` 1.56.1 and its two packages. Existing versions are unchanged.
+- `npm test`: **224/224 passed** in seven files. That is the previous **173**, plus **33** saved-build library tests (parsing, storage, export/import, merge), **9** catalog search/sort/index tests, **5** delta-formatting tests and **4** candidate-space tests. Expected values are hand-written; none are produced by the function under test.
+- `npm run typecheck`: **passed** (now also covers `e2e/` and `playwright.config.ts`).
+- `npm run build`: **passed**. Assets keep the `/dokkan-optimizer/assets/` prefix.
+- `npm run format:check` and `git diff --check`: **passed**.
+- Catalog CLI: export of the admitted record, validation (1 card / 1 state) and overwrite refusal behave as before.
+- `npm run test:e2e`: **47 passed, 1 skipped**, run twice with the same result. That is 24 tests × 2 projects (desktop 1366×900, mobile 390×844), headless Chromium 141.0.7390.37 (Playwright build 1194), against the production build under `/dokkan-optimizer/`. The skip is the narrow-layout check, which only runs on the mobile project. Every test also fails on page errors, console errors, HTTP ≥ 400, external requests or paths outside the prefix.
+
+Browser coverage:
+
+- **Navigation and prefix:** navigation and `aria-current`, page titles, prefixed JS/CSS, and no horizontal page overflow on all three pages.
+- **Legacy demo:** exact synthetic warning, 21 eligible teams, and the warning absent from genuine character pages.
+- **Catalog search and details:** search, filters, sort, empty state and reset. Exact-state URLs survive reload and history, with no substitution for unknown states. Stat layers and missing fields are shown.
+- **Local catalog file:** a session-only file is validated (invalid JSON, schema failure and fixture origin are rejected). It is then browsed and returned from, with no storage or URL writes.
+- **Workbench values:** the documented 16-target baseline, 4 first-place ties, 9 frontier rows and the search-space estimate. Deltas are checked in pp, relative and zero-baseline forms.
+- **Workbench contexts:** inventory restriction and retention, 16→12 grouping with evasion disabled, and truncation disclosure.
+- **Workbench inputs:** field-associated errors block comparison and saving. Settings persist across reload and navigation, and the legacy key is untouched. Keyboard submission works and the pinned identity bar appears.
+- **Saved builds:** save, reset (Escape cancels), load, delete, and export → import into a fresh browser profile with working-settings replacement and duplicate skipping. Untrusted files are rejected, and an unreadable stored library is kept until explicitly replaced.
+- **Storage failures:** corrupt working settings are preserved until an edit. With blocked storage, calculations stay usable and saving is disabled.
+
+Not verified: GitHub Actions runs of the new workflow (it has not run yet), WebKit/Firefox, physical devices, screen readers, a full accessibility audit, in-game behavior, merge or deployment. The fork that implemented catalog paging also checked 50 → 100 → 130 "Show more" steps with a 130-card file generated in a scratch directory. That check is not part of the checked-in suite, because a large valid file would need fictional records.
+
 ## Provider-independent catalog — 2026-10-19
 
 Validated on Node **24.19.0**. No provider acquisition/research or new real records were involved. The bundled catalog contains the existing **1 card form / 1 exact EZA state**, with **6/11 complete detail fields, 2 partial and 3 missing**; there are no independently confirmed fields.

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { CHARACTER_STORAGE_KEY } from '../character-build/storage';
 import { CARD_STATE_ID } from '../data/real/character-build/goku';
-import { catalogSnapshot as snapshot } from '../data/real/catalog';
+import { catalogSnapshot as bundled } from '../data/real/catalog';
 import {
   catalogCounts,
   completeness,
@@ -17,16 +17,31 @@ import {
   DETAIL_LABELS,
   RARITIES,
   TYPES,
+  type CatalogSnapshot,
+  type CatalogState,
   type Fact,
   type StatBlock,
 } from '../character-data/domain';
+import LocalCatalogImport, { clip } from './LocalCatalogImport';
 import './catalog.css';
 
+const PAGE_SIZE = 50;
 const fmt = (value: number) => value.toLocaleString('en-US');
-const stateLabel = (state: (typeof snapshot.states)[number]) =>
+const stateLabel = (state: CatalogState) =>
   `${state.awakening.kind === 'base' ? 'Base (no EZA)' : state.awakening.kind.toUpperCase()}${state.awakening.step === null ? '' : ` step ${state.awakening.step}`} · ${state.region ?? 'Region unknown'} · Lv.${state.fields.level.value ?? '?'} / SA${state.fields.superAttackLevel.value ?? '?'}`;
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-function Field({ label, fact }: { label: string; fact: Fact<unknown> }) {
+type SessionFile = { fileName: string; snapshot: CatalogSnapshot };
+
+function Field({
+  label,
+  fact,
+  snapshot,
+}: {
+  label: string;
+  fact: Fact<unknown>;
+  snapshot: CatalogSnapshot;
+}) {
   let value = 'Unavailable';
   if (Array.isArray(fact.value))
     value = fact.value.length
@@ -53,18 +68,20 @@ function Field({ label, fact }: { label: string; fact: Fact<unknown> }) {
             <p>No field reference has been admitted.</p>
           )}
           {fact.provenance.map((ref, i) => {
-            const source = snapshot.sources.find((s) => s.id === ref.sourceId)!;
+            const source = snapshot.sources.find((s) => s.id === ref.sourceId);
             return (
               <div className="catalog-reference" key={i}>
                 <p>
-                  {source.url ? (
+                  {!source ? (
+                    `Unknown source (${clip(ref.sourceId, 80)})`
+                  ) : source.url ? (
                     <a href={source.url} target="_blank" rel="noreferrer">
                       {source.label} ↗
                     </a>
                   ) : (
                     source.label
                   )}{' '}
-                  · {source.access}
+                  · {source?.access ?? 'access unknown'}
                 </p>
                 <p>{ref.locator}</p>
                 <p className="subtle">
@@ -87,7 +104,15 @@ function Field({ label, fact }: { label: string; fact: Fact<unknown> }) {
   );
 }
 
-function CatalogDetails({ stateId }: { stateId: string | null }) {
+function CatalogDetails({
+  snapshot,
+  stateId,
+  isBundled,
+}: {
+  snapshot: CatalogSnapshot;
+  stateId: string | null;
+  isBundled: boolean;
+}) {
   const state = stateId ? resolveState(snapshot, stateId) : null;
   const [profileId, setProfileId] = useState('');
   if (!state)
@@ -95,8 +120,9 @@ function CatalogDetails({ stateId }: { stateId: string | null }) {
       <section className="catalog-panel" aria-label="Character details">
         <h2>State unavailable</h2>
         <p>
-          The requested exact state is not admitted. Select a catalog result; no
-          substitute state was chosen.
+          {snapshot.states.length
+            ? 'The requested exact state is not in this catalog. Select a catalog result; no substitute state was chosen.'
+            : 'This catalog contains no states to display.'}
         </p>
       </section>
     );
@@ -114,6 +140,10 @@ function CatalogDetails({ stateId }: { stateId: string | null }) {
     ['Pre-battle total', layers.preBattle],
     ['Battle stats after modifiers', layers.battle],
   ];
+  const canOptimize =
+    isBundled &&
+    state.id === CARD_STATE_ID &&
+    state.optimization.evaluatorId === 'goku-initial-check-v1';
   return (
     <article
       className="catalog-panel catalog-details"
@@ -149,19 +179,19 @@ function CatalogDetails({ stateId }: { stateId: string | null }) {
         </span>
       </div>
       <p className="subtle">
-        Completeness counts the 11 detail fields below. It does not measure
-        accuracy or optimization support. Only states listed in search are
-        admitted; other awakenings are not inferred.
+        Completeness counts the {complete.total} detail fields below. It does
+        not measure accuracy or optimization support. Only states listed in
+        search are in this catalog; other awakenings are not inferred.
       </p>
       <details className="catalog-identity">
         <summary>Identity references and source aliases</summary>
         <dl>
-          <Field label="Name" fact={card.name} />
-          <Field label="Title" fact={card.title} />
+          <Field label="Name" fact={card.name} snapshot={snapshot} />
+          <Field label="Title" fact={card.title} snapshot={snapshot} />
         </dl>
         <ul>
           {card.aliases.map((alias) => (
-            <li key={`${alias.sourceId}:${alias.recordId}`}>
+            <li key={`${alias.sourceId}:${alias.recordId}:${alias.region}`}>
               {snapshot.sources.find((s) => s.id === alias.sourceId)?.label}:{' '}
               <code>{alias.recordId}</code> · {alias.region ?? 'region unknown'}
             </li>
@@ -230,6 +260,7 @@ function CatalogDetails({ stateId }: { stateId: string | null }) {
                   <Field
                     label="Potential stat additions"
                     fact={p.statAdditions}
+                    snapshot={snapshot}
                   />
                 </dl>
               </div>
@@ -243,6 +274,7 @@ function CatalogDetails({ stateId }: { stateId: string | null }) {
               key={key}
               label={label}
               fact={state.fields[key as keyof typeof state.fields]}
+              snapshot={snapshot}
             />
           ))}
         </dl>
@@ -252,18 +284,36 @@ function CatalogDetails({ stateId }: { stateId: string | null }) {
         aria-labelledby="optimization-support"
       >
         <h3 id="optimization-support">
-          Optimization support: {state.optimization.status}
+          {isBundled
+            ? `Optimization support: ${state.optimization.status}`
+            : `Declared by the file: ${state.optimization.status} — not offered in this app`}
         </h3>
         <p>{state.optimization.reason}</p>
-        {state.id === CARD_STATE_ID &&
-          state.optimization.evaluatorId === 'goku-initial-check-v1' && (
-            <a
+        {canOptimize && (
+          <a
+            className="catalog-action"
+            href={`${import.meta.env.BASE_URL}?workbench=character-build`}
+          >
+            Optimize this character
+          </a>
+        )}
+        {!isBundled && (
+          <>
+            <button
+              type="button"
               className="catalog-action"
-              href={`${import.meta.env.BASE_URL}?workbench=character-build`}
+              disabled
+              aria-describedby="session-optimize-note"
             >
-              Open existing limited build comparison ↗
-            </a>
-          )}
+              Optimize this character
+            </button>
+            <p id="session-optimize-note" className="subtle">
+              Optimization is only offered for the bundled admitted record.
+              States from a session file are browse-only, whatever support
+              status the file declares.
+            </p>
+          </>
+        )}
         <p className="subtle">
           Descriptive fields do not execute effects. Full node respec stays
           unavailable; no damage objective or verified optimal-build claim is
@@ -274,18 +324,28 @@ function CatalogDetails({ stateId }: { stateId: string | null }) {
   );
 }
 
+const urlStateId = () =>
+  new URLSearchParams(window.location.search).get('state');
+
 export default function CatalogBrowser() {
+  const [session, setSession] = useState<SessionFile | null>(null);
+  const snapshot = session?.snapshot ?? bundled;
+  const isBundled = session === null;
   const [filters, setFilters] = useState<SearchFilters>({});
-  const initialId = () =>
-    new URLSearchParams(window.location.search).get('state') ??
-    snapshot.states[0]?.id ??
-    null;
-  const [selectedId, setSelectedId] = useState<string | null>(initialId);
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  // Distinguishes snapshot switches so detail state never leaks across files.
+  const [generation, setGeneration] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    () => urlStateId() ?? bundled.states[0]?.id ?? null,
+  );
+  const bannerRef = useRef<HTMLDivElement>(null);
+  const searchHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusAfterSwitch = useRef<'banner' | 'search' | null>(null);
   const [saved] = useState(() => {
     try {
       return inspectSavedBuildIdentity(
         window.localStorage.getItem(CHARACTER_STORAGE_KEY),
-        snapshot,
+        bundled,
       );
     } catch {
       return {
@@ -297,24 +357,77 @@ export default function CatalogBrowser() {
     }
   });
   useEffect(() => {
-    const pop = () => setSelectedId(initialId());
+    // The URL only addresses bundled states; a session file is not linkable.
+    if (!isBundled) return;
+    const pop = () =>
+      setSelectedId(urlStateId() ?? bundled.states[0]?.id ?? null);
     window.addEventListener('popstate', pop);
     return () => window.removeEventListener('popstate', pop);
-  }, []);
+  }, [isBundled]);
+  useEffect(() => {
+    const target = focusAfterSwitch.current;
+    focusAfterSwitch.current = null;
+    if (target === 'banner') bannerRef.current?.focus();
+    if (target === 'search') searchHeadingRef.current?.focus();
+  }, [generation]);
+  const switchTo = (next: SessionFile | null) => {
+    setSession(next);
+    setFilters({});
+    setLimit(PAGE_SIZE);
+    setGeneration((g) => g + 1);
+    focusAfterSwitch.current = next ? 'banner' : 'search';
+    setSelectedId(
+      next
+        ? (next.snapshot.states[0]?.id ?? null)
+        : (urlStateId() ?? bundled.states[0]?.id ?? null),
+    );
+  };
   const choose = (id: string) => {
     setSelectedId(id);
+    if (!isBundled) return;
     const url = new URL(window.location.href);
     url.searchParams.set('state', id);
     window.history.pushState(null, '', url);
   };
-  const counts = catalogCounts(snapshot);
-  const rows = searchCatalog(snapshot, filters);
+  const counts = useMemo(() => catalogCounts(snapshot), [snapshot]);
+  // Typing stays responsive on a large session file; results follow shortly.
+  const deferredFilters = useDeferredValue(filters);
+  const rows = useMemo(
+    () => searchCatalog(snapshot, deferredFilters),
+    [snapshot, deferredFilters],
+  );
+  const matchingStates = useMemo(
+    () => rows.reduce((n, row) => n + row.states.length, 0),
+    [rows],
+  );
+  const visible = rows.slice(0, limit);
   const selected = selectedId ? resolveState(snapshot, selectedId) : null;
-  const categories = [
-    ...new Set(snapshot.states.flatMap((s) => s.fields.categories.value ?? [])),
-  ].sort();
-  const filter = (key: keyof SearchFilters, value: string) =>
-    setFilters((old) => ({ ...old, [key]: value }));
+  const categories = useMemo(
+    () =>
+      [
+        ...new Set(
+          snapshot.states.flatMap((s) => s.fields.categories.value ?? []),
+        ),
+      ].sort(),
+    [snapshot],
+  );
+  const filter = (key: Exclude<keyof SearchFilters, 'sort'>, value: string) => {
+    setLimit(PAGE_SIZE);
+    setFilters((old) => {
+      const next: Record<string, string> = { ...old };
+      if (value) next[key] = value;
+      else delete next[key];
+      return next as SearchFilters;
+    });
+  };
+  const sort = (value: string) =>
+    setFilters((old) => {
+      const next = { ...old };
+      if (value === 'name') next.sort = 'name';
+      else delete next.sort;
+      return next;
+    });
+  const remaining = rows.length - visible.length;
   return (
     <main className="catalog-shell" id="character-catalog">
       <header className="catalog-hero">
@@ -334,9 +447,17 @@ export default function CatalogBrowser() {
         </div>
         <div className="catalog-totals">
           <strong>{counts.cards}</strong>
-          <span>ADMITTED CARD FORM</span>
-          <b>{counts.states} awakening state</b>
-          <span>NO EXPANDED REAL CATALOG</span>
+          <span>
+            {isBundled
+              ? `ADMITTED CARD FORM${counts.cards === 1 ? '' : 'S'}`
+              : `CARD FORM${counts.cards === 1 ? '' : 'S'} IN SESSION FILE`}
+          </span>
+          <b>{plural(counts.states, 'awakening state')}</b>
+          <span>
+            {isBundled
+              ? 'NO EXPANDED REAL CATALOG'
+              : 'NOT ADMITTED OR REVIEWED'}
+          </span>
         </div>
       </header>
       <div className="catalog-notice" role="note">
@@ -344,11 +465,42 @@ export default function CatalogBrowser() {
           Dokkan Info acquisition is paused pending an approved method.
         </strong>
         <p>
-          No provider import is connected. This browser shows the existing Goku
-          record only. Synthetic catalog fixtures are confined to automated
-          tests.
+          No provider import is connected. The bundled catalog contains the
+          existing Goku record only. Synthetic catalog fixtures are confined to
+          automated tests.
         </p>
       </div>
+      {session && (
+        <div
+          className="catalog-session-banner"
+          role="region"
+          aria-labelledby="session-banner-title"
+          tabIndex={-1}
+          ref={bannerRef}
+        >
+          <div>
+            <strong id="session-banner-title">
+              Browsing local file: {session.fileName}
+            </strong>
+            <p>
+              Snapshot <code>{clip(session.snapshot.id)}</code> · revision{' '}
+              <code>{clip(session.snapshot.revision)}</code>
+            </p>
+            <p>
+              Session only — not part of the bundled admitted catalog, not
+              reviewed by this project. Evidence statuses are as declared in the
+              file.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="catalog-button"
+            onClick={() => switchTo(null)}
+          >
+            Return to bundled catalog
+          </button>
+        </div>
+      )}
       <details className="catalog-panel catalog-coverage">
         <summary>
           Coverage, evidence definitions and snapshot provenance
@@ -372,8 +524,10 @@ export default function CatalogBrowser() {
         <p>
           Snapshot <code>{snapshot.id}</code> · revision{' '}
           <code>{snapshot.revision}</code> · created {snapshot.createdAt} ·
-          origin {snapshot.origin}. Created date is the local normalization
-          date, not a provider snapshot date or a new source review.
+          origin {snapshot.origin}
+          {isBundled ? '' : ' (as declared by the session file)'}. Created date
+          is the local normalization date, not a provider snapshot date or a new
+          source review.
         </p>
         <ul>
           <li>
@@ -382,7 +536,10 @@ export default function CatalogBrowser() {
           </li>
           <li>
             <strong>Independently confirmed:</strong> requires an explicit dated
-            independent-evidence reference and review. None is recorded here.
+            independent-evidence reference and review.{' '}
+            {isBundled
+              ? 'None is recorded here.'
+              : 'Claims in a session file are not checked by this project.'}
           </li>
           <li>
             <strong>Unresolved:</strong> evidence or interpretation is
@@ -415,12 +572,19 @@ export default function CatalogBrowser() {
           ))}
         </ul>
       </details>
+      <LocalCatalogImport
+        bundled={bundled}
+        browsingFileName={session?.fileName ?? null}
+        onBrowse={(fileName, next) => switchTo({ fileName, snapshot: next })}
+      />
       <div className="catalog-layout">
         <aside
           className="catalog-panel catalog-search"
           aria-labelledby="catalog-search"
         >
-          <h2 id="catalog-search">Search admitted records</h2>
+          <h2 id="catalog-search" tabIndex={-1} ref={searchHeadingRef}>
+            {isBundled ? 'Search admitted records' : 'Search session file'}
+          </h2>
           <label>
             Name, title or ID
             <input
@@ -466,7 +630,7 @@ export default function CatalogBrowser() {
                 value={filters.awakening ?? ''}
                 onChange={(e) => filter('awakening', e.target.value)}
               >
-                <option value="">All admitted states</option>
+                <option value="">All states</option>
                 {AWAKENINGS.map((a) => (
                   <option key={a} value={a}>
                     {a.toUpperCase()}
@@ -488,22 +652,64 @@ export default function CatalogBrowser() {
                 <option value="__missing__">Categories not admitted</option>
               </select>
             </label>
+            <label>
+              Optimization support
+              <select
+                aria-label="Optimization support"
+                value={filters.optimization ?? ''}
+                onChange={(e) => filter('optimization', e.target.value)}
+              >
+                <option value="">All support levels</option>
+                <option value="limited">
+                  {isBundled
+                    ? 'Limited evaluator available'
+                    : 'Declared limited (not offered here)'}
+                </option>
+                <option value="unavailable">
+                  {isBundled ? 'Unavailable' : 'Declared unavailable'}
+                </option>
+              </select>
+            </label>
+            <label>
+              Sort
+              <select
+                aria-label="Sort"
+                value={filters.sort ?? 'catalog'}
+                onChange={(e) => sort(e.target.value)}
+              >
+                <option value="catalog">Catalog order</option>
+                <option value="name">Name A–Z</option>
+              </select>
+            </label>
           </div>
           <p className="subtle">
-            Filters use admitted fields only. Unknown categories are not an
-            empty category list. A filter with no matches does not prove absence
-            from the game.
+            Filters use catalog fields only and must all match the same state.
+            Unknown categories are not an empty category list. A filter with no
+            matches does not prove absence from the game.
           </p>
-          <button className="catalog-clear" onClick={() => setFilters({})}>
+          <button
+            type="button"
+            className="catalog-clear"
+            onClick={() => {
+              setFilters({});
+              setLimit(PAGE_SIZE);
+            }}
+          >
             Clear filters
           </button>
           <p role="status" className="catalog-result-count">
-            {rows.length} card form{rows.length === 1 ? '' : 's'} ·{' '}
-            {rows.reduce((n, row) => n + row.states.length, 0)} matching state
-            {rows.reduce((n, row) => n + row.states.length, 0) === 1 ? '' : 's'}
+            {visible.length < rows.length
+              ? `Showing ${visible.length} of ${plural(rows.length, 'matching card form')}`
+              : plural(rows.length, 'card form')}{' '}
+            · {plural(matchingStates, 'matching state')}
           </p>
-          {!rows.length && <p>No admitted records match these filters.</p>}
-          {rows.map(({ card, states }) => (
+          {!rows.length && (
+            <p>
+              No records in this catalog match these filters.{' '}
+              {snapshot.cards.length ? 'Try clearing filters.' : ''}
+            </p>
+          )}
+          {visible.map(({ card, states }) => (
             <div className="catalog-result" key={card.id}>
               <h3>{card.name.value ?? card.id}</h3>
               <p className="subtle">
@@ -511,33 +717,57 @@ export default function CatalogBrowser() {
               </p>
               {states.map((state) => (
                 <button
+                  type="button"
                   key={state.id}
                   aria-pressed={state.id === selected?.id}
                   onClick={() => choose(state.id)}
                 >
                   {stateLabel(state)}
                   <span>
-                    {state.optimization.status} optimization ·{' '}
-                    {completeness(state.fields).missing} missing fields
+                    {isBundled
+                      ? `${state.optimization.status} optimization`
+                      : `declared ${state.optimization.status} · not offered here`}{' '}
+                    · {completeness(state.fields).missing} missing fields
                   </span>
                 </button>
               ))}
             </div>
           ))}
+          {remaining > 0 && (
+            <button
+              type="button"
+              className="catalog-button catalog-more"
+              onClick={() => setLimit((n) => n + PAGE_SIZE)}
+            >
+              Show {Math.min(PAGE_SIZE, remaining)} more
+            </button>
+          )}
           <details className="catalog-saved">
             <summary>Saved-build compatibility</summary>
             <p>{saved.message}</p>
-            {saved.stateId && (
-              <button
-                className="catalog-clear"
-                onClick={() => choose(saved.stateId!)}
-              >
-                Show saved build’s exact state
-              </button>
-            )}
+            {saved.stateId &&
+              (isBundled ? (
+                <button
+                  type="button"
+                  className="catalog-clear"
+                  onClick={() => choose(saved.stateId!)}
+                >
+                  Show saved build’s exact state
+                </button>
+              ) : (
+                <p className="subtle">
+                  Saved builds refer to the bundled admitted catalog. Return to
+                  it to show the saved build’s exact state.
+                </p>
+              ))}
           </details>
         </aside>
-        <CatalogDetails key={selectedId} stateId={selectedId} />
+        <CatalogDetails
+          key={`${generation}:${selectedId}`}
+          snapshot={snapshot}
+          stateId={selectedId}
+          isBundled={isBundled}
+        />
       </div>
     </main>
   );

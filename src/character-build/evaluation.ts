@@ -10,6 +10,9 @@ import {
 } from './domain';
 import { buildErrors, requestErrors } from './legality';
 
+// Recorded with saved builds; matches the catalog state's evaluatorId.
+export const EVALUATOR_VERSION = 'goku-initial-check-v1';
+
 export function hiddenPotentialChance(level: number, skill: Skill): number {
   const p = level * (skill === 'evasion' ? 0.01 : 0.02);
   if (!Number.isSafeInteger(level) || level < 0 || p > 1)
