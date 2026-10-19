@@ -397,6 +397,7 @@ export default function CatalogBrowser() {
     window.history.pushState(null, '', url);
   };
   const counts = useMemo(() => catalogCounts(snapshot), [snapshot]);
+  const bundledCounts = useMemo(() => catalogCounts(bundled), []);
   // Typing stays responsive on a large session file; results follow shortly.
   const deferredFilters = useDeferredValue(filters);
   const rows = useMemo(
@@ -472,9 +473,11 @@ export default function CatalogBrowser() {
           Dokkan Info acquisition is paused pending an approved method.
         </strong>
         <p>
-          No provider import is connected. The bundled catalog contains the
-          existing Goku record only. Synthetic catalog fixtures are confined to
-          automated tests.
+          No provider import is connected. The bundled catalog holds{' '}
+          {plural(bundledCounts.cards, 'card form')} and{' '}
+          {plural(bundledCounts.states, 'exact state')}, each recorded
+          individually with field-level references; it is not a complete roster.
+          Synthetic catalog fixtures are confined to automated tests.
         </p>
       </div>
       {session && (

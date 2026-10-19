@@ -1,5 +1,31 @@
 # Character snapshot: access and reuse assessment
 
+## Individual record research — 2026-10-19
+
+On the user's request, this assessed whether a few individual factual records could be documented from permitted public pages. It was not bulk acquisition. Rules followed:
+
+- no Dokkan Info, dokkan.wiki, APIs, hidden endpoints, assets, listings or crawling;
+- `robots.txt` checked first on each host;
+- at most 14 requests, at least 3 seconds apart.
+
+Six requests were made:
+
+- **Fandom wiki and DokkanStats.** `robots.txt` returned a Cloudflare challenge (HTTP 403) on the first try and on the single retry. With their rules unreadable, **no page on either site was requested**. A blocked automated request is not evidence about whether facts may be recorded, and is not a reason to work around the block.
+- **dokkan.fyi.** `robots.txt` does not disallow `/characters/`. **One page** (`/characters/1003211`) was retrieved and its facts were recorded manually. The page's deferred data and its Markdown alternate were not requested.
+
+Outcome:
+
+- **One state admitted:** the pre-EZA base state of card 1003211, single source and source-documented; see [evidence](EVIDENCE.md).
+- **Super EZA state and pre-awakening card:** rejected for missing evidence.
+
+What blocks more real coverage is specific:
+
+- the two cross-check sources are unreachable by automated retrieval;
+- the one reachable source is a single, recently corrected database without a dataset-reuse grant;
+- bulk use remains unauthorized.
+
+Recording a handful more individual states the same way is possible, one page per state. Each would stay single-source until an independent observation exists. No contact, account, token or purchase was made.
+
 ## Provider-independent catalog status — 2026-10-19
 
 Dokkan Info is the preferred prospective provider, but bulk acquisition is paused pending an approved method. The catalog implementation migrates existing admitted local facts only. No provider acquisition adapter, source request, expanded dataset, artwork or new permission grant is included. The normalized schema, fixture tests and local validation/update commands confer no integration rights. Existing source assessments below are historical records, not a new source review for this milestone. See [catalog scope](../CATALOG.md).
