@@ -1,5 +1,38 @@
 # Prototype validation
 
+## PR #10 scope correction, CI and allocation gate — 2026-10-19
+
+The current capability is explicitly labeled **limited progression-profile/equipment comparison** in navigation, document metadata, landing copy, catalog actions and README. Probability result headings explicitly say **Source-model comparison**. No allocation control, new character, real node graph, combat formula or damage/defensive objective was added. The first actual allocation-recommendation acceptance criterion remains unmet.
+
+- Original #10 head `27be290`: GitHub [run 39281420818](https://github.com/josemose17-commits/dokkan-optimizer/actions/runs/39281420818) completed **success**, including install, format, unit, build/type and production browser steps. It initially queued, then ran; no failing step was observed. Deployment/upload were skipped for the PR. This pass is not a claim about a later follow-up head.
+- Dependency #6 head `9cc0cce`: [run 39275777168](https://github.com/josemose17-commits/dokkan-optimizer/actions/runs/39275777168) completed **success**. Reviews and review threads on #6/#10 were empty at inspection. #6 was retargeted to main because #5 is already merged; no branch code changed. [Correct stack/merge-method handling](DEPLOYMENT.md#current-stack-pr-6--pr-10-2026-10-19).
+- Follow-up local checks, Node **24.19.0**: **403/403 unit tests**, strict type check, production build, formatting and whitespace checks **passed**. No dependencies/lockfile/workflow/storage-format changes.
+- Final production Playwright run at `/dokkan-optimizer/`: **109 passed, 1 expected skip**, 110 runs, no failures/flakes; desktop/mobile projects. Tests now check the precise product labels and explicit model-probability heading, alongside all saved-data/equipment/editor/catalog/legacy regressions. Same outside-repository Chromium 153 / Playwright 1.56.1 setup as below.
+- Research-only source screenshots stayed outside the repository. No provider dataset, artwork, downloaded script, credential or user save was included.
+
+The focused board investigation inspected actual public images showing two +3 two-option dialog examples, an actual board/route image, a first-hand route-count guide and the documented board/selection/condition schema. None supplies a complete chosen-card-bound attainable set. [Exact missing evidence and stop point](character-build/EVIDENCE.md#focused-allocation-gate-review--2026-10-19). **Zero new real allocation alternatives compared; no new winning allocation or combat baseline improvement.** The preserved profile has one fixed allocation and up to 16 equipment combinations. No hypothetical arithmetic test is relabeled game verification. No additional application features or separate research-only PR were created for the blocked milestone. No merge or deployment was performed.
+
+## Primary Hidden Potential recommendations — 2026-10-19
+
+Audit: main remained `316492d` (PR #5); PR #6 remained open at `9cc0cce`, containing merged PR #9's character editor and PR #7's exact-state registry/explanations. This feature branch is stacked on that head. PR #8's separate pre-EZA work was inspected and left untouched. All **363** pre-change unit tests were preserved.
+
+Actual final checks on Node **24.19.0**, without dependency/lockfile changes:
+
+- `npm test`: **403/403 passed**, 12 files (**363 retained + 40 new**).
+- `npm run typecheck`: passed.
+- `npm run build`: passed, including type checking; production assets retain `/dokkan-optimizer/assets/`.
+- `npm run format:check` and `git diff --check`: passed.
+- Checked-in Playwright suite against the final production bundle under `/dokkan-optimizer/`: **109 passed, 1 skipped**, 110 total runs, no unexpected or flaky tests. The skip is the existing mobile-only layout check on desktop. New primary-flow coverage is **9 scenarios × desktop/mobile**.
+- Desktop **1366×900** and mobile **390×844** landing/result screenshots were visually inspected. Both populated result pages had zero horizontal overflow.
+
+The local runner's bundled Chromium was unavailable. An outside-repository config used the existing installed **Chromium 153.0.8010.0 / Playwright 1.56.1**, two workers, without disabling web security. Initial launches encountered incomplete binary/graphics extraction; re-extracting those installed dependency assets resolved the environment failure. The final suite ran normally. The new cross-workbench saved-build check's initial exact-label locator was corrected to a semantic combobox/value assertion; the final check confirms the actual loaded ID and unchanged library bytes. Normal reproducible command remains `npx playwright install chromium`, then `npm run test:e2e`.
+
+New independent checks cover exact 16-target HP/baseline outcomes; a TEST ONLY two-node/four-allocation exact set and fixed native levels; progression/prerequisite/route/SA boundaries; state/profile/template/data revision mappings and ambiguous/unresolved evidence; aggregate totals never claiming a graph; scan/evaluation budgets including rejected combinations; request snapshots; cancellation and cooperative yielding in enumeration **and dominance**; unavailable/throwing objective calculations failing closed; direct outcomes/ties/fewest-change presentation; a stronger or tied baseline outside a truncated prefix; baseline trace/tie accuracy; probability acknowledgement and unknown kit-effect gates; and honest separated catalog coverage. These are mathematical/schema tests, not independent confirmation of actual game mechanics.
+
+Browser checks verify primary/maintenance navigation, the full-allocation gate without candidate evaluation, scoped catalog HP **15,327 → 15,827 (+500)** with four objective ties, inventory quantities and retained current equips, incomplete-search disclosure with a stronger baseline, probability-model acknowledgement, invalid numeric input, untouched older settings, exact-state refusals, coverage uncertainty, cross-workbench named-save compatibility, keyboard submission, reload and mobile layout. All existing editor/catalog/source-example/legacy checks remain; no external requests, console/page errors or prefix escapes are accepted by the suite.
+
+No real data or complete board graph was added. Coverage remains **1 form / 0 established awakening relationships / 1 EZA / 0 SEZA / 0 complete required-detail records / 1 limited evaluator / 0 complete board templates**; the total source catalog is unknown. Two additional public export samples/metadata were inspected and documented, with **zero records imported**. Full allocation, comprehensive acquisition, probability/RNG game confirmation, combat damage/stages/expiry and survival remain gated. No provider contact, credential, purchase, artwork, copied calculator implementation, merge or deployment occurred. No WebKit/Firefox, physical-device, screen-reader or in-game verification was performed. [Implementation and reproduction](OPTIMIZER.md).
+
 ## Reusable character editor and custom snapshot comparison — 2026-10-19
 
 Audit before edits:

@@ -1,77 +1,45 @@
 # Task checklist
 
-Status on feature branch `codex/reusable-character-editor`, 2026-10-19. Stacked on PR #6 to reuse its registry/explanation work. A checked item is implemented and covered by tests on this branch. Nothing here is merged or deployed until a reviewed PR is merged.
+Status on `codex/potential-recommendations`, 2026-10-19. Stacked on open PR #6 at `9cc0cce` to preserve merged PR #9's editor and PR #7's registry/explanations. Main remains at `316492d` (PR #5). Nothing in this branch is merged or deployed. This supersedes the previous editor-first milestone.
 
-## Primary product: reusable character definitions
+## Primary product: Hidden Potential recommendations
 
-- [x] Create/edit/duplicate/save definitions through forms, with exact state/card IDs and immutable revision history.
-- [x] Record all requested ability categories, structured effect templates, original wording/source assertions and Other mechanics.
-- [x] Enter multiple custom potential/build configurations and user equipment with explicit compatibility checks; no 55%-only restriction in this path.
-- [x] Evaluate the first flat self-stat snapshot capability with explicit conditional context, calculation traces, unavailable metrics and common-metric frontiers.
-- [x] Versioned import/export, previews/conflict handling, nesting/size/count validation, safe text display and preserved old saved-build formats.
-- [ ] Additional documented effect families, percentage modifier stages/rounding and probabilities. No damage or survival claims until separately supported.
-- [ ] Richer equipment-effect structure, representative-trace selection, revision diffs and per-operation undo.
-- [ ] Board-checked generation, scalable search and collection-wide equipment/investment optimization; none block custom authoring.
+- [x] Make character → exact progression/current build → equipment/context/objective → direct result the primary page.
+- [x] Keep editor/import/revisions as secondary maintenance, preserving all old workbench routes and saved data.
+- [x] Add explicit revision-pinned potential-template mappings. Distinguish an aggregate profile from a complete node graph; demonstrate shared mapping structure only with TEST ONLY graphs.
+- [x] Offer both inventory and **Best available in catalog** modes, respecting slot/restriction/quantity checks and retained current items.
+- [x] Direct outcomes: exact gates, recommended/current best/ties, no compatible targets and best found when incomplete. Always retain current baseline and equivalent alternatives.
+- [x] Objective-specific kit/evidence gates; unavailable objectives fail closed; initial-check probability models require explicit acknowledgement.
+- [x] Separate lazy generation from evaluation/ranking; estimate space; budget rejected scans and accepted evaluations; cooperative enumeration and dominance/cancellation.
+- [x] Computed current-to-target changes/deltas and expandable alternatives/evidence/traces, with explicit common-metric frontier scope.
+- [x] Separate actual catalog/form/state/completeness/evaluator/template counts and unknown source total.
+- [ ] Real complete board templates/progression configurations and joint allocation/equipment recommendations. The existing real record has only a partial 55% aggregate; default full-potential requests remain gated.
+- [ ] Character-specific battle/probability capability extensions. No damage, survival or attack-chain objective until required mechanics are established.
+- [ ] Large-catalog search/render profiling and worker/scalable strategy before lifting current bounds.
 
-See [first slice, exact arithmetic assumptions and limitations](CHARACTER_DEFINITIONS.md). Acquisition remains paused. No catalog expansion is requested for this milestone.
+## Catalog gate, independently tracked
 
-## Preserved source-data features
+- [x] Inspect actual small export/schema samples and relevant project license/provenance for two additional public datasets. No import against an imagined schema; no repeated blocked-provider review.
+- [x] Document exact findings and external action once in [OPTIMIZER.md](OPTIMIZER.md#catalog-acquisition-gate).
+- [ ] Approved current text export/snapshot distribution path, representative import, reconciliation and reviewed updates preserving saved identities.
 
-- **Catalog:** 1 bundled card form and 1 exact EZA state (Global English AGL SS3 Goku, EZA step 7, Lv.140/SA15). Users can inspect their own normalized catalog JSON for one browser session. It is never stored, merged or offered optimization.
-- **Source-profile evaluator (regression example):** One exact state, a fixed 55% no-dupe profile and a six-orb catalog. It runs a 16-target bronze/silver comparison of card stats and initial-check probabilities. There is no damage, no node respec and no full-turn model.
-- **Saved builds:** Named builds are kept locally, with versioned JSON export and import.
+Current real coverage: **1 form / 0 established awakening relationships / 1 EZA / 0 SEZA / 0 complete-required detail records / 1 limited evaluator / 0 complete board templates**. One incomplete record/ambiguous form mapping is preserved; the total source catalog is unknown. No test fixture is counted as real coverage.
 
-## Audit backlog
+## Preserved infrastructure
 
-### Broken behavior
+- [x] Provider-independent normalized contract, session catalog inspection, search/filter/sort/paging and update compatibility reports.
+- [x] Secondary definition forms, recorded/structured effects, explicit flat snapshot arithmetic, immutable revisions, imports/previews and storage conflict protection.
+- [x] Exact-state evaluator registry and computed explanations; no fallback to another state/model.
+- [x] Working/named-build library keys/revisions, safe import/export, future-schema/stale saves and cross-tab protection.
+- [x] Synthetic team demo and exact warning, isolated ratings, engine and tests.
+- [x] Node 24, lockfile, `/dokkan-optimizer/` base and browser-gated Pages workflow unchanged.
 
-- [x] Invalid inventory, limit and unlock inputs were reported as "could not be saved", as if storage had failed. They now get field-level errors, and the last valid settings stay stored.
-- [x] Clearing the candidate limit replaced it with `1`. Typing then produced unintended values.
-- [x] The missing favicon produced the only 404 on page load.
+## Remaining quality and delivery work
 
-### Data integrity
+- [ ] New capability families need independent expected values and separate game-evidence review. Arithmetic tests never confirm actual game behavior.
+- [ ] Screen-reader and WebKit/Firefox/physical-device checks; not yet performed.
+- [ ] Shareable validated build URL (exclude inventory by default), richer revision diffs and undo.
+- [ ] Repository owner: require **Test and build (Node 24)** on main; Pages source must be **GitHub Actions**. Existing workflow gates publication, not merging. No new setting is needed for this branch.
+- [ ] Collection-wide equipment allocation, respec/resource economics, investment priorities and full battle simulation are deferred.
 
-- [x] Saved working settings are parsed structurally, with exact keys and no prototype keys, before legality checks.
-- [x] A stored library that is unreadable or from a newer version is never overwritten without explicit replacement. A copy can be downloaded first.
-- [x] Builds from another catalog revision are retained and marked stale, never auto-loaded.
-- [x] Evaluator registry keyed by exact state ID: the catalog names the evaluator, the entry must be bound to that state with matching data, and there is no fallback. Saved builds load only into their own state's evaluator. A TEST ONLY second character proves isolation; it is not shipped.
-
-- [x] PR #5 review follow-up: catalog validation rejects unknown keys at every level (deep nesting under an unknown key previously crashed validation); saved-build duplicates are compared independent of key order; the import preview shows the exact merge plan; evaluator-version mismatches are stale; autosave, save and export pause while a field is invalid; a second tab cannot overwrite saved builds; unreadable working settings can be downloaded first.
-
-### Product functionality
-
-- [x] Catalog: optimization-support filter, deterministic name sort, paged results, and session-only local file inspection with an update report.
-- [x] Named saved builds recording the exact state, catalog revision and evaluator version. JSON export/import includes a preview, duplicate handling and ID-conflict handling.
-- [x] Candidate-space upper bound shown before searching.
-- [ ] Shareable build URL (versioned, validated, inventory excluded by default).
-- [x] Result explanations generated from the calculation trace: configuration changes, stat/skill sources, probability factors, pp vs relative change, rank/tie and frontier dominance, evidence status, test coverage and model versions.
-- [ ] Multi-character equipment allocation with shared inventory. This waits until a second character can be evaluated.
-
-### UX and accessibility
-
-- [x] Errors are associated with their inputs (`aria-invalid`, `aria-describedby`), and Compare moves focus to the first invalid input.
-- [x] Native modal dialogs confirm load, delete, reset and replacement. Escape cancels them.
-- [x] A pinned identity bar keeps the exact card state visible while editing and reading results.
-- [x] On narrow screens, results become labelled cards, keeping table roles. Percentage points, relative change and the zero-baseline rule are labelled.
-- [ ] Screen-reader pass (NVDA/VoiceOver) and a WebKit/Firefox browser project. Neither has been performed yet.
-
-### Performance
-
-- [x] The search index is computed once per catalog snapshot. Results render 50 at a time.
-- [x] The candidate space is 16 targets and evaluates synchronously in the page. A Web Worker is not justified at this size; revisit when node graphs or multi-character allocation grow the space.
-
-### Testing and CI
-
-- [x] Checked-in Playwright suite (`npm run test:e2e`) on desktop 1366×900 and mobile 390×844 against the production build under `/dokkan-optimizer/`.
-- [x] One validation job (format, unit, types, build, browser tests on the built `dist/`) gates the Pages artifact. The deploy job publishes only if its revision is still the head of `main` ([deployment](DEPLOYMENT.md)).
-- [ ] Owner action: require the **Test and build (Node 24)** check on `main` so failing PRs cannot be merged. The workflow alone gates publication, not merging.
-
-## Blocked outside this repository
-
-| Blocker                                                                                                                                             | What is needed                                                                                             |
-| --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Real catalog expansion. Dokkan Info acquisition is paused; no approved export or integration exists ([assessment](character-build/DATA_ACCESS.md)). | The user's authorization to contact the provider, or an approved export/dataset with recorded reuse terms. |
-| Full Hidden Potential node graph and prerequisites for the admitted card.                                                                           | Exact graph evidence; aggregate totals and community builds are not sufficient.                            |
-| Independent confirmation of card, orb and probability facts.                                                                                        | Dated in-game captures or genuinely independent observations.                                              |
-| Damage stages, rounding, passive expiry and battle stats.                                                                                           | Verified formulas for an explicit context.                                                                 |
-| Gold slot, duplicate routes, other orb IDs and restrictions.                                                                                        | Evidence per item and per route profile.                                                                   |
+See [implemented scope and reproduction](OPTIMIZER.md), [actual checks](VALIDATION.md) and the [evidence ledger](character-build/EVIDENCE.md).

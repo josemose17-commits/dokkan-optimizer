@@ -18,18 +18,27 @@ const sameSet = (a: string[], b: string[]) =>
   a.length === b.length &&
   a.every((id) => b.includes(id));
 
-function restrictionMet(rule: Restriction, catalog: CharacterCatalog): boolean {
+function restrictionError(
+  rule: Restriction,
+  catalog: CharacterCatalog,
+): string | null {
   switch (rule.kind) {
     case 'type':
-      return rule.value === catalog.card.type;
+      return rule.value === catalog.card.type
+        ? null
+        : `restricted to type ${rule.value}.`;
     case 'category':
-      return catalog.card.categories.includes(rule.value);
+      return catalog.card.categories.includes(rule.value)
+        ? null
+        : `requires documented category ${rule.value}.`;
     case 'cardState':
-      return rule.value === catalog.card.id;
+      return rule.value === catalog.card.id
+        ? null
+        : `restricted to character state ${rule.value}.`;
     case 'unsupported':
-      return false;
+      return `unsupported requirement: ${rule.description}.`;
     default:
-      return false;
+      return 'unknown restriction; compatibility cannot be established.';
   }
 }
 
@@ -52,8 +61,10 @@ export function orbErrors(
     errors.push('Silver slot requires SA 10.');
   if (!['UR', 'LR'].includes(catalog.card.rarity))
     errors.push('UR/LR required.');
-  if (!orb.restrictions.every((rule) => restrictionMet(rule, catalog)))
-    errors.push(`${orb.label}: restriction unmet or unsupported.`);
+  for (const rule of orb.restrictions) {
+    const reason = restrictionError(rule, catalog);
+    if (reason) errors.push(`${orb.label}: ${reason}`);
+  }
   for (const [key, value] of Object.entries(orb.stats)) {
     if (!['hp', 'attack', 'defense'].includes(key) || !integer(value))
       errors.push(`${orb.label}: unknown or invalid stat effect.`);

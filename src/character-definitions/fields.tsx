@@ -32,7 +32,7 @@ export function NumberField({
         step={integer ? 1 : 'any'}
         min={min}
         max={max}
-        value={value ?? ''}
+        value={value === null || !Number.isFinite(value) ? '' : value}
         placeholder="Unknown"
         aria-invalid={invalid || undefined}
         aria-describedby={invalid ? id : undefined}

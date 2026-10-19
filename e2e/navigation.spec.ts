@@ -6,19 +6,17 @@ test('navigation keeps the Pages prefix and marks the current page', async ({
   page,
 }) => {
   await page.goto('./');
-  await expect(page).toHaveTitle(
-    'Dokkan Character Lab · Definitions and custom builds',
-  );
+  await expect(page).toHaveTitle('Dokkan · Profile/equipment comparison');
   const nav = page.getByRole('navigation', { name: 'Workbench' });
   await expect(
-    nav.getByRole('link', { name: 'Character editor' }),
+    nav.getByRole('link', { name: 'Profile/equipment comparison' }),
   ).toHaveAttribute('aria-current', 'page');
 
   await nav.getByRole('link', { name: 'Source build examples' }).click();
   await expect(page).toHaveURL(
     /\/dokkan-optimizer\/\?workbench=character-build$/,
   );
-  await expect(page).toHaveTitle('Dokkan Character Builds · Build optimizer');
+  await expect(page).toHaveTitle('Dokkan Character Builds · Equip comparison');
   await expect(
     nav.getByRole('link', { name: 'Source build examples' }),
   ).toHaveAttribute('aria-current', 'page');
@@ -69,6 +67,7 @@ test('no page scrolls horizontally', async ({ page }) => {
   for (const path of [
     './',
     '?workbench=catalog',
+    '?workbench=definitions',
     '?workbench=character-build',
     GOKU_OPTIMIZER,
     '?workbench=legacy-team',

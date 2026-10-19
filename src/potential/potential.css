@@ -1,0 +1,117 @@
+.potential-workbench {
+  max-width: 1100px;
+}
+.potential-workbench > header {
+  max-width: 780px;
+  margin-bottom: 2rem;
+}
+.potential-workbench h1 {
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+}
+.potential-workbench section {
+  border: 1px solid #334b63;
+  background: #111e2e;
+  border-radius: 0.8rem;
+  padding: 1.3rem;
+  margin-block: 1.2rem;
+  min-width: 0;
+}
+.potential-workbench label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  margin-block: 1rem;
+}
+.potential-workbench select,
+.potential-workbench input[type='number'] {
+  width: 100%;
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid #4b627b;
+  border-radius: 0.4rem;
+  background: #0b1626;
+  color: #e7eff8;
+  font: inherit;
+}
+.potential-workbench input[type='checkbox'] {
+  width: 1.2rem;
+  height: 1.2rem;
+  accent-color: #8be8c6;
+}
+.potential-workbench p,
+.potential-workbench li {
+  line-height: 1.6;
+}
+.potential-workbench details {
+  margin-block: 1.2rem;
+}
+.potential-workbench summary {
+  color: #b5ebd8;
+  cursor: pointer;
+  padding-block: 0.4rem;
+  font-weight: 600;
+}
+.potential-steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.potential-result {
+  border: 2px solid #79c5a7 !important;
+}
+.potential-result h2 {
+  font-size: 1.7rem;
+}
+.potential-build {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+.potential-build dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-block: 0.8rem;
+}
+.potential-build dd {
+  margin: 0;
+  text-align: right;
+}
+.potential-notice {
+  border-left: 3px solid #e9bd7a;
+  background: #302b20;
+  padding: 1rem;
+}
+.potential-workbench code {
+  overflow-wrap: anywhere;
+}
+.potential-workbench > details > dl {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.potential-workbench > details > dl dd {
+  margin: 0.4rem 0;
+}
+.potential-workbench :focus-visible {
+  outline: 3px solid #a8ebd3;
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .potential-steps,
+  .potential-build {
+    grid-template-columns: 1fr;
+  }
+  .potential-workbench {
+    padding-inline: 0.9rem;
+  }
+  .potential-workbench section {
+    padding: 1rem;
+  }
+  .potential-workbench > details > dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

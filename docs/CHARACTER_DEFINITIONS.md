@@ -1,10 +1,10 @@
 # Character definitions: first working slice
 
-The default workbench is a local character-definition editor. It is independent of catalog acquisition and accepts any **user-authored** character. It does not add real characters to the bundled catalog. Existing catalog browsing, exact-state registry, result explanations, Goku saved builds and the synthetic team demo are preserved.
+The secondary **Character maintenance** workbench (`?workbench=definitions`) is a local character-definition editor. The primary page is the [Hidden Potential optimizer](OPTIMIZER.md). It is independent of catalog acquisition and accepts any **user-authored** character. It does not add real characters to the bundled catalog. Existing catalog browsing, exact-state registry, result explanations, Goku saved builds and the synthetic team demo are preserved.
 
 ## Reproduce a comparison without writing JSON
 
-1. Open `/dokkan-optimizer/`, click **New character**, and enter a name. For an **arithmetic example, not game data**, enter raw HP 100, ATK 200, DEF 300.
+1. Open `/dokkan-optimizer/?workbench=definitions`, click **New character**, and enter a name. For an **arithmetic example, not game data**, enter raw HP 100, ATK 200, DEF 300.
 2. Click **Set no potential additions or skill levels (0)** in the current build. These are explicit custom assertions; blanks otherwise mean unknown.
 3. **Add ability**, then **Add effect**. The flat-stat template targets self/ATK. Enter amount 20. Select **Numeric threshold** for its condition; the editable example requires HP ≥50%.
 4. In **Explicit context**, enter current HP 60%. The condition is derived from this manually supplied snapshot, not simulated.

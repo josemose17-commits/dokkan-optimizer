@@ -286,4 +286,15 @@ export interface EvaluatorEntry {
   // Working-settings key; the original Goku entry keeps its v1 key.
   storageKey: string;
   defaults(): BuildRequest;
+  recommendationSupport?: Partial<
+    Record<
+      AvailableMetric,
+      {
+        scope: 'card-stat-only' | 'initial-check-model';
+        evidenceIds: string[];
+        blockers: string[];
+        excludes: string[];
+      }
+    >
+  >;
 }

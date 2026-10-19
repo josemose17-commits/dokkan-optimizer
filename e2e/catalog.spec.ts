@@ -74,12 +74,14 @@ test('details keep identity, stat layers and missing fields separate', async ({
   );
   await expect(details).toContainText('0 independently confirmed');
 
-  await details.getByRole('link', { name: 'Optimize this character' }).click();
+  await details
+    .getByRole('link', { name: 'Compare documented profile' })
+    .click();
   await expect(page).toHaveURL(
-    /\?workbench=character-build&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15$/,
+    /\?workbench=optimizer&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15$/,
   );
   await expect(
-    page.getByRole('heading', { name: /Optimize Super Saiyan 3 Goku/ }),
+    page.getByRole('heading', { name: /Find what to change/ }),
   ).toBeVisible();
 });
 
@@ -173,7 +175,7 @@ test('local catalog files are validated as data and browsed only for the session
     page.getByRole('button', { name: /declared limited · not offered here/ }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: 'Optimize this character' }),
+    page.getByRole('button', { name: 'Compare documented profile' }),
   ).toBeDisabled();
   expect(new URL(page.url()).searchParams.has('state')).toBe(false);
   expect(await page.evaluate(() => Object.keys(window.localStorage))).toEqual(
@@ -185,6 +187,6 @@ test('local catalog files are validated as data and browsed only for the session
     .click();
   await expect(banner).toHaveCount(0);
   await expect(
-    page.getByRole('link', { name: 'Optimize this character' }),
+    page.getByRole('link', { name: 'Compare documented profile' }),
   ).toBeVisible();
 });
