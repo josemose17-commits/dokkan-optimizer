@@ -400,7 +400,7 @@ describe('abstract graphs and quantities (not fictional game cards)', () => {
     r.progression.activatedNodes = ['test-a', 'test-b'];
     expect(requestErrors(r, E(c)).join(' ')).toContain('exactly one');
     r.current.choices = { 'test-a': 'critical', 'test-b': 'critical' };
-    expect(requestErrors(r, E(c)).join(' ')).toContain('illegal choice');
+    expect(requestErrors(r, E(c)).join(' ')).toContain('unsupported choice');
     c.profile.nodes[0]!.support = 'unsupported';
     expect(requestErrors(r, E(c)).join(' ')).toContain('Unsupported node');
   });

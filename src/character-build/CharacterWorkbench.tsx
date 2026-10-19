@@ -595,8 +595,8 @@ export default function CharacterWorkbench({
               })}
             </div>
             <p className="cb-muted">
-              Legal target changes may consume items/resources. Replacement and
-              respec costs or affordability are not evaluated.
+              Target changes may consume items/resources. Replacement and respec
+              costs or affordability are not evaluated.
             </p>
           </section>
         </div>
@@ -759,7 +759,7 @@ export default function CharacterWorkbench({
               )}
             </div>
             <button className="cb-primary" type="submit">
-              Compare legal builds
+              Compare compatible configurations
             </button>
           </div>
           <p className="cb-muted cb-space" id="space-estimate">
@@ -819,21 +819,21 @@ export default function CharacterWorkbench({
             ))}
           </div>
           <p className="cb-search" role="status">
-            {result.search.evaluated} legal targets evaluated ·{' '}
+            {result.search.evaluated} compatible targets evaluated ·{' '}
             {result.search.unique} distinct evaluations · {model.orbs.length}
             -item catalog · {profile.label}
           </p>
           {result.search.truncated ? (
             <p className="cb-error" role="alert">
-              Search truncated at {result.search.limit} targets; total legal
+              Search truncated at {result.search.limit} targets; total matching
               count is unknown. Rankings and frontier describe evaluated targets
               only. Better alternatives may remain unexplored.
             </p>
           ) : (
             <p className="cb-muted">
-              Complete enumeration of {result.search.totalLegal} legal targets
-              for this profile/context/catalog. This does not establish an
-              optimal damage build.
+              Complete enumeration of {result.search.totalLegal} compatible
+              targets for this profile/context/catalog. This does not establish
+              an optimal damage build.
             </p>
           )}
           <div className="cb-frontier-summary">
@@ -930,7 +930,7 @@ export default function CharacterWorkbench({
                         </button>
                         <details>
                           <summary>
-                            {group.alternatives.length} legal equip option
+                            {group.alternatives.length} compatible equip option
                             {group.alternatives.length === 1 ? '' : 's'}
                           </summary>
                           <p className="cb-muted">

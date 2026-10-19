@@ -35,7 +35,7 @@ test('a state without an evaluator is refused, never replaced by another', async
       `State ${id} is not in this catalog. No other state is substituted.`,
     );
     await expect(
-      page.getByRole('button', { name: 'Compare legal builds' }),
+      page.getByRole('button', { name: 'Compare compatible configurations' }),
     ).toHaveCount(0);
     await expect(page.getByText('Optimize Super Saiyan 3 Goku')).toHaveCount(0);
   }
@@ -121,15 +121,17 @@ test('an equivalent configuration is explained from its own sources', async ({
 }) => {
   await page.goto(GOKU_OPTIMIZER);
   await page.getByLabel('Incoming-attack assumption').selectOption('disabled');
-  await page.getByRole('button', { name: 'Compare legal builds' }).click();
+  await page
+    .getByRole('button', { name: 'Compare compatible configurations' })
+    .click();
   const current = row(page, /CURRENT/);
-  await current.getByText('2 legal equip options').click();
+  await current.getByText('2 compatible equip options').click();
   await current
     .getByRole('button', { name: 'Explain this configuration' })
     .nth(1)
     .click();
   await expect(panel(page)).toContainText(
-    '2 legal configurations give these exact results; this explanation follows configuration 2.',
+    '2 compatible configurations give these exact results; this explanation follows configuration 2.',
   );
   await panel(page)
     .getByText('Skill levels and probability calculations')

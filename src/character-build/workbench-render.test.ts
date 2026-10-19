@@ -83,7 +83,7 @@ describe('workbench rendering per registry entry', () => {
     const html = render(gokuEntry);
     expect(html).toContain('Optimize Super Saiyan 3 Goku');
     expect(html).toContain('EZA step 7 · without Super EZA · Lv.140 · SA15');
-    expect(html).toContain('16 legal targets evaluated');
+    expect(html).toContain('16 compatible targets evaluated');
   });
 });
 
@@ -101,7 +101,7 @@ describe('optimizer page selection', () => {
   it('lists the registered states when no state is requested', () => {
     const html = page('?workbench=character-build');
     expect(html).toContain('3 exact states with an evaluator');
-    expect(html).not.toContain('Compare legal builds');
+    expect(html).not.toContain('Compare compatible configurations');
   });
   it('opens the requested state’s own workbench', () => {
     const html = page(`?state=${encodeURIComponent(FIXTURE_STATS_STATE)}`);
@@ -112,13 +112,13 @@ describe('optimizer page selection', () => {
     const html = page(`?state=${encodeURIComponent(FIXTURE_BORROWING_STATE)}`);
     expect(html).toContain('Optimization unavailable');
     expect(html).toContain('never reused for another card or state');
-    expect(html).not.toContain('Compare legal builds');
+    expect(html).not.toContain('Compare compatible configurations');
     expect(html).not.toContain('Optimize Super Saiyan 3 Goku');
   });
   it('treats an unknown state as unavailable, not as the default character', () => {
     const html = page('?state=not-a-state');
     expect(html).toContain('State not-a-state is not in this catalog.');
-    expect(html).not.toContain('Compare legal builds');
+    expect(html).not.toContain('Compare compatible configurations');
     expect(page(`?state=${FIXTURE_NODE_STATE}`)).toContain(
       'Optimize TEST ONLY Fixture Fighter',
     );

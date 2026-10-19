@@ -112,7 +112,7 @@ export function buildErrors(
   for (const id of active) {
     const node = catalog.profile.nodes.find((n) => n.id === id);
     if (!node || !node.options.includes(build.choices[id]!))
-      errors.push(`Unknown or illegal choice at ${id}.`);
+      errors.push(`Unknown or unsupported choice at ${id}.`);
   }
   if (!sameSet(Object.keys(build.equips), [...SLOTS]))
     errors.push('Exactly bronze, silver and gold slots are required.');

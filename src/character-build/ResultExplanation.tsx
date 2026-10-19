@@ -115,7 +115,7 @@ export default function ResultExplanation({
             : 'same equips and choices as the current build'}
           .
           {x.configuration.equivalentConfigurations > 1 &&
-            ` ${x.configuration.equivalentConfigurations} legal configurations give these exact results; this explanation follows configuration ${x.alternativeIndex + 1}.`}
+            ` ${x.configuration.equivalentConfigurations} compatible configurations give these exact results; this explanation follows configuration ${x.alternativeIndex + 1}.`}
           {Object.keys(x.configuration.missingInventory).length > 0 &&
             (x.configuration.mode === 'catalog'
               ? ` Ownership is ignored in this comparison; with your inventory it would need ${needs}.`
