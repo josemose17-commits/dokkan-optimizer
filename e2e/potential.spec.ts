@@ -19,13 +19,11 @@ async function profile(page: import('@playwright/test').Page) {
 const result = (page: import('@playwright/test').Page) =>
   page.getByRole('region', { name: 'Build recommendation' });
 
-test('optimizer is primary, with maintenance secondary and an exact full-allocation gate', async ({
+test('limited profile comparison is primary, with maintenance secondary and an exact allocation gate', async ({
   page,
 }) => {
   await page.goto('./');
-  await expect(page).toHaveTitle(
-    'Dokkan Hidden Potential · Build recommendations',
-  );
+  await expect(page).toHaveTitle('Dokkan · Profile/equipment comparison');
   await expect(
     page.getByRole('heading', { name: /Find what to change/ }),
   ).toBeVisible();
@@ -182,6 +180,9 @@ test('probability objectives require an explicit unverified-model acknowledgemen
     .getByRole('button', { name: 'Recommend build', exact: true })
     .click();
   await expect(result(page)).toContainText('Critical chance: 4.0%');
+  await expect(
+    result(page).getByRole('heading', { name: /^Source-model comparison:/ }),
+  ).toBeVisible();
   await expect(result(page)).toContainText('+4.0 percentage points');
   await expect(result(page)).toContainText(
     'not an overall-strength, damage or survival conclusion',

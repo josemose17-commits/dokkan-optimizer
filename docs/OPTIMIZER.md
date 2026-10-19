@@ -1,6 +1,6 @@
-# Hidden Potential recommendation workbench
+# Limited progression-profile/equipment comparison
 
-The primary page now follows character → exact progression/current build → equipment/context/objective → direct result. Maintenance remains secondary; it does not become game-validated merely by being selectable. This is a reusable first batch with explicit data gates, **not a completed full-potential optimizer**.
+The current primary page compares equipment within one documented progression profile. It has not met the milestone of comparing multiple attainable Hidden Potential allocations for a meaningful character/context objective. Maintenance remains secondary; it does not become game-validated merely by being selectable. This is a reusable first batch with explicit data gates, **not a completed full-potential optimizer**.
 
 ## Actual coverage and scope
 
@@ -75,6 +75,10 @@ A focused check on 2026-10-19 inspected two additional public GitHub exports ins
 **Exact remaining acquisition gate:** neither inspected export establishes both maintainable current exact-state coverage and applicable permission/provenance for the text snapshot distributed in this public repository/Pages bundle. No production acquisition adapter is connected and comprehensive counts cannot be claimed. This is not a blanket legal conclusion against independently recording numerical facts.
 
 **Specific external action needed for bulk integration:** supply a provider-approved text export with its schema, snapshot/revision and terms covering caching plus public repository/Pages snapshot distribution; alternatively authorize outreach to a named provider to obtain that method/permission. No contact was made and no credentials/purchase are requested. Once a real permitted sample exists, validate a representative mapping first, reconcile forms/relationships/EZA/SEZA/completeness counts, review updates against saved IDs, then expand through that same adapter. Unsupported characters remain catalog-visible; unsupported mechanics block only affected recommendations.
+
+## Allocation milestone status
+
+The focused board/template check did not establish a complete real allocation set. See the [specific inspected evidence and stop point](character-build/EVIDENCE.md#focused-allocation-gate-review--2026-10-19). No new allocation controls, character, combat metric or assumed board was added. Existing HP/equipment comparisons are regression functionality, not completion of the allocation milestone.
 
 ## Remaining batches
 

@@ -163,7 +163,12 @@ function DirectResult({
           ? 'FULL POTENTIAL REQUEST'
           : 'SELECTED PROFILE ONLY'}
       </p>
-      <h2>{value.title}</h2>
+      <h2>
+        {value.selected &&
+        ['additionalSuper', 'critical', 'evasion'].includes(request.objective)
+          ? `Source-model comparison: ${value.title}`
+          : value.title}
+      </h2>
       {value.reasons.map((r) => (
         <p key={r}>{r}</p>
       ))}
@@ -881,16 +886,18 @@ export default function PotentialOptimizer({
   return (
     <main className="cb-workbench potential-workbench">
       <header>
-        <p className="eyebrow">DOKKAN HIDDEN POTENTIAL</p>
+        <p className="eyebrow">
+          LIMITED PROGRESSION-PROFILE / EQUIPMENT COMPARISON
+        </p>
         <h1>
           Choose a character.
           <br />
           Find what to change.
         </h1>
         <p>
-          Select the exact state, progression, equipment and objective.
-          Recommendations state precisely which choices and mechanics were
-          searched.
+          This release compares equipment within the documented Goku progression
+          profile. It does not yet compare multiple attainable Hidden Potential
+          allocations or provide damage or survival recommendations.
         </p>
       </header>
       <section>

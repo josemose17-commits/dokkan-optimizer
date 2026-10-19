@@ -1,5 +1,17 @@
 # Prototype validation
 
+## PR #10 scope correction, CI and allocation gate — 2026-10-19
+
+The current capability is explicitly labeled **limited progression-profile/equipment comparison** in navigation, document metadata, landing copy, catalog actions and README. Probability result headings explicitly say **Source-model comparison**. No allocation control, new character, real node graph, combat formula or damage/defensive objective was added. The first actual allocation-recommendation acceptance criterion remains unmet.
+
+- Original #10 head `27be290`: GitHub [run 39281420818](https://github.com/josemose17-commits/dokkan-optimizer/actions/runs/39281420818) completed **success**, including install, format, unit, build/type and production browser steps. It initially queued, then ran; no failing step was observed. Deployment/upload were skipped for the PR. This pass is not a claim about a later follow-up head.
+- Dependency #6 head `9cc0cce`: [run 39275777168](https://github.com/josemose17-commits/dokkan-optimizer/actions/runs/39275777168) completed **success**. Reviews and review threads on #6/#10 were empty at inspection. #6 was retargeted to main because #5 is already merged; no branch code changed. [Correct stack/merge-method handling](DEPLOYMENT.md#current-stack-pr-6--pr-10-2026-10-19).
+- Follow-up local checks, Node **24.19.0**: **403/403 unit tests**, strict type check, production build, formatting and whitespace checks **passed**. No dependencies/lockfile/workflow/storage-format changes.
+- Final production Playwright run at `/dokkan-optimizer/`: **109 passed, 1 expected skip**, 110 runs, no failures/flakes; desktop/mobile projects. Tests now check the precise product labels and explicit model-probability heading, alongside all saved-data/equipment/editor/catalog/legacy regressions. Same outside-repository Chromium 153 / Playwright 1.56.1 setup as below.
+- Research-only source screenshots stayed outside the repository. No provider dataset, artwork, downloaded script, credential or user save was included.
+
+The focused board investigation inspected actual public images showing two +3 two-option dialog examples, an actual board/route image, a first-hand route-count guide and the documented board/selection/condition schema. None supplies a complete chosen-card-bound attainable set. [Exact missing evidence and stop point](character-build/EVIDENCE.md#focused-allocation-gate-review--2026-10-19). **Zero new real allocation alternatives compared; no new winning allocation or combat baseline improvement.** The preserved profile has one fixed allocation and up to 16 equipment combinations. No hypothetical arithmetic test is relabeled game verification. No additional application features or separate research-only PR were created for the blocked milestone. No merge or deployment was performed.
+
 ## Primary Hidden Potential recommendations — 2026-10-19
 
 Audit: main remained `316492d` (PR #5); PR #6 remained open at `9cc0cce`, containing merged PR #9's character editor and PR #7's exact-state registry/explanations. This feature branch is stacked on that head. PR #8's separate pre-EZA work was inspected and left untouched. All **363** pre-change unit tests were preserved.

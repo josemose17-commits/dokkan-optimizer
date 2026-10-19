@@ -294,7 +294,7 @@ function CatalogDetails({
         <p>{state.optimization.reason}</p>
         {resolution?.ok && (
           <a className="catalog-action" href={recommendationHref(state.id)}>
-            Optimize this character
+            Compare documented profile
           </a>
         )}
         {resolution &&
@@ -312,7 +312,7 @@ function CatalogDetails({
               disabled
               aria-describedby="session-optimize-note"
             >
-              Optimize this character
+              Compare documented profile
             </button>
             <p id="session-optimize-note" className="subtle">
               Optimization is only offered for the bundled admitted record.

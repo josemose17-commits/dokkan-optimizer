@@ -1,8 +1,8 @@
-# Dokkan Hidden Potential Optimizer
+# Dokkan progression-profile / equipment comparison
 
-The primary workbench is **character → exact progression/current build → equipment/context/objective → direct recommendation**. The character editor is secondary at `?workbench=definitions` (**Character maintenance**). Catalog browsing, source examples, named saved builds and the synthetic team demo remain available.
+The current feature is a **limited progression-profile/equipment comparison**, not the first actual Hidden Potential allocation recommendation. It compares equipment for one documented Goku profile and preserves scoped model outputs. The intended next milestone is to compare multiple evidence-backed attainable allocations for a meaningful character/context objective. The character editor is secondary at `?workbench=definitions` (**Character maintenance**). Catalog browsing, source examples, named saved builds and the synthetic team demo remain available.
 
-**This is an initial, gated implementation, not a complete potential optimizer.** Full allocation requests currently return the exact missing node/template evidence. The existing Goku profile can separately produce a direct **selected-profile** recommendation for a card-stat objective, or an explicitly acknowledged initial-check probability model. It does not search unestablished route/node configurations, infer attainable totals, calculate damage or estimate survival. See [scope, architecture, acquisition findings and reproduction](docs/OPTIMIZER.md).
+**Actual allocation optimization is not implemented.** Full allocation requests currently return the exact missing node/template evidence. The existing Goku profile can separately produce a direct **selected-profile** recommendation for a card-stat objective, or an explicitly acknowledged initial-check probability model. It does not search unestablished route/node configurations, infer attainable totals, calculate damage or estimate survival. See [scope, architecture, acquisition findings and reproduction](docs/OPTIMIZER.md).
 
 Bundled coverage: **1 unique card form, 0 established awakening relationships, 1 EZA state, 0 SEZA states, 0 records with all required detail fields, 1 limited evaluator state and 0 complete board templates**. The source catalog total is unknown. That state is **[Mystery Super Technique] Super Saiyan 3 Goku — Super AGL, Global English, fully EZA step 7, Lv.140 / SA15, without Super EZA**. Catalog and maintenance inclusion do not imply optimization support; no other state inherits this evaluator.
 
@@ -33,7 +33,7 @@ npm run test:e2e   # builds, serves dist/ and runs the Playwright suite (CI runs
 
 Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The browser suite needs Chromium for `@playwright/test` 1.56.1 (`npx playwright install chromium` once; containers with a preinstalled build can set `PLAYWRIGHT_BROWSERS_PATH`). It runs desktop (1366×900) and mobile (390×844) projects and fails on page errors, failed requests or requests outside `/dokkan-optimizer/`. The project uses React, TypeScript, Vite and Vitest. No backend, telemetry, game-account connection, runtime scraper or external asset requests are needed.
 
-## Reproduce a direct recommendation
+## Reproduce the existing limited equipment comparison
 
 1. Open `/dokkan-optimizer/` and select the exact Goku EZA state. With no older working settings, the defaults are inventory mode, empty current slots and **Card HP**. Existing saved settings are read without overwriting them.
 2. Leave **Full potential allocation** selected and click **Recommend build** to see the precise graph gate. No full-allocation result is substituted.
@@ -44,7 +44,7 @@ Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The browser suite
 
 The scopes, evidence status, catalog limits and excluded combat metrics remain visible. Changes may cost resources; affordability/respec costs are not modeled. Named saved-build backups are available below the result; the recommendation scope, acknowledgement and scan budget are session controls and are not added to the older saved-build schema.
 
-The preserved **Source build examples** (`?workbench=character-build&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15`) retain their detailed comparator and original settings behavior. The catalog's **Optimize this character** link opens the new primary flow. Maintenance supports custom authored comparisons, explicitly without a board-compatibility claim ([instructions](docs/CHARACTER_DEFINITIONS.md)).
+The preserved **Source build examples** (`?workbench=character-build&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15`) retain their detailed comparator and original settings behavior. The catalog's **Compare documented profile** link opens the new primary flow. Maintenance supports custom authored comparisons, explicitly without a board-compatibility claim ([instructions](docs/CHARACTER_DEFINITIONS.md)).
 
 ## Evaluator registry
 

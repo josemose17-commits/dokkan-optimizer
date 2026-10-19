@@ -33,3 +33,15 @@ Without the required check, a failing pull request can still be merged; the gate
 
 - Local: `actionlint` 1.7.7 reports no issues. The head-check script was exercised against a stubbed `gh` for both the head and not-head cases.
 - Pull request CI exercises the validation job. The deploy path (main-only) runs only after an authorized merge, so it has not been observed here. Check the actual Actions run and environment before claiming a deployment is live.
+
+## Current stack: PR #6 → PR #10 (2026-10-19)
+
+PR #5 is already merged into main. PR #6 was retargeted from its old #5 branch to **main**, without changing its head (`9cc0cce`). It also contains already-merged #7 (registry/explanations) and #9 (maintenance). They do not need separate merges again. #8 is on another branch and is not a dependency of #10.
+
+The merge order is **#6 first, then #10**. This task holds the current PRs unmerged; this is a dependency explanation, not a deployment instruction. Latest-head CI, review/conflict checks and the user's merge conditions must be satisfied before any later authorized integration.
+
+- If #6 lands through a merge commit preserving `9cc0cce`, retarget #10 from `claude/pages-deploy-gate` to main. No rebase is needed solely for that merge: the dependency ancestry is present. Reinspect the final diff and run fresh checks on the actual updated base/revision, especially if main has moved or conflicts arise.
+- If #6 lands through squash/rebase, main will not preserve the same dependency ancestry. Rebase only #10's own commits onto main (the old boundary is `9cc0cce`), so the registry/editor/deployment changes are not proposed again. Check saved-data compatibility, review the final diff and rerun unit/types/build/browser/required CI on the resulting head. A pre-rebase green result does not cover that new revision.
+- Never force-push main or bypass checks/protections. Later eligible implementation PRs may merge under the user's standing conditions; an explicit task-specific merge hold still applies. After an authorized merge, check the actual main build, Pages deployment and live `/dokkan-optimizer/` before claiming publication.
+
+Tree check during this review: merging current main `316492d` with #6 produces exactly #6's tree `b239917f7719786cf3502468fb19b22b0a545e17`. Retargeting itself required no code conflict resolution. #10 is still a **limited progression-profile/equipment comparison**, not completion of the allocation milestone.

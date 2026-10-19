@@ -24,23 +24,23 @@ export default function Workbench() {
     document.title = legacy
       ? 'Dokkan Team Lab · Legacy synthetic demo'
       : builds
-        ? 'Dokkan Character Builds · Build optimizer'
+        ? 'Dokkan Character Builds · Equip comparison'
         : catalog
           ? 'Dokkan Character Catalog · Admitted records'
           : definitions
             ? 'Dokkan Character Lab · Definitions and custom builds'
-            : 'Dokkan Hidden Potential · Build recommendations';
+            : 'Dokkan · Profile/equipment comparison';
   }, [legacy, builds, catalog, definitions]);
   return (
     <>
       <header className="workbench-switch">
-        <strong>DOKKAN / HIDDEN POTENTIAL</strong>
+        <strong>DOKKAN / PROFILE COMPARISON</strong>
         <nav aria-label="Workbench">
           <a
             href={import.meta.env.BASE_URL}
             aria-current={optimizer ? 'page' : undefined}
           >
-            Hidden Potential optimizer
+            Profile/equipment comparison
           </a>
           <a
             href={`${import.meta.env.BASE_URL}?workbench=definitions`}
