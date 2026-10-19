@@ -39,7 +39,7 @@ Current real coverage: **1 form / 0 established awakening relationships / 2 exac
 ## Remaining quality and delivery work
 
 - [ ] New capability families need independent expected values and separate game-evidence review. Arithmetic tests never confirm actual game behavior.
-- [ ] Screen-reader and WebKit/Firefox/physical-device checks; not yet performed.
+- [ ] Screen-reader, real Safari/iOS and physical-device checks; not yet performed. One local Firefox/WebKit run of the browser suite ([results](VALIDATION.md)) is not a CI project; Playwright's Linux WebKit crashes on pushState → reload → navigation independently of the app.
 - [ ] Shareable validated build URL (exclude inventory by default), richer revision diffs and undo.
 - [ ] Repository owner: require **Test and build (Node 24)** on main; Pages source must be **GitHub Actions**. Existing workflow gates publication, not merging. No new setting is needed for this branch.
 - [ ] Collection-wide equipment allocation, respec/resource economics, investment priorities and full battle simulation are deferred.
