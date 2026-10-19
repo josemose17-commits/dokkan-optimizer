@@ -1,5 +1,28 @@
 # Prototype validation
 
+## Reusable character editor and custom snapshot comparison — 2026-10-19
+
+Audit before edits:
+
+- Current main was `316492d` (merged PR #5): **240/240 unit tests**, type check/build and formatting passed; its production browser suite passed **55 with 1 skipped**.
+- PR #6 was open at `453d601`; it contains the merged PR #7 exact-state registry and result explanations. This implementation is stacked on that branch rather than duplicating them. Its pre-change unit suite passed **281/281**. PR #8's pre-EZA record was merged into the separate `claude/evaluator-registry` branch after #7; that work was inspected and left untouched. No new factual records are admitted here.
+
+Final checks on Node **24.19.0**:
+
+- `npm ci`: passed. No dependency or lockfile changes in this batch.
+- `npm test`: **363/363 passed**, 11 files (**281 retained + 82 new**).
+- `npm run typecheck`, `npm run build`, `npm run format:check`, `git diff --check`: passed.
+- Checked-in Playwright suite against the final production `dist/` at `/dokkan-optimizer/`: **91 passed, 1 skipped**, no unexpected/flaky tests, 92 total runs. The skip is the existing mobile-only layout test on desktop. New authoring coverage is 11 scenarios on desktop and mobile, including the independent 200 + 0 + 5 + 20 = 225 / alternative 255 oracle.
+- Desktop 1366×900 and mobile 390×844 screenshots visually inspected. Populated comparison pages have zero horizontal overflow.
+
+Local browser environment: Chromium **153.0.8010.0** with Playwright **1.56.1**. The runner's bundled Chromium was unavailable, so a temporary **outside-repository** config selected the installed binary (two workers, no disabled web security). Normal reproducible CI/user command remains `npx playwright install chromium`, then `npm run test:e2e`. The initial baseline launch failures were test-environment failures; the baseline and final suites subsequently passed.
+
+New unit checks independently cover state/card identities and immutable revisions, user-vs-bundled data, nested three-valued conditions and boundaries, explicit timings/unsupported durations, absent values/overflow, unknown effects, exact equipment restriction messages, custom totals without a board claim, traces/deltas/frontiers/ties/truncation, schema/size/count/depth/prototype/accessor protection, safe import plans/relationship mapping, storage conflict protection and preserved Goku bytes/results. These prove schema and arithmetic behavior, **not actual Dokkan mechanics**.
+
+Browser coverage includes create/edit/save/revision history, separate base/EZA authored state IDs sharing one card ID, custom configurations/equips and activation traces, invalid numeric inputs, unknown mechanics, conflict previews and ID copying, safe HTML-like text, export/import into a fresh profile, canceled navigation, detached catalog copying, future/unreadable/blocked storage and preservation of old saved keys. All prior catalog/source-example/team-demo tests remain.
+
+No provider calls, acquisition, new real data, artwork, formula evidence promotion, merge or deployment. The authored model has no damage/probability/battle-stat implementation, and the source 55% example remains a regression path. See [exact functionality and exclusions](CHARACTER_DEFINITIONS.md).
+
 ## Evaluator registry and result explanations — 2026-10-19
 
 Node 24.22.0, headless Chromium 141 (Playwright 1.56.1). No new real data, evidence or mechanics; the production registry has one entry (the admitted Goku state).

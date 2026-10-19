@@ -1,11 +1,24 @@
 # Task checklist
 
-Status on branch `claude/tender-maxwell-o43x7j`, 2026-10-19. A checked item is implemented and covered by tests on this branch. Nothing here is merged or deployed until a reviewed PR is merged.
+Status on feature branch `codex/reusable-character-editor`, 2026-10-19. Stacked on PR #6 to reuse its registry/explanation work. A checked item is implemented and covered by tests on this branch. Nothing here is merged or deployed until a reviewed PR is merged.
 
-## What the app can honestly do today
+## Primary product: reusable character definitions
+
+- [x] Create/edit/duplicate/save definitions through forms, with exact state/card IDs and immutable revision history.
+- [x] Record all requested ability categories, structured effect templates, original wording/source assertions and Other mechanics.
+- [x] Enter multiple custom potential/build configurations and user equipment with explicit compatibility checks; no 55%-only restriction in this path.
+- [x] Evaluate the first flat self-stat snapshot capability with explicit conditional context, calculation traces, unavailable metrics and common-metric frontiers.
+- [x] Versioned import/export, previews/conflict handling, nesting/size/count validation, safe text display and preserved old saved-build formats.
+- [ ] Additional documented effect families, percentage modifier stages/rounding and probabilities. No damage or survival claims until separately supported.
+- [ ] Richer equipment-effect structure, representative-trace selection, revision diffs and per-operation undo.
+- [ ] Board-checked generation, scalable search and collection-wide equipment/investment optimization; none block custom authoring.
+
+See [first slice, exact arithmetic assumptions and limitations](CHARACTER_DEFINITIONS.md). Acquisition remains paused. No catalog expansion is requested for this milestone.
+
+## Preserved source-data features
 
 - **Catalog:** 1 bundled card form and 1 exact EZA state (Global English AGL SS3 Goku, EZA step 7, Lv.140/SA15). Users can inspect their own normalized catalog JSON for one browser session. It is never stored, merged or offered optimization.
-- **Evaluator:** One exact state, a fixed 55% no-dupe profile and a six-orb catalog. It runs a 16-target bronze/silver comparison of card stats and initial-check probabilities. There is no damage, no node respec and no full-turn model.
+- **Source-profile evaluator (regression example):** One exact state, a fixed 55% no-dupe profile and a six-orb catalog. It runs a 16-target bronze/silver comparison of card stats and initial-check probabilities. There is no damage, no node respec and no full-turn model.
 - **Saved builds:** Named builds are kept locally, with versioned JSON export and import.
 
 ## Audit backlog

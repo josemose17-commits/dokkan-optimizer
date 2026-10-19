@@ -105,8 +105,8 @@ function Picker({
         </ul>
         <p className="cb-muted">
           {others} other catalog state{others === 1 ? '' : 's'} can be browsed
-          in the <a href={base}>character catalog</a>, which states why
-          optimization is unavailable for each.
+          in the <a href={`${base}?workbench=catalog`}>character catalog</a>,
+          which states why optimization is unavailable for each.
         </p>
       </section>
     </main>

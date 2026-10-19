@@ -1,6 +1,6 @@
 # Provider-independent catalog
 
-This milestone supplies working search/details and normalized JSON tooling. **Dokkan Info acquisition is paused pending an approved method.** No acquisition adapter, provider requests, bulk data, artwork, source calculator implementation or new source review is included. Provider preference and schema validity are not permission grants. Outreach requires explicit user authorization.
+The catalog is preserved at `?workbench=catalog`; the default product is now the [character-definition editor](CHARACTER_DEFINITIONS.md). The catalog milestone supplies working search/details and normalized JSON tooling. **Dokkan Info acquisition is paused pending an approved method.** No acquisition adapter, provider requests, bulk data, artwork, source calculator implementation or new source review is included. Provider preference and schema validity are not permission grants. Outreach requires explicit user authorization.
 
 ## Bundled coverage
 

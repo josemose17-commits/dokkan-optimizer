@@ -13,7 +13,7 @@ const jsonFile = (name: string, value: unknown) => ({
 test('search and filters use admitted fields, with an empty state and reset', async ({
   page,
 }) => {
-  await page.goto('./');
+  await page.goto('?workbench=catalog');
   const count = page.locator('.catalog-result-count');
   await expect(count).toHaveText('1 card form · 1 matching state');
 
@@ -49,7 +49,7 @@ test('search and filters use admitted fields, with an empty state and reset', as
 test('details keep identity, stat layers and missing fields separate', async ({
   page,
 }) => {
-  await page.goto('./');
+  await page.goto('?workbench=catalog');
   const details = page.locator('article.catalog-details');
   await expect(
     details.getByRole('heading', { name: 'Super Saiyan 3 Goku' }),
@@ -86,7 +86,7 @@ test('details keep identity, stat layers and missing fields separate', async ({
 test('exact state URLs survive reload and history; unknown states are not substituted', async ({
   page,
 }) => {
-  await page.goto('./');
+  await page.goto('?workbench=catalog');
   await page.getByRole('button', { name: /EZA step 7/ }).click();
   await expect(page).toHaveURL(
     new RegExp(`state=${encodeURIComponent(STATE_ID)}`),
@@ -109,7 +109,7 @@ test('exact state URLs survive reload and history; unknown states are not substi
 test('local catalog files are validated as data and browsed only for the session', async ({
   page,
 }) => {
-  await page.goto('./');
+  await page.goto('?workbench=catalog');
   await page.getByText('Inspect a local normalized catalog file').click();
   const input = page.getByLabel('Normalized catalog JSON (20 MiB maximum)');
   const alert = page.locator('.catalog-import-errors');

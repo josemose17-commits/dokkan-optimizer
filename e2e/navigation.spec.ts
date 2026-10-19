@@ -6,19 +6,21 @@ test('navigation keeps the Pages prefix and marks the current page', async ({
   page,
 }) => {
   await page.goto('./');
-  await expect(page).toHaveTitle('Dokkan Character Catalog · Admitted records');
+  await expect(page).toHaveTitle(
+    'Dokkan Character Lab · Definitions and custom builds',
+  );
   const nav = page.getByRole('navigation', { name: 'Workbench' });
   await expect(
-    nav.getByRole('link', { name: 'Character catalog' }),
+    nav.getByRole('link', { name: 'Character editor' }),
   ).toHaveAttribute('aria-current', 'page');
 
-  await nav.getByRole('link', { name: 'Build optimizer' }).click();
+  await nav.getByRole('link', { name: 'Source build examples' }).click();
   await expect(page).toHaveURL(
     /\/dokkan-optimizer\/\?workbench=character-build$/,
   );
   await expect(page).toHaveTitle('Dokkan Character Builds · Build optimizer');
   await expect(
-    nav.getByRole('link', { name: 'Build optimizer' }),
+    nav.getByRole('link', { name: 'Source build examples' }),
   ).toHaveAttribute('aria-current', 'page');
 
   await nav.getByRole('link', { name: 'Legacy synthetic team demo' }).click();
@@ -26,7 +28,7 @@ test('navigation keeps the Pages prefix and marks the current page', async ({
   await expect(page).toHaveTitle('Dokkan Team Lab · Legacy synthetic demo');
 
   await nav.getByRole('link', { name: 'Character catalog' }).click();
-  await expect(page).toHaveURL(/\/dokkan-optimizer\/$/);
+  await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=catalog$/);
 });
 
 test('production assets load from the Pages prefix', async ({ page }) => {
@@ -66,6 +68,7 @@ test('genuine character pages do not carry the synthetic warning', async ({
 test('no page scrolls horizontally', async ({ page }) => {
   for (const path of [
     './',
+    '?workbench=catalog',
     '?workbench=character-build',
     GOKU_OPTIMIZER,
     '?workbench=legacy-team',
