@@ -980,10 +980,12 @@ export default function PotentialOptimizer({
           ))}
         </dl>
         <p>
-          One admitted source state is currently bundled. This is not complete
-          coverage; unsupported characters are kept in catalog/maintenance
-          rather than silently assigned an evaluator. No new provider dataset is
-          imported.
+          {coverage.exactStates} exact{' '}
+          {coverage.exactStates === 1 ? 'state is' : 'states are'} currently
+          bundled, each recorded individually; {coverage.evaluatorStates} with a
+          limited evaluator. This is not complete coverage; unsupported
+          characters are kept in catalog/maintenance rather than silently
+          assigned an evaluator. No new provider dataset is imported.
         </p>
         <a href={`${import.meta.env.BASE_URL}?workbench=catalog`}>
           Browse factual details and completeness

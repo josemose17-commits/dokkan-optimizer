@@ -1,11 +1,25 @@
 # Prototype validation
 
+## Re-landed base state and Firefox/WebKit run — 2026-10-19
+
+PR #8 was merged into `claude/evaluator-registry` after PR #7 had already been merged, so its record never reached PR #6. This branch merges that reviewed commit (`f6403cf`) unchanged onto PR #6's head `2527f60` and adapts the code and tests from PRs #9/#10 that counted one state. Coverage is now **1 form / 2 exact states (1 EZA, 1 base, 0 SEZA) / 1 limited evaluator**. The production registry is unchanged.
+
+Checks on Node **24.22.0**, with no dependency or lockfile changes:
+
+- `npm test`: **407/407 passed**, 12 files: the 403 tests on `2527f60`, 3 re-landed record tests and 1 new test for copying the base state into maintenance.
+- `npm run typecheck`, `npm run build`, `npm run format:check`, `git diff --check`: passed.
+- Checked-in Playwright suite in Chromium (desktop and mobile): **113 passed, 1 skipped**. The skip is the mobile-only layout check on desktop. New: the primary page lists the base state and refuses it with the record's own reason, and its coverage panel counts both states.
+- Firefox and WebKit: one local run of the same suite through a temporary configuration outside the repository. It used Playwright 1.56.1 with Firefox build 1495 and WebKit build 2215, plus Linux host libraries from `playwright install-deps`. Firefox desktop: **56 passed, 1 skipped**. WebKit desktop: **55 passed, 1 skipped, 1 failed**. WebKit with iPhone 13 emulation (390×844): **56 passed, 1 failed**.
+  - Found and fixed: in WebKit the primary page was 7px wider than a 390px viewport, because a long selected option (**Supported progression**) painted past the select's edge; Chromium and Firefox clip it. `contain: paint` on the page's selects clips it inside the control, and the focus outline stays visible. The overflow was already present on `2527f60`.
+  - Not an app defect, not changed: WebKit's renderer crashes on `history.pushState`, then reload, then navigation. The same sequence crashes on a plain static HTML page with no app code. The catalog history test therefore fails in WebKit here, while it passes in Chromium and Firefox. No test was skipped or weakened for it.
+- Not performed: Safari or iOS on real devices (this WebKit is Playwright's Linux build), screen readers and in-game verification.
+
 ## PR #10 scope correction, CI and allocation gate — 2026-10-19
 
 The current capability is explicitly labeled **limited progression-profile/equipment comparison** in navigation, document metadata, landing copy, catalog actions and README. Probability result headings explicitly say **Source-model comparison**. No allocation control, new character, real node graph, combat formula or damage/defensive objective was added. The first actual allocation-recommendation acceptance criterion remains unmet.
 
 - Original #10 head `27be290`: GitHub [run 39281420818](https://github.com/josemose17-commits/dokkan-optimizer/actions/runs/39281420818) completed **success**, including install, format, unit, build/type and production browser steps. It initially queued, then ran; no failing step was observed. Deployment/upload were skipped for the PR. This pass is not a claim about a later follow-up head.
-- Dependency #6 head `9cc0cce`: [run 39275777168](https://github.com/josemose17-commits/dokkan-optimizer/actions/runs/39275777168) completed **success**. Reviews and review threads on #6/#10 were empty at inspection. #6 was retargeted to main because #5 is already merged; no branch code changed. [Correct stack/merge-method handling](DEPLOYMENT.md#current-stack-pr-6--pr-10-2026-10-19).
+- Dependency #6 head `9cc0cce`: [run 39275777168](https://github.com/josemose17-commits/dokkan-optimizer/actions/runs/39275777168) completed **success**. Reviews and review threads on #6/#10 were empty at inspection. #6 was retargeted to main because #5 is already merged; no branch code changed. [Correct stack/merge-method handling](DEPLOYMENT.md#current-stack-pr-6--base-state-re-land-2026-10-19).
 - Follow-up local checks, Node **24.19.0**: **403/403 unit tests**, strict type check, production build, formatting and whitespace checks **passed**. No dependencies/lockfile/workflow/storage-format changes.
 - Final production Playwright run at `/dokkan-optimizer/`: **109 passed, 1 expected skip**, 110 runs, no failures/flakes; desktop/mobile projects. Tests now check the precise product labels and explicit model-probability heading, alongside all saved-data/equipment/editor/catalog/legacy regressions. Same outside-repository Chromium 153 / Playwright 1.56.1 setup as below.
 - Research-only source screenshots stayed outside the repository. No provider dataset, artwork, downloaded script, credential or user save was included.

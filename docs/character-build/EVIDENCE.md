@@ -1,5 +1,29 @@
 # First-unit evidence and release boundary
 
+## Individually recorded base state — 2026-10-19
+
+The bundled catalog adds one real state: the **pre-EZA base state of card 1003211** (`unknown-region:1003211:base:lv120:sa10`). It is the same card form as the admitted EZA state and a separate exact state, with no evaluator. Every value comes from a single page, `https://dokkan.fyi/characters/1003211`. The page was retrieved once on 2026-10-19 at 12:18:28 UTC; its HTML SHA-256 is `facce003…d3ab`, pinned as `sourceRevision`. The values were recorded by hand from the page's delivered data.
+
+| Field                 | Value                                           | Status            | Limitation                                                                                                                                                                                   |
+| --------------------- | ----------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Type / class / rarity | AGL / Super / UR                                | source-documented | Single source.                                                                                                                                                                               |
+| Level / SA level      | 120 / 10                                        | source-documented | Read from the page data structure (top-level card fields, separate from the nested awakening block). No visible base/Lv.120 label.                                                           |
+| Raw stats             | HP 9,500 / ATK 8,672 / DEF 4,623                | source-documented | Page-data key `max`. The sibling key `eza` equals the admitted EZA Lv.140 stats exactly, which supports this reading; that check is internal to one source, not an independent confirmation. |
+| Leader skill          | AGL Type Ki +3 and ATK +3000                    | source-documented | Short factual effect.                                                                                                                                                                        |
+| Passive               | ATK +100% for 7 turns from entry                | source-documented | Normalized; turn counting is not modeled.                                                                                                                                                    |
+| Super Attack          | Dragon Fist (12 Ki): supreme damage, lowers DEF | partial           | The source shows no multiplier or DEF-reduction amount for this state.                                                                                                                       |
+| Links / categories    | missing                                         | —                 | The page lists them for the card without tying them to a state or date.                                                                                                                      |
+| Region                | null                                            | —                 | The page states no region; English text is not region evidence.                                                                                                                              |
+
+**0 fields have independent confirmation.** No Hidden Potential profile, equipment eligibility or context is admitted, so optimization is unavailable. The registry refuses it rather than reusing the EZA evaluator of the same card.
+
+Rejected candidates from the same research:
+
+- **Super EZA state.** Rejected. The page shows only totals that include Hidden Potential: 18,967 / 18,111 / 13,356, which equal the EZA raw stats plus the 100% bonuses. It has no raw-stat key and no SEZA step. Its only state toggle renders as not pressed. Not recorded until raw stats, step and labeling are clear.
+- **Pre-Dokkan-awakening card.** Rejected. The delivered page states no awakening relationship or card ID; that data loads later through an internal request, which was not used. ID-like numbers appear only in image references, and IDs are never inferred.
+
+The page data's block named `extreme_z_awakening` holds the kit the page labels **Super EZA** (native evasion, critical and additional-attack effects). It is **not** EZA evidence and does not change the admitted `eza-kit` claim. On 2026-10-12 the site changelog noted corrections to some EZA UR stats. The page's current EZA values match the admitted record, but this source is recently volatile.
+
 ## Catalog migration — 2026-10-19
 
 The provider-independent catalog reuses the existing admitted Goku facts and review dates; it adds no real card states or new source claims. Missing leader details, links and categories are explicit nulls. Raw stats and the 55% potential additions remain distinct. Snapshot creation does not imply a new source retrieval or independent verification. See [the catalog contract](../CATALOG.md). The limited evaluator, its probability assumptions and unresolved orb/graph gates are unchanged.

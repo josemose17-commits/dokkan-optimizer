@@ -233,6 +233,40 @@ test('coverage and unsupported exact states never imply catalog completeness', a
   ).toBeVisible();
 });
 
+test('the recorded base state is selectable but refused with its own reason', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page
+    .getByLabel('Character and exact state')
+    .selectOption('unknown-region:1003211:base:lv120:sa10');
+  await expect(result(page)).toContainText('Cannot recommend yet');
+  await expect(result(page)).toContainText(
+    'No evaluator: the progression profile, eligible equipment and evaluation contexts for this pre-EZA state are not admitted.',
+  );
+  // The same card's EZA evaluator is never borrowed for this state.
+  await expect(
+    page.getByRole('button', { name: 'Recommend build', exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel('Supported progression')).toHaveCount(0);
+
+  await page.getByText('Character catalog coverage', { exact: true }).click();
+  const count = (label: string) =>
+    page
+      .locator('dl > div')
+      .filter({ has: page.getByText(label, { exact: true }) })
+      .locator('dd');
+  await expect(count('Exact states')).toHaveText('2');
+  await expect(count('Base (pre-EZA) states')).toHaveText('1');
+  await expect(count('EZA states')).toHaveText('1');
+  await expect(count('States with a limited evaluator')).toHaveText('1');
+  await expect(
+    page.getByText(
+      '2 exact states are currently bundled, each recorded individually; 1 with a limited evaluator.',
+    ),
+  ).toBeVisible();
+});
+
 test('primary named saves remain loadable in the preserved exact-state comparator', async ({
   page,
 }) => {

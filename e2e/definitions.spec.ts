@@ -369,8 +369,9 @@ test('unsaved navigation can be canceled and a copied catalog state is detached'
   await page
     .getByRole('link', { name: 'Character catalog', exact: true })
     .click();
+  // Saving a user copy never adds to the bundled catalog (EZA + base state).
   await expect(page.locator('.catalog-result-count')).toHaveText(
-    '1 card form · 1 matching state',
+    '1 card form · 2 matching states',
   );
 });
 

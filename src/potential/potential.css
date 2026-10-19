@@ -36,6 +36,11 @@
   color: #e7eff8;
   font: inherit;
 }
+/* WebKit paints a long selected option past the control's edge, widening the
+   page on phones. Clip it inside the control; its focus outline stays visible. */
+.potential-workbench select {
+  contain: paint;
+}
 .potential-workbench input[type='checkbox'] {
   width: 1.2rem;
   height: 1.2rem;
