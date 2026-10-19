@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { optimizerHref } from '../character-build/BuildOptimizerPage';
+import { recommendationHref } from '../potential/urls';
 import { resolveEvaluator } from '../character-build/registry';
 import { CHARACTER_STORAGE_KEY } from '../character-build/storage';
 import { productionRegistry } from '../data/real/character-build/registry';
@@ -293,7 +293,7 @@ function CatalogDetails({
         </h3>
         <p>{state.optimization.reason}</p>
         {resolution?.ok && (
-          <a className="catalog-action" href={optimizerHref(state.id)}>
+          <a className="catalog-action" href={recommendationHref(state.id)}>
             Optimize this character
           </a>
         )}

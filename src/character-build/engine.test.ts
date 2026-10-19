@@ -287,23 +287,26 @@ describe('eligibility before evaluation', () => {
       'Unknown equip in bronze: not-a-catalog-item.',
     );
   });
-  it.each(['type', 'category', 'cardState', 'unsupported', 'invented'])(
-    'fails closed on unmet/unknown %s restrictions',
-    (kind) => {
-      const c = cloneCatalog();
-      c.orbs[0]!.restrictions = [
-        { kind, value: 'not-this-card' },
-      ] as unknown as Orb['restrictions'];
-      expect(
-        orbErrors(c.orbs[0]!, 'bronze', defaultRequest(), c).join(' '),
-      ).toContain('unsupported');
-      expect(
-        [...generateBuilds(defaultRequest(), E(c))].some(
-          (b) => b.equips.bronze === c.orbs[0]!.id,
-        ),
-      ).toBe(false);
-    },
-  );
+  it.each([
+    ['type', 'restricted to type not-this-card'],
+    ['category', 'requires documented category not-this-card'],
+    ['cardState', 'restricted to character state not-this-card'],
+    ['unsupported', 'unsupported requirement'],
+    ['invented', 'unknown restriction'],
+  ])('fails closed on unmet/unknown %s restrictions', (kind, reason) => {
+    const c = cloneCatalog();
+    c.orbs[0]!.restrictions = [
+      { kind, value: 'not-this-card' },
+    ] as unknown as Orb['restrictions'];
+    expect(
+      orbErrors(c.orbs[0]!, 'bronze', defaultRequest(), c).join(' '),
+    ).toContain(reason);
+    expect(
+      [...generateBuilds(defaultRequest(), E(c))].some(
+        (b) => b.equips.bronze === c.orbs[0]!.id,
+      ),
+    ).toBe(false);
+  });
   it('rejects unsupported item mechanics and invalid/unknown effect fields', () => {
     const c = cloneCatalog();
     const orb = c.orbs[0]!;

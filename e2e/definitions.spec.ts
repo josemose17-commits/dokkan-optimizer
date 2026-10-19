@@ -88,7 +88,7 @@ test('another state shares a card ID without overwriting the original state', as
 const importInput = (page: Page) =>
   page.getByLabel('Import definition library (JSON, ≤1 MiB)');
 async function newCharacter(page: Page) {
-  await page.goto('./');
+  await page.goto('?workbench=definitions');
   await page
     .getByRole('button', { name: 'New character', exact: true })
     .click();
@@ -252,7 +252,7 @@ test('missing condition context is unavailable and numeric errors block actions'
 test('imports are previewed; conflicts copy explicitly and script wording stays inert', async ({
   page,
 }) => {
-  await page.goto('./');
+  await page.goto('?workbench=definitions');
   await importInput(page).setInputFiles(
     file({ schemaVersion: 2, documents: [] }),
   );
@@ -385,7 +385,7 @@ test('old saved builds stay byte-for-byte intact while the editor works', async 
     },
     [WORKING_KEY, LIBRARY_KEY, LEGACY_KEY],
   );
-  await page.goto('./');
+  await page.goto('?workbench=definitions');
   await page
     .getByRole('button', { name: 'New character', exact: true })
     .click();
@@ -401,7 +401,7 @@ test('old saved builds stay byte-for-byte intact while the editor works', async 
 test('unreadable future storage is preserved; recovery export remains available', async ({
   page,
 }) => {
-  await page.goto('./');
+  await page.goto('?workbench=definitions');
   await page.evaluate(
     (key) => localStorage.setItem(key, '{"schemaVersion":99}'),
     DEFINITION_KEY,
@@ -436,7 +436,7 @@ test('unknown effects remain saveable and visibly stop modeled stat claims', asy
     description: 'TEST ONLY unknown mechanic',
     stat: null,
   });
-  await page.goto('./');
+  await page.goto('?workbench=definitions');
   await importInput(page).setInputFiles(file(incoming));
   await page
     .getByRole('dialog')

@@ -5,6 +5,7 @@ import CatalogBrowser from './characters/CatalogBrowser';
 import { catalogSnapshot } from './data/real/catalog';
 import { productionRegistry } from './data/real/character-build/registry';
 import DefinitionWorkbench from './character-definitions/DefinitionWorkbench';
+import PotentialOptimizer from './potential/PotentialOptimizer';
 
 export default function Workbench() {
   const legacy =
@@ -16,8 +17,9 @@ export default function Workbench() {
   const params = new URLSearchParams(window.location.search);
   const catalog =
     params.get('workbench') === 'catalog' ||
-    (!legacy && !builds && params.has('state'));
-  const definitions = !legacy && !builds && !catalog;
+    (params.get('workbench') === null && params.has('state'));
+  const definitions = params.get('workbench') === 'definitions';
+  const optimizer = !legacy && !builds && !catalog && !definitions;
   useEffect(() => {
     document.title = legacy
       ? 'Dokkan Team Lab · Legacy synthetic demo'
@@ -25,18 +27,26 @@ export default function Workbench() {
         ? 'Dokkan Character Builds · Build optimizer'
         : catalog
           ? 'Dokkan Character Catalog · Admitted records'
-          : 'Dokkan Character Lab · Definitions and custom builds';
-  }, [legacy, builds, catalog]);
+          : definitions
+            ? 'Dokkan Character Lab · Definitions and custom builds'
+            : 'Dokkan Hidden Potential · Build recommendations';
+  }, [legacy, builds, catalog, definitions]);
   return (
     <>
       <header className="workbench-switch">
-        <strong>DOKKAN / CHARACTER LAB</strong>
+        <strong>DOKKAN / HIDDEN POTENTIAL</strong>
         <nav aria-label="Workbench">
           <a
             href={import.meta.env.BASE_URL}
+            aria-current={optimizer ? 'page' : undefined}
+          >
+            Hidden Potential optimizer
+          </a>
+          <a
+            href={`${import.meta.env.BASE_URL}?workbench=definitions`}
             aria-current={definitions ? 'page' : undefined}
           >
-            Character editor
+            Character maintenance
           </a>
           <a
             href={`${import.meta.env.BASE_URL}?workbench=catalog`}
@@ -67,8 +77,13 @@ export default function Workbench() {
         />
       ) : catalog ? (
         <CatalogBrowser />
-      ) : (
+      ) : definitions ? (
         <DefinitionWorkbench />
+      ) : (
+        <PotentialOptimizer
+          snapshot={catalogSnapshot}
+          registry={productionRegistry}
+        />
       )}
     </>
   );

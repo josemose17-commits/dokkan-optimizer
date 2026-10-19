@@ -285,7 +285,9 @@ export function explainGroup(
       delta: deltaInfo(value, before, evaluation.metrics[metric].unit),
       relation,
       rank: group.rank,
-      tiedGroups: result.groups.filter((g) => g.rank === group.rank).length,
+      tiedGroups: result.groups.filter(
+        (g) => g.evaluation.metrics[metric].value === value,
+      ).length,
       distinctResults: result.groups.length,
     },
     frontier: {

@@ -36,6 +36,31 @@ export const gokuEntry: EvaluatorEntry = {
   // The original working-settings key and payload contract are unchanged.
   storageKey: WORKING_SETTINGS_KEY,
   defaults: defaultRequest,
+  recommendationSupport: Object.fromEntries(
+    AVAILABLE_METRICS.map((metric) => [
+      metric,
+      {
+        scope: ['attack', 'defense', 'hp'].includes(metric)
+          ? 'card-stat-only'
+          : 'initial-check-model',
+        evidenceIds: ['attack', 'defense', 'hp'].includes(metric)
+          ? ['card-stats', 'base-board', 'raw-stat-addition']
+          : [
+              'eza-kit',
+              metric === 'additionalSuper'
+                ? 'aa-initial-check'
+                : metric === 'critical'
+                  ? 'critical-check'
+                  : 'evasion-check',
+            ],
+        blockers: [],
+        excludes: [
+          'Damage, combat modifier stages and passive expiry',
+          'Full-turn attack chains and survival probability',
+        ],
+      },
+    ]),
+  ) as NonNullable<EvaluatorEntry['recommendationSupport']>,
 };
 
 export const productionRegistry: readonly EvaluatorEntry[] = [gokuEntry];

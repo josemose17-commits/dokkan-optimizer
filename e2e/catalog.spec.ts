@@ -76,10 +76,10 @@ test('details keep identity, stat layers and missing fields separate', async ({
 
   await details.getByRole('link', { name: 'Optimize this character' }).click();
   await expect(page).toHaveURL(
-    /\?workbench=character-build&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15$/,
+    /\?workbench=optimizer&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15$/,
   );
   await expect(
-    page.getByRole('heading', { name: /Optimize Super Saiyan 3 Goku/ }),
+    page.getByRole('heading', { name: /Find what to change/ }),
   ).toBeVisible();
 });
 

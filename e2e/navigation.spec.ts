@@ -7,11 +7,11 @@ test('navigation keeps the Pages prefix and marks the current page', async ({
 }) => {
   await page.goto('./');
   await expect(page).toHaveTitle(
-    'Dokkan Character Lab · Definitions and custom builds',
+    'Dokkan Hidden Potential · Build recommendations',
   );
   const nav = page.getByRole('navigation', { name: 'Workbench' });
   await expect(
-    nav.getByRole('link', { name: 'Character editor' }),
+    nav.getByRole('link', { name: 'Hidden Potential optimizer' }),
   ).toHaveAttribute('aria-current', 'page');
 
   await nav.getByRole('link', { name: 'Source build examples' }).click();
@@ -69,6 +69,7 @@ test('no page scrolls horizontally', async ({ page }) => {
   for (const path of [
     './',
     '?workbench=catalog',
+    '?workbench=definitions',
     '?workbench=character-build',
     GOKU_OPTIMIZER,
     '?workbench=legacy-team',
