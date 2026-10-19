@@ -1,5 +1,9 @@
 # First-unit evidence and release boundary
 
+## Catalog migration — 2026-10-19
+
+The provider-independent catalog reuses the existing admitted Goku facts and review dates; it adds no real card states or new source claims. Missing leader details, links and categories are explicit nulls. Raw stats and the 55% potential additions remain distinct. Snapshot creation does not imply a new source retrieval or independent verification. See [the catalog contract](../CATALOG.md). The limited evaluator, its probability assumptions and unresolved orb/graph gates are unchanged.
+
 Reviewed 2026-10-18. This record precedes character UI implementation. It records individual facts and original mathematical deductions, not a database import. No game artwork, calculator code, long card descriptions, or internal API responses are bundled.
 
 ## Three separate kinds of confidence

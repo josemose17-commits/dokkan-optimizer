@@ -1,5 +1,22 @@
 # Prototype validation
 
+## Provider-independent catalog — 2026-10-19
+
+Validated on Node **24.19.0**. No provider acquisition/research or new real records were involved. The bundled catalog contains the existing **1 card form / 1 exact EZA state**, with **6/11 complete detail fields, 2 partial and 3 missing**; there are no independently confirmed fields.
+
+- `npm test`: **173/173 passed**, five files: all **114 existing** tests plus **59 catalog contract/search/identity/provenance/update/compatibility tests**. Synthetic catalog fixtures are explicitly test-only. These passes do not verify actual game mechanics or source permissions.
+- `npm run typecheck`: **passed**.
+- `npm run build`: **passed**, including type checking; assets retain `/dokkan-optimizer/assets/`.
+- `npm run format:check`: **passed**.
+- Local CLI checks: **6/6 passed** — admitted-record export; actual one-card/one-state count; unknown provider total; overwrite refusal; compatible update report; sanitized malformed-JSON failure.
+- Production Chromium browser checks: **16/16 passed** at `/dokkan-optimizer/`, using desktop **1440 × 1050** and mobile **390 × 844**. Screenshots were visually inspected.
+
+Browser checks cover prefix assets and exclusion of new catalog fixtures; catalog landing/navigation; name/ID/type/rarity/awakening filters; unknown categories; exact state selection/reload/back/forward; raw/potential/equip/unavailable-battle stat layers; field references and uncaptured dates; unknown-state handling; byte-for-byte saved Goku preservation; the preserved limited comparison; legacy warning and 21 eligible teams; mobile overflow; unknown/corrupt/blocked storage; and absence of uncaught errors, provider requests or root-relative assets.
+
+The initial browser attempt hit an installed Chromium font-archive ownership/extraction error before running UI checks; its already-unpacked executable ran successfully afterward. The first UI run exposed select accessible-name ambiguity, fixed with explicit labels. A duplicate-name heading selector in the harness was scoped by heading level. The complete final run passed all 16 checks against the final production bundle. The browser harness/screenshots are task-workspace verification, not a new project dependency or CI browser suite.
+
+No provider-specific export schema, full source reconciliation, bulk-ingestion performance, physical-device/cross-browser behavior, full accessibility conformance, new probability/combat mechanics, merge or deployment was verified. See [catalog scope and commands](CATALOG.md).
+
 ## Primary character workbench — 2026-10-19 task validation
 
 Research snapshot dated 2026-10-18; validation completed during the task spanning the UTC date change. Node.js **24.19.0**, headless Chromium **153.0.8010.0**.

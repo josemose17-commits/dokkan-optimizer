@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && vite build",
     "preview": "vite preview",
+    "catalog:export": "node scripts/catalog.mjs export-admitted",
+    "catalog:validate": "node scripts/catalog.mjs validate",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

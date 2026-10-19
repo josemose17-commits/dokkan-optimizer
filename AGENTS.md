@@ -1,8 +1,13 @@
 # Project rules
 
-## Primary character workbench
+## Primary catalog and preserved character workbench
 
-- The character-build workbench is the primary product and default page. Preserve the synthetic team app as the clearly labeled legacy demo at `?workbench=legacy-team`; do not expand or rewrite it during character work.
+- The provider-independent character catalog is the default page. Preserve the existing limited comparison at `?workbench=character-build` and the synthetic team demo at `?workbench=legacy-team`. Do not expand their optimization scope during catalog work.
+- Dokkan Info is the preferred provider, but acquisition is paused pending an approved method. Do not scrape, probe endpoints, repeat the source review or treat provider preference as permission. No acquisition adapter is connected. Provider outreach requires explicit user authorization.
+- Keep `src/character-data/` independent of React, browser/storage and provider requests. Validate unknown normalized input before admission; a passing schema check is not a source review or permission grant. New adapters must be separate from contracts, search, identity and UI.
+- Card forms, EZA/SEZA states and data revisions are distinct identities. Never merge cards by name or infer source-ID conversions. Preserve exact saved Goku IDs and the existing build-catalog revision/storage contract. Report removed or reassigned IDs/aliases before accepting updates.
+- Only the existing admitted EZA Goku state is bundled in the catalog. Missing links/categories/leader details are null with reasons, not invented or documented empty lists. Test-only catalog fixtures stay in test imports and are rejected by normal validation. Do not present fixture counts as real coverage.
+- Show completeness separately from evidence and executable optimization support. A normalization date is not a retrieval/review date. Independent confirmation needs a dated evidence reference and review; tests and matching websites do not provide it. Raw stats, potential bonuses, flat equips and unknown battle stats remain separate.
 - Keep `src/character-build/{domain,legality,generation,evaluation,comparison}.ts` pure and independent of React, storage, network and data imports. Candidate generation stays separate from evaluation. Never reuse synthetic team ratings or formulas for character performance.
 - The admitted real slice is Global English AGL Mystery Super Technique Super Saiyan 3 Goku, fully EZA step 7 / level 140 / SA15, without SEZA, with the filled 55% no-dupe base board. Full node respec remains blocked on exact graph evidence. Do not add level sliders or guessed nodes. Test-only abstract graphs are not real game data.
 - Keep individual real facts in `src/data/real/`, separate from `src/data/fixtures/`. Records need stable internal IDs, honest source aliases, exact state, field-level evidence, support declarations and review/verification dates. A directory or `support: supported` flag does not imply game verification.
