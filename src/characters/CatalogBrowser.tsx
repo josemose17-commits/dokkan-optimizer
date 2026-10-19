@@ -292,9 +292,9 @@ function CatalogDetails({
             : `Declared by the file: ${state.optimization.status} — not offered in this app`}
         </h3>
         <p>{state.optimization.reason}</p>
-        {resolution?.ok && (
+        {isBundled && (
           <a className="catalog-action" href={recommendationHref(state.id)}>
-            Optimize this character
+            Open character workspace
           </a>
         )}
         {resolution &&
@@ -334,7 +334,15 @@ function CatalogDetails({
 const urlStateId = () =>
   new URLSearchParams(window.location.search).get('state');
 
-export default function CatalogBrowser() {
+export default function CatalogBrowser({
+  embedded = false,
+  initialState = null,
+  onChoose,
+}: {
+  embedded?: boolean;
+  initialState?: string | null;
+  onChoose?: (id: string) => void;
+} = {}) {
   const [session, setSession] = useState<SessionFile | null>(null);
   const snapshot = session?.snapshot ?? bundled;
   const isBundled = session === null;
@@ -343,8 +351,11 @@ export default function CatalogBrowser() {
   // Distinguishes snapshot switches so detail state never leaks across files.
   const [generation, setGeneration] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(
-    () => urlStateId() ?? bundled.states[0]?.id ?? null,
+    () => initialState ?? urlStateId() ?? bundled.states[0]?.id ?? null,
   );
+  useEffect(() => {
+    if (isBundled && initialState) setSelectedId(initialState);
+  }, [initialState, isBundled]);
   const bannerRef = useRef<HTMLDivElement>(null);
   const searchHeadingRef = useRef<HTMLHeadingElement>(null);
   const focusAfterSwitch = useRef<'banner' | 'search' | null>(null);
@@ -392,6 +403,10 @@ export default function CatalogBrowser() {
   const choose = (id: string) => {
     setSelectedId(id);
     if (!isBundled) return;
+    if (onChoose) {
+      onChoose(id);
+      return;
+    }
     const url = new URL(window.location.href);
     url.searchParams.set('state', id);
     window.history.pushState(null, '', url);
@@ -437,49 +452,54 @@ export default function CatalogBrowser() {
     });
   const remaining = rows.length - visible.length;
   return (
-    <main className="catalog-shell" id="character-catalog">
-      <header className="catalog-hero">
-        <div>
-          <p className="eyebrow">
-            CHARACTER CATALOG / PROVIDER-INDEPENDENT FOUNDATION
-          </p>
-          <h1>
-            Find a card.
-            <br />
-            <span>Know its exact state.</span>
-          </h1>
-          <p>
-            Inspect admitted facts, missing fields and their references.
-            Optimization support is tracked separately.
-          </p>
-        </div>
-        <div className="catalog-totals">
-          <strong>{counts.cards}</strong>
-          <span>
-            {isBundled
-              ? `ADMITTED CARD FORM${counts.cards === 1 ? '' : 'S'}`
-              : `CARD FORM${counts.cards === 1 ? '' : 'S'} IN SESSION FILE`}
-          </span>
-          <b>{plural(counts.states, 'awakening state')}</b>
-          <span>
-            {isBundled
-              ? 'NO EXPANDED REAL CATALOG'
-              : 'NOT ADMITTED OR REVIEWED'}
-          </span>
-        </div>
-      </header>
-      <div className="catalog-notice" role="note">
-        <strong>
-          Dokkan Info acquisition is paused pending an approved method.
-        </strong>
-        <p>
-          No provider import is connected. The bundled catalog holds{' '}
-          {plural(bundledCounts.cards, 'card form')} and{' '}
-          {plural(bundledCounts.states, 'exact state')}, each recorded
-          individually with field-level references; it is not a complete roster.
-          Synthetic catalog fixtures are confined to automated tests.
-        </p>
-      </div>
+    <div className="catalog-shell" id="character-catalog">
+      {!embedded && (
+        <>
+          <header className="catalog-hero">
+            <div>
+              <p className="eyebrow">
+                CHARACTER CATALOG / PROVIDER-INDEPENDENT FOUNDATION
+              </p>
+              <h1>
+                Find a card.
+                <br />
+                <span>Know its exact state.</span>
+              </h1>
+              <p>
+                Inspect admitted facts, missing fields and their references.
+                Optimization support is tracked separately.
+              </p>
+            </div>
+            <div className="catalog-totals">
+              <strong>{counts.cards}</strong>
+              <span>
+                {isBundled
+                  ? `ADMITTED CARD FORM${counts.cards === 1 ? '' : 'S'}`
+                  : `CARD FORM${counts.cards === 1 ? '' : 'S'} IN SESSION FILE`}
+              </span>
+              <b>{plural(counts.states, 'awakening state')}</b>
+              <span>
+                {isBundled
+                  ? 'NO EXPANDED REAL CATALOG'
+                  : 'NOT ADMITTED OR REVIEWED'}
+              </span>
+            </div>
+          </header>
+          <div className="catalog-notice" role="note">
+            <strong>
+              Dokkan Info acquisition is paused pending an approved method.
+            </strong>
+            <p>
+              No provider import is connected. The bundled catalog holds{' '}
+              {plural(bundledCounts.cards, 'card form')} and{' '}
+              {plural(bundledCounts.states, 'exact state')}, each recorded
+              individually with field-level references; it is not a complete
+              roster. Synthetic catalog fixtures are confined to automated
+              tests.
+            </p>
+          </div>
+        </>
+      )}
       {session && (
         <div
           className="catalog-session-banner"
@@ -779,6 +799,6 @@ export default function CatalogBrowser() {
           isBundled={isBundled}
         />
       </div>
-    </main>
+    </div>
   );
 }

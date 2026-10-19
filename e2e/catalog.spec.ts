@@ -15,8 +15,8 @@ test('search and filters use admitted fields, with an empty state and reset', as
 }) => {
   await page.goto('?workbench=catalog');
   const count = page.locator('.catalog-result-count');
-  // One card form with two exact states (EZA and the pre-EZA base state).
-  await expect(count).toHaveText('1 card form · 2 matching states');
+  // Two card forms; Goku has two states and Gohan has one kit-guidance state.
+  await expect(count).toHaveText('2 card forms · 3 matching states');
 
   await page.getByLabel('Name, title or ID').fill('mystery GOKU');
   await expect(count).toHaveText('1 card form · 2 matching states');
@@ -28,13 +28,13 @@ test('search and filters use admitted fields, with an empty state and reset', as
 
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.getByLabel('Name, title or ID')).toHaveValue('');
-  await expect(count).toHaveText('1 card form · 2 matching states');
+  await expect(count).toHaveText('2 card forms · 3 matching states');
 
   await page
     .getByLabel('Optimization support', { exact: true })
     .selectOption('unavailable');
-  // Only the base state lacks an evaluator.
-  await expect(count).toHaveText('1 card form · 1 matching state');
+  // Base Goku and kit-guidance Gohan both lack a numerical evaluator.
+  await expect(count).toHaveText('2 card forms · 2 matching states');
   await page
     .getByLabel('Optimization support', { exact: true })
     .selectOption('limited');
@@ -76,13 +76,13 @@ test('details keep identity, stat layers and missing fields separate', async ({
   );
   await expect(details).toContainText('0 independently confirmed');
 
-  await details.getByRole('link', { name: 'Optimize this character' }).click();
+  await details.getByRole('link', { name: 'Open character workspace' }).click();
   await expect(page).toHaveURL(
     /\?workbench=optimizer&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15$/,
   );
   await expect(
     page.getByRole('heading', {
-      name: 'Find the best Hidden Potential build.',
+      name: 'Build around the character’s kit.',
     }),
   ).toBeVisible();
   // The optimizer opens on the same exact state.
@@ -95,13 +95,18 @@ test('exact state URLs survive reload and history; unknown states are not substi
   page,
 }) => {
   await page.goto('?workbench=catalog');
-  await page.getByRole('button', { name: /EZA step 7/ }).click();
+  await page
+    .locator('#character-catalog')
+    .getByRole('button', { name: /EZA step 7/ })
+    .click();
   await expect(page).toHaveURL(
     new RegExp(`state=${encodeURIComponent(STATE_ID)}`),
   );
   await page.reload();
   await expect(
-    page.getByRole('button', { name: /EZA step 7/ }),
+    page
+      .locator('#character-catalog')
+      .getByRole('button', { name: /EZA step 7/ }),
   ).toHaveAttribute('aria-pressed', 'true');
 
   await page.goto(`./?state=${encodeURIComponent('global-en:1003211:seza-1')}`);
@@ -193,7 +198,7 @@ test('local catalog files are validated as data and browsed only for the session
     .click();
   await expect(banner).toHaveCount(0);
   await expect(
-    page.getByRole('link', { name: 'Optimize this character' }),
+    page.getByRole('link', { name: 'Open character workspace' }),
   ).toBeVisible();
 });
 
@@ -222,8 +227,8 @@ test('the individually recorded base state shows its own facts and why it cannot
   );
   // Same card as the EZA state with an evaluator, but none is borrowed.
   await expect(
-    details.getByRole('link', { name: 'Optimize this character' }),
-  ).toHaveCount(0);
+    details.getByRole('link', { name: 'Open character workspace' }),
+  ).toBeVisible();
   const rawField = details
     .locator('.catalog-field')
     .filter({ hasText: 'HP 9,500 · ATK 8,672 · DEF 4,623' });

@@ -1,5 +1,5 @@
 import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { browserStorage } from '../storage/collection';
+import { browserStorage } from '../storage/browser';
 import ConfirmDialog from './ConfirmDialog';
 import { download } from './download';
 import { SLOTS, type BuildRequest, type EvaluatorEntry } from './domain';

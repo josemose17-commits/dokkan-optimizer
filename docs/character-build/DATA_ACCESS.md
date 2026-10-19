@@ -55,3 +55,11 @@ Missing bulk-dataset permission is **not treated as proof that individual numeri
 Maintain this small source-linked numerical snapshot manually. Pin its revision. Review game/card/orb changes and terms before updating; retain evidence per field and record disagreements. Add independent game captures or independent research methods with dates before promoting confidence. Do not infer independence from two websites or successful math tests. No live adapter is required for this slice.
 
 A future compiled-dataset adapter requires a documented access grant, permitted fields, redistribution/caching scope and update cadence. Permission for code alone does not license a dataset or game media. No contact messages, account registrations or permission requests were sent.
+
+## Individual Gohan kit facts — 2026-10-19
+
+Public readable [FYI 1020091](https://dokkan.fyi/characters/1020091) and [DokkanStats 1020091](https://dokkanstats.com/en/cards/1020091.html) were inspected for one EZA kit. The repo includes original short factual summaries and selected individual values with field references; no long descriptive content, artwork, calculator code or compiled database is copied. Independent upstream sourcing is unestablished. English text does not establish region.
+
+Direct host HTML/robots requests returned 403, so no raw response, source hash or right to bulk extraction is claimed; no alternative fingerprint, private endpoint or access-control workaround was used. Browser-readable facts and bulk dataset reuse are distinct questions. A data license/bulk permission remains null, not a presumed grant. No public data snapshot beyond the authored normalized individual observations is imported.
+
+The separate broad-catalog gate remains the approved Dokkan Info export/schema/revision and terms for caching, public repository/Pages redistribution and updates. No renewed provider audit, API credentials, purchase or contact is part of this implementation.

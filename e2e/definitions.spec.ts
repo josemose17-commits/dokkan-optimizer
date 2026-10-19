@@ -342,7 +342,11 @@ test('unsaved navigation can be canceled and a copied catalog state is detached'
   page,
 }) => {
   await newCharacter(page);
-  await page.getByRole('link', { name: 'Characters', exact: true }).click();
+  if ((await page.locator('.app-menu').getAttribute('open')) === null)
+    await page.getByText('Menu', { exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Character details and catalog import' })
+    .click();
   const dialog = page.getByRole('dialog', { name: 'Discard unsaved changes?' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -364,10 +368,14 @@ test('unsaved navigation can be canceled and a copied catalog state is detached'
     page.getByLabel('Hidden Potential additions ATK', { exact: true }),
   ).toHaveValue('');
   await page.getByRole('button', { name: 'Save as new revision' }).click();
-  await page.getByRole('link', { name: 'Characters', exact: true }).click();
+  if ((await page.locator('.app-menu').getAttribute('open')) === null)
+    await page.getByText('Menu', { exact: true }).click();
+  await page
+    .getByRole('link', { name: 'Character details and catalog import' })
+    .click();
   // Saving a user copy never adds to the bundled catalog (EZA + base state).
   await expect(page.locator('.catalog-result-count')).toHaveText(
-    '1 card form · 2 matching states',
+    '2 card forms · 3 matching states',
   );
 });
 

@@ -9,7 +9,7 @@ import {
 } from './fixtures';
 
 // The primary optimizer: character → current build → goal → result.
-const OPTIMIZER = `?workbench=optimizer&state=${encodeURIComponent(GOKU_STATE)}`;
+const OPTIMIZER = `?workbench=optimizer&state=${encodeURIComponent(GOKU_STATE)}&saved=1`;
 const BASE_STATE = 'unknown-region:1003211:base:lv120:sa10';
 const output = (page: Page) =>
   page.getByRole('region', { name: 'Optimize and result' });
@@ -25,7 +25,7 @@ test('the main journey: character, current build, goal, result, save and reload'
   await page.goto('./');
   await expect(page).toHaveTitle('Dokkan Potential Optimizer');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Find the best Hidden Potential build.',
+    'Build around the character’s kit.',
   );
   await page
     .getByRole('button', { name: /^Super Saiyan 3 Goku · AGL UR · EZA step 7/ })
@@ -100,10 +100,16 @@ test('the main journey: character, current build, goal, result, save and reload'
   );
 
   // Save, reload and load: the exact state and inputs come back.
+  await page
+    .getByText('Saved builds · save, load or export', { exact: true })
+    .click();
   await page.getByLabel('Name for the current settings').fill('Crit swap');
   await page.getByRole('button', { name: 'Save build', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('Saved “Crit swap”.');
   await page.reload();
+  await page
+    .getByText('Saved builds · save, load or export', { exact: true })
+    .click();
   await expect(page.getByLabel('Character and exact state')).toHaveValue(
     GOKU_STATE,
   );
@@ -253,14 +259,14 @@ test('an unsupported state is explained before any search, without substitution'
     'State not-a-real-state is not in this catalog. No other state is substituted.',
   );
   await refusal
-    .getByRole('link', { name: /^Optimize Super Saiyan 3 Goku/ })
+    .getByRole('link', { name: /^Compare equipment for Super Saiyan 3 Goku/ })
     .click();
   await expect(page.getByLabel('Character and exact state')).toHaveValue(
     GOKU_STATE,
   );
 });
 
-test('saved builds stay compatible with the source examples and older settings', async ({
+test('saved builds stay compatible with the consolidated workspace and older settings', async ({
   page,
 }) => {
   await page.goto(OPTIMIZER);
@@ -295,18 +301,21 @@ test('saved builds stay compatible with the source examples and older settings',
     .getByRole('dialog')
     .getByRole('button', { name: 'Load build', exact: true })
     .click();
-  await expect(page.getByLabel('Current bronze equip')).toHaveValue(
+  await expect(page.getByLabel('Current bronze equipment')).toHaveValue(
     'agl:bronze:hp:5',
   );
-  // Entered values cannot be shown by the source example, so it refuses them.
+  // The retired source URL now shares the same workspace and can load
+  // entered values completely; there is no second partial loader.
+  await page
+    .getByRole('button', { name: 'Load My values', exact: true })
+    .click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Load build', exact: true })
+    .click();
   await expect(
-    page.getByRole('button', { name: 'Load My values', exact: true }),
-  ).toBeDisabled();
-  await expect(
-    page.getByText(
-      'Uses your own potential values, which this source example cannot show. Open it in the optimizer.',
-    ),
-  ).toBeVisible();
+    page.getByRole('radio', { name: 'My current values' }),
+  ).toBeChecked();
 });
 
 test('keyboard users can choose a goal and optimize; results fit the screen', async ({

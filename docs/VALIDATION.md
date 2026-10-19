@@ -1,3 +1,24 @@
+# Validation
+
+## Approved kit-guidance slice — 2026-10-19
+
+Base inspected: `888ca10e310d1579ff98c384f23aab7fa899df5d` on main. Feature: `codex/kit-guided-recommendations`. This is implementation of reviewed Gohan kit advice and the approved workspace consolidation, **not** completion of the multi-allocation milestone.
+
+Actual final local checks on Node **24.19.0**:
+
+- `npm test`: **408 passed**, 15 files. Includes 25 reviewed-kit/policy/identity tests and 3 primary-render tests; relevant existing allocation, calculation, Pareto, schema, authoring, save and import tests pass. Demo-only and duplicate-screen tests were intentionally retired, not counted as retained coverage.
+- `npm run typecheck`: passed.
+- `npm run format:check`: passed.
+- `npm run build`: passed; Vite production assets use `/dokkan-optimizer/`.
+- Full checked-in Playwright suite: **76 passed**, desktop 1366×900 and mobile 390×844, against the final `dist/` under `/dokkan-optimizer/`. Local container used Chromium 153 and a temporary external launch configuration; test cases/projects were unchanged. Missing local graphics libraries were prepared outside the repository. The standard CI workflow uses Playwright's installed Chromium.
+- Browser coverage: Gohan assignment/emphasis/priority override/conflicts and evidence gates; retained Goku values/ties/truncation/trace; old source URLs; catalog search/state/history/session imports; saved-build load/export/import/stale/unknown data and tab conflicts; corrupt/blocked storage; maintenance and byte-for-byte older-key preservation. Tests reject console/page errors, failed/external requests and assets outside the prefix. No horizontal page overflow in either viewport.
+- Production scripts contain no test-only characters, choice-graph fixtures, team generator or synthetic-demo warning. No package/lockfile, Node requirement, Pages base/workflow or hosting change.
+- Full final diff self-review checked source/state admission, condition handling and policy scope, exact-ID and save compatibility, removed production imports, unknown-item labels, no assumed graph or fake winner, no raw downloaded source/assets/credentials/user saves/generated files. Two source wording disagreements stay explicit. No independent game-mechanics confirmation is inferred from the tests.
+
+Result boundary: **1 reviewed Gohan policy, 0 new exact attainable-allocation comparisons/winners**, no Gohan baseline improvement, damage or survival calculation. Goku remains one documented allocation × up to 16 equip combinations (or entered current totals, board requirements unchecked). The kit record and numerical evaluator remain separate.
+
+No merge or deployment is part of this delivery. CI status is reported on the implementation PR; the local results above do not assert a live production update.
+
 # Prototype validation
 
 ## Dokkan Potential Optimizer rework — 2026-10-19

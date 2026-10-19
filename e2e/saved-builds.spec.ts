@@ -4,11 +4,13 @@ import { expect, LIBRARY_KEY, test, GOKU_OPTIMIZER } from './fixtures';
 
 const open = async (page: Page) => {
   await page.goto(GOKU_OPTIMIZER);
-  await expect(page.locator('.cb-search')).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Your saved builds' }),
+  ).toBeVisible();
 };
 const library = (page: Page) =>
   page.getByRole('region', { name: 'Your saved builds' });
-const silver = (page: Page) => page.getByLabel('Current silver equip');
+const silver = (page: Page) => page.getByLabel('Current silver equipment');
 async function saveAs(page: Page, name: string) {
   await library(page).getByLabel('Name for the current settings').fill(name);
   await library(page).getByRole('button', { name: 'Save build' }).click();
@@ -88,10 +90,9 @@ test('JSON export restores builds and working settings in a fresh profile', asyn
 }) => {
   await open(page);
   await silver(page).selectOption({ label: 'Critical Hit +2 · silver' });
-  await page.getByLabel('Use my inventory quantities').check();
-  await page
-    .getByLabel('Unequipped copies: AGL ATK +500 · bronze Lv.5')
-    .fill('3');
+  await page.getByRole('radio', { name: 'Use my equipment' }).check();
+  await page.getByText('Edit spare items', { exact: true }).click();
+  await page.getByLabel('AGL ATK +500 · bronze Lv.5 spare copies').fill('3');
   await saveAs(page, 'Inventory crit');
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export JSON' }).click();
@@ -126,8 +127,9 @@ test('JSON export restores builds and working settings in a fresh profile', asyn
   await review.getByLabel(/Also replace my working settings/).check();
   await review.getByRole('button', { name: 'Import 1 build' }).click();
   await expect(silver(other)).toHaveValue('generic:silver:critical:2');
+  await other.getByText('Edit spare items', { exact: true }).click();
   await expect(
-    other.getByLabel('Unequipped copies: AGL ATK +500 · bronze Lv.5'),
+    other.getByLabel('AGL ATK +500 · bronze Lv.5 spare copies'),
   ).toHaveValue('3');
   await expect(library(other).getByRole('status')).toContainText(
     'Added 1 build',
@@ -246,7 +248,8 @@ test('export never includes a hidden value behind an invalid field', async ({
   page,
 }) => {
   await open(page);
-  await page.getByLabel('Candidate limit').fill('');
+  await page.getByText('Advanced search settings', { exact: true }).click();
+  await page.getByLabel('Maximum evaluations').fill('');
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export JSON' }).click();
   const bundle = JSON.parse(
