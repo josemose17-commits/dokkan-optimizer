@@ -11,11 +11,19 @@ on:
 permissions:
   contents: read
 
+# One run per ref at a time. Superseded pull-request runs are cancelled.
+# Runs on main are queued, never cancelled mid-deployment; the deploy job
+# below additionally refuses to publish a revision that is no longer main.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
+    # Name kept stable so existing required-check settings keep matching.
     name: Test and build (Node 24)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -31,12 +39,24 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Run automated tests
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run unit tests
         run: npm test
 
-      # npm run build also runs the project's strict TypeScript check.
+      # npm run build also runs the project's strict TypeScript check
+      # (including the browser-test sources).
       - name: Type check and build production assets
         run: npm run build
+
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+
+      # Serves the dist/ built above under /dokkan-optimizer/: the browser
+      # tests exercise exactly the files that are uploaded next.
+      - name: Run browser tests against this build
+        run: npx playwright test
 
       - name: Upload dist for GitHub Pages
         if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
@@ -51,6 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
@@ -61,9 +82,28 @@ jobs:
       group: github-pages
       cancel-in-progress: false
     steps:
+      # A newer main commit has its own run queued behind this one. Publishing
+      # this older artifact could overwrite a newer deployment, or outlive a
+      # newer run that failed validation, so only the current head deploys.
+      - name: Confirm this revision is still the head of main
+        id: head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          current="$(gh api "repos/${REPOSITORY}/commits/main" --jq .sha)"
+          if [ "$current" = "$GITHUB_SHA" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::main is now ${current}; ${GITHUB_SHA} was validated but is not deployed."
+          fi
+
       - name: Configure GitHub Pages
+        if: ${{ steps.head.outputs.deploy == 'true' }}
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
       - name: Deploy built artifact
         id: deployment
+        if: ${{ steps.head.outputs.deploy == 'true' }}
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

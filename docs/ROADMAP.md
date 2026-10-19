@@ -50,7 +50,8 @@ Status on branch `claude/tender-maxwell-o43x7j`, 2026-10-19. A checked item is i
 ### Testing and CI
 
 - [x] Checked-in Playwright suite (`npm run test:e2e`) on desktop 1366×900 and mobile 390×844 against the production build under `/dokkan-optimizer/`.
-- [x] Separate `Browser tests` workflow for pull requests and main. The Pages deploy workflow is unchanged, so browser tests do not gate deployment.
+- [x] One validation job (format, unit, types, build, browser tests on the built `dist/`) gates the Pages artifact. The deploy job publishes only if its revision is still the head of `main` ([deployment](DEPLOYMENT.md)).
+- [ ] Owner action: require the **Test and build (Node 24)** check on `main` so failing PRs cannot be merged. The workflow alone gates publication, not merging.
 
 ## Blocked outside this repository
 
