@@ -336,6 +336,7 @@ export function assessCatalogUpdate(
         'region',
         'gameVersion',
         'potentialProfiles',
+        'reportedStats',
         'optimization',
       ] as const
     ).filter((key) => JSON.stringify(old[key]) !== JSON.stringify(state[key]));

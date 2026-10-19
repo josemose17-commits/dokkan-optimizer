@@ -358,6 +358,7 @@ export function validateCatalog(
         'gameVersion',
         'fields',
         'potentialProfiles',
+        'reportedStats',
         'optimization',
       ],
       p,
@@ -406,6 +407,46 @@ export function validateCatalog(
         stats,
       );
     });
+    if ('reportedStats' in state) {
+      const tables = list(state.reportedStats, `${p}.reportedStats`);
+      ids(tables, `${p}.reportedStats`);
+      tables.forEach((table, j) => {
+        const q = `${p}.reportedStats[${j}]`;
+        known(
+          table,
+          [
+            'id',
+            'label',
+            'level',
+            'potentialPercent',
+            'dupeRoutes',
+            'note',
+            'totals',
+          ],
+          q,
+        );
+        check(text(table.label) && text(table.note), q);
+        check(
+          table.level === null ||
+            (integer(table.level) && table.level > 0 && table.level <= 200),
+          `${q}.level`,
+        );
+        check(
+          table.potentialPercent === null ||
+            (typeof table.potentialPercent === 'number' &&
+              Number.isFinite(table.potentialPercent) &&
+              table.potentialPercent >= 0 &&
+              table.potentialPercent <= 100),
+          `${q}.potentialPercent`,
+        );
+        check(
+          table.dupeRoutes === null ||
+            (integer(table.dupeRoutes) && table.dupeRoutes <= 4),
+          `${q}.dupeRoutes`,
+        );
+        fact(table.totals, `${q}.totals`, stats);
+      });
+    }
     if (!object(state.optimization))
       fail(`${p}.optimization`, 'object required');
     else {

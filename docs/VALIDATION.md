@@ -1,5 +1,23 @@
 # Validation
 
+## Historical UR/LR catalog — 2026-10-19
+
+Base: main `a2bdd314abdd45d37eb66f297aa420ce2c79212c` (user-merged PR #13). Feature: `codex/ur-lr-catalog`. This is a working factual catalog import, not new allocation/evaluation support.
+
+Actual local checks on Node **24.19.0**:
+
+- Representative source mapping first: **4 passed** (6 unrelated tests intentionally not selected in that focused run). Expectations are independently listed from the inspected rows: ordinary LR, EZA-bearing LR, mixed-scope Goku, repeated/conflicting IDs and incomplete cards.
+- Full `npm test`: **418 passed / 16 files**. Ten new tests cover mappings, all-source reconciliation, no lower rarities, identity/state separation, null progression/evidence, search/filtering, source-table isolation, closed-schema rejection, update reporting and unchanged saves/evaluator bindings.
+- Type checking, production build, formatting and whitespace checks: passed. Vite retains `/dokkan-optimizer/`. The catalog increases the main JavaScript to about **1.08 MB / 237 kB gzip**, producing Vite's chunk-size warning; no artificial warning threshold change. This bounded historical import is not a scalability benchmark for a modern full roster.
+- Production browser suite: **82 passed**, desktop 1366×900 and mobile 390×844, Chromium153 using the external local launch configuration. CI uses the checked-in standard Playwright browser. Coverage includes source search/filter/pagination, exact base/EZA URLs, unknown levels/stat scope, no inferred SEZA, source columns, license download and explicit exclusions. All existing guidance/comparison/import/storage tests pass. Browser guards reject console/page errors, failed/external requests and assets outside the prefix.
+- Visually inspected the new source stat table in desktop/mobile production screenshots; no page overflow. Wide tables scroll within their existing wrapper on mobile.
+- Local projection reproduction: pinned original JSON's Git blob and 1,819,153-byte length matched; generated projection equals the bundled factual JSON. Local normalized export/validation passed at **794 identities / 1,109 states**, below the 20 MiB import limit. No provider requests occur in the projection script or app.
+- Final review covers every changed code path, factual allowlist/pin, license/attribution, manifest exclusions, exact-state and save compatibility, unsafe source-text omission and no inferred graphs/profiles/evaluators. No raw source prose, credentials, artwork, dependencies, browser binaries, personal saves or `dist/` are committed.
+
+Reconciliation: **796 source rows → 793 accepted rows → 792 source identities (679 UR / 113 LR), 1,106 states (792 base / 314 EZA)**. Two conflicting-ID rows and one material excluded; 125 embedded forms reported without guessed mappings. Adding the 2 reviewed identities / 3 states yields 794 / 1,109. Source snapshot is January2023; this does not establish current-game completeness, every duplicate percentage, complete effect details, legal allocations or independently confirmed game mechanics. No new combat/allocation winner is claimed.
+
+Feature PR only; no merge/deployment. Actual latest-head CI status is reported on the PR and in the delivery message. Earlier sections below are historical validation, not current coverage.
+
 ## Approved kit-guidance slice — 2026-10-19
 
 Base inspected: `888ca10e310d1579ff98c384f23aab7fa899df5d` on main. Feature: `codex/kit-guided-recommendations`. This is implementation of reviewed Gohan kit advice and the approved workspace consolidation, **not** completion of the multi-allocation milestone.

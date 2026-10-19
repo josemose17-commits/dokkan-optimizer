@@ -2,12 +2,18 @@
 
 **Character kit → intended slot and role → potential emphasis → equip priorities → explanation.** One primary workspace, with factual browsing, saved builds and maintenance kept secondary.
 
-Today’s new result is **reviewed kit guidance**, not a complete potential-allocation recommendation:
+The searchable catalog now includes a **historical UR/LR factual import**, alongside the existing reviewed kit guidance and limited Goku comparison. It is not a complete current roster or full potential-allocation optimizer.
+
+- **Catalog:** 792 source identities (679 UR, 113 LR) from MNprojects/DokkanAPI’s published January 2023 JSON, plus 2 separately reviewed identities. Combined: **794 catalog identities / 1,109 recorded states**. Source aliases are not guessed into the reviewed IDs; matching names may appear separately.
+- **Hidden Potential details:** source-reported base/max/free-dupe/rainbow stat columns are visible with field references. The export does not establish every duplicate percentage, intermediate profile, choice node or route. These remain unknown, not interpolated. No new character receives numerical optimization support from inclusion in the catalog.
+- **Evidence and reuse:** factual projection only, under the published repository AGPL-3.0 notice; credit MNprojects/Michael Nash and upstream Wiki contributors. No artwork or copied skill descriptions. See the [dataset notice and license](src/data/real/mnprojects/NOTICE.md), [provenance/reconciliation manifest](src/data/real/mnprojects/manifest.json), and [catalog/update guide](docs/CATALOG.md).
+
+Existing supported features remain:
 
 - **TEQ UR EZA Gohan (Teen), “Power Beyond the Extremes”, untransformed, Lv140 / SA15.** Intended slot 1, main rotation, defensive buildup; Additional-led priorities from guard before attacking and lasting Super DEF effects. This is a documented design judgment, not a numerical damage/survival optimum. An opening-protection override explains the different tradeoff. Region and numeric EZA step are unestablished, not guessed.
 - **Cannot recommend exact levels or items yet:** no complete attainable allocation set is bound to this state/progression, compatible items are not admitted, and attack-chain/guard-trigger interactions remain unresolved. No baseline improvement is claimed for Gohan. There are **0 complete real board templates** and **0 new exact allocation winners**.
 - **Existing Goku comparison retained:** AGL UR EZA Super Saiyan 3 Goku, Global English, step 7, Lv140 / SA15. One fixed 55% no-duplicate profile (AA5), or entered current totals whose board requirements are not checked, combined with 3 bronze and 3 unresolved silver records. Card stat objectives and experimental initial-check probabilities remain separate from damage/survival. This is a limited progression-profile/equipment comparison.
-- **Actual coverage:** 2 individually recorded card identities, 3 exact states (2 EZA, 1 pre-EZA, 0 SEZA), 1 numerical evaluator. Neither card is a complete factual record. No expanded provider catalog or verified-only equipment mode exists. Test fixtures do not ship as characters.
+- **Optimization coverage:** 1 numerical evaluator, 1 reviewed Gohan kit-guidance policy, 0 complete real allocation templates. Historical imports have partial details and no evaluator. No verified-only equipment mode exists; unresolved silver items remain labeled. Test fixtures do not ship as characters.
 
 The synthetic team demo and duplicate source-example screen have been retired. Old URLs return intentionally to the workspace. Old browser storage is **not deleted or migrated**. Git history preserves the demo.
 
@@ -54,13 +60,25 @@ Storage contracts remain `dokkan.character-builds.v1` (Goku working copy), `dokk
 
 **Search characters and inspect details** integrates the existing search, exact-state details, stat layers, completeness, references and session-only normalized import. **Menu** holds maintenance/import and sources. Descriptive records do not acquire executable support by being imported. Raw stats, potential additions, flat equips and unknown battle stats remain separate.
 
+## Browse the UR/LR catalog
+
+1. Open **Search characters and inspect details** (`/dokkan-optimizer/?workbench=catalog`). Search by name/ID, type, rarity, category or awakening state. Results are paginated in groups of 50.
+2. Search `Broly Cheelai`, filter **LR / PHY / Joined Forces**, and select the base state. Inspect raw stats, separate historical stat columns, unknown potential percentages, field references and unavailable optimization support.
+3. Search `mnprojects:card:11168` and select **EZA**. Unknown level/SA/raw-stat scope stays unavailable; no SEZA state is invented. Reviewed Goku/Gohan quick picks retain their original IDs and behavior.
+
+The import reconciles **796 rows**: **793 accepted**, **3 excluded** (two conflicting-ID rows and one Zeni material). One duplicate identity shares two reported tables. **125 embedded forms** lack complete mappings and are reported without counting them as additional characters. Imported states: **792 base + 314 EZA = 1,106**, with no SEZA. Combined states: **793 base + 316 EZA = 1,109**. These are catalog entries, not a count of unique current-game cards, fully completed records or all awakening forms.
+
+The source’s EZA descriptions establish a revision exists, not its exact level/step or stat scope. Source-reported total columns never become raw stats, potential additions or battle stats by inference. Copied effects with missing icons/footnotes are omitted. Source documentation is not independent in-game confirmation. The production bundle includes a license download and visible attribution; it makes no API call.
+
 ## Data and remaining gates
 
-Dokkan Info bulk acquisition remains paused. The precise external requirement is a **provider-approved text export with schema/revision and terms for build-time caching, public GitHub/Pages distribution and updates**. No approved sample has been supplied. No provider was contacted, no credentials/purchase requested and no bulk extraction, artwork or calculator implementation copied.
+The pinned MNprojects JSON supplies the historical catalog through a separate build-time adapter. No live service, subscription or account is required. Updates require a reviewed new pin, reconciliation and saved-ID compatibility checks; see [catalog commands](docs/CATALOG.md).
+
+A fresh Dokkan Info bulk acquisition remains paused. The precise external requirement is a **provider-approved text export with schema/revision and terms for build-time caching, public GitHub/Pages distribution and updates**. No approved sample has been supplied. No provider was contacted, no credentials/purchase requested and no Dokkan Info bulk extraction, artwork or calculator implementation copied.
 
 Individual Gohan facts are manually paraphrased from public readable references; no dataset license or bulk permission is implied. Direct host HTML/robots requests returned 403, so no raw-page hash is claimed or access control bypassed. All independent-confirmation fields are null. See [access notes](docs/character-build/DATA_ACCESS.md).
 
-Future work: establish one complete attainable set/card mapping and progression prerequisites, admit compatible equipment with resolved restrictions, and verify any attack/check/event rules needed for numerical objectives. Broader catalog ingestion is independent of that work. Collection-wide equip allocation, resource optimization and full battle simulation remain deferred.
+Future work: establish one complete attainable set/card mapping and progression prerequisites, admit compatible equipment with resolved restrictions, and verify any attack/check/event rules needed for numerical objectives. A current comprehensive roster still requires a fresh permitted export; it is independent of allocation-engine work. Collection-wide equip allocation, resource optimization and full battle simulation remain deferred.
 
 ## GitHub Pages
 

@@ -1,5 +1,13 @@
 # Character snapshot: access and reuse assessment
 
+## Published historical UR/LR import — 2026-10-19
+
+The user's UR-and-up catalog request now admits a **factual projection of the actual published MNprojects/DokkanAPI repository JSON**, not a Dokkan Info integration. The pinned file, README, record schema, license and representative records were inspected before normalization. Access used the public GitHub blob; no live GraphQL dependency, private endpoint, scraping, credentials or purchase. Repository commit: `c28a0248e36d97ebb678345d97be746f5f98d656` (2023-01-22), data blob `e42a9904720b956e7406d79cee74d497a7578a58`.
+
+The README expressly offers the JSON for API consumption and credits upstream Dragon Ball Z Dokkan Battle Wiki contributors. The published root license is AGPL-3.0 with no data-file exception observed. The factual projection retains that notice/license, the original author/upstream attribution and the pinned source/modification manifest. Code licensing is not independent verification of dataset provenance or game behavior, nor a grant over game art/all upstream expressive text. Skill descriptions, missing-icon text, footnotes, artwork URLs and source implementation are deliberately excluded. No application-wide relicensing claim is made. See the [full dataset notice](../../src/data/real/mnprojects/NOTICE.md).
+
+This source is old/inconsistent and does not resolve the allocation graph, intermediate duplicate profiles or current-game roster. Source-documented facts have null independent confirmation. Three excluded rows and 125 unmapped embedded forms are explicitly reported. A future source update needs a new reviewed pin, reuse assessment and reconciliation; no silent updater is enabled. Dokkan Info remains paused pending an approved export/schema and caching/public-distribution/update terms. This paragraph supersedes the earlier no-bulk-import status **only for this published factual source**; the earlier research entries below remain historical.
+
 ## Individual record research — 2026-10-19
 
 On the user's request, this assessed whether a few individual factual records could be documented from permitted public pages. It was not bulk acquisition. Rules followed:
