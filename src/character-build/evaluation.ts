@@ -14,6 +14,7 @@ import {
   type Skills,
   type Stats,
 } from './domain';
+import { potentialContributions } from './allocation';
 import { buildErrors, requestErrors } from './legality';
 
 export function hiddenPotentialChance(level: number, skill: Skill): number {
@@ -58,7 +59,7 @@ export function evaluateBuild(
     ...buildErrors(build, request, catalog),
   ];
   if (errors.length) throw new Error(errors.join(' '));
-  const { card, profile } = catalog;
+  const { card } = catalog;
 
   // Every addition is recorded with its source; totals are summed from the
   // same records the explanation shows.
@@ -75,36 +76,10 @@ export function evaluateBuild(
     values: { ...card.baseStats },
     evidenceIds: card.evidenceIds,
   });
-  statSource({
-    source: 'potential',
-    label: `Hidden Potential: ${profile.label}`,
-    slot: null,
-    itemId: null,
-    nodeId: null,
-    values: { ...profile.statBonus },
-    evidenceIds: profile.evidenceIds,
-  });
-  skillSource({
-    source: 'potential',
-    label: `Fixed skills: ${profile.label}`,
-    slot: null,
-    itemId: null,
-    nodeId: null,
-    values: nonZero(profile.fixedSkills),
-    evidenceIds: profile.evidenceIds,
-  });
-  for (const [id, skill] of Object.entries(build.choices)) {
-    const node = profile.nodes.find((n) => n.id === id)!;
-    skillSource({
-      source: 'node',
-      label: `Choice node ${id}: ${skill}`,
-      slot: null,
-      itemId: null,
-      nodeId: id,
-      values: { [skill]: node.levels },
-      evidenceIds: node.evidenceIds,
-    });
-  }
+  // Fixed profile, selected choices or user-entered totals.
+  const potential = potentialContributions(build, request, entry);
+  potential.stats.forEach(statSource);
+  potential.skills.forEach(skillSource);
   for (const slot of SLOTS) {
     const orb = catalog.orbs.find((o) => o.id === build.equips[slot]);
     if (!orb) continue;
@@ -273,10 +248,25 @@ export function evaluateBuild(
       request.progression.profileId,
       [...request.progression.routes].sort(),
       [...request.progression.activatedNodes].sort(),
+      request.customPotential ?? null,
       request.context,
     ]),
   };
 }
+
+// The order of a skill-chance objective depends only on that skill's total
+// level: any convention in which the chance rises with level ranks builds the
+// same way. Only the displayed percentage depends on the source model.
+const levelBasis = (skill: string) =>
+  `Total ${skill} levels decide the order; any convention where the chance rises with level gives the same winner. The percentage uses the source model.`;
+
+const cardStat = (name: string) => ({
+  group: 'card-stats' as const,
+  status: 'supported' as const,
+  summary: `${name} shown on the card: base stats plus Hidden Potential and equipment, before any battle modifier.`,
+  basis: `Documented stat additions are summed. Not a damage or survival estimate.`,
+  mechanics: [],
+});
 
 export const initialCheckEvaluator: EvaluatorImplementation = {
   id: 'hidden-potential-initial-check',
@@ -284,6 +274,48 @@ export const initialCheckEvaluator: EvaluatorImplementation = {
   label: 'Card stats and initial-check Hidden Potential probabilities',
   verification:
     'Arithmetic is covered by independent unit tests with hand-computed expected values. Tests check this implementation, not game behavior.',
+  objectiveModels: {
+    attack: cardStat('ATK'),
+    defense: cardStat('DEF'),
+    hp: cardStat('HP'),
+    additionalSuper: {
+      group: 'skill-chances',
+      status: 'experimental',
+      summary:
+        'Chance that the first attack triggers a Hidden Potential additional attack that is a Super.',
+      basis: levelBasis('Additional Attack'),
+      mechanics: ['nativeAdditional'],
+    },
+    critical: {
+      group: 'skill-chances',
+      status: 'experimental',
+      summary: 'Hidden Potential critical-hit chance on an eligible attack.',
+      basis: levelBasis('Critical Hit'),
+      mechanics: ['nativeCritical'],
+    },
+    evasion: {
+      group: 'skill-chances',
+      status: 'experimental',
+      summary:
+        'Hidden Potential chance to evade an eligible incoming attack, when the context allows evasion.',
+      basis: levelBasis('Evasion'),
+      mechanics: ['nativeEvasion'],
+    },
+  },
+  gaps: [
+    {
+      label: 'Expected damage',
+      reason:
+        'Needs verified damage stages, critical damage, enemy DEF interactions and rounding.',
+    },
+    {
+      label: 'Damage taken and survival',
+      reason:
+        'Needs battle DEF stages, damage reduction and enemy attack models.',
+    },
+  ],
+  mechanics: [],
+  customPotential: true,
   entryErrors: (entry) =>
     Object.values(INITIAL_CHECK_RULES)
       .filter((id) => !entry.model.evidence.some((e) => e.id === id))

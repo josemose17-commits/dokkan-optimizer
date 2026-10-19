@@ -1,4 +1,4 @@
-import type { BuildRequest, EvaluatorEntry } from './domain';
+import type { BuildRequest, CustomPotential, EvaluatorEntry } from './domain';
 import { entryForState } from './registry';
 import { requestErrors } from './legality';
 
@@ -61,24 +61,58 @@ function record<T>(
  * Legality (exact state, catalog items, context) is checked separately by
  * requestErrors; this only guarantees the expected shape and primitive types.
  */
-export function parseBuildRequest(v: unknown): BuildRequest | null {
+const REQUEST_KEYS = [
+  'cardStateId',
+  'level',
+  'superAttackLevel',
+  'progression',
+  'current',
+  'inventory',
+  'mode',
+  'context',
+  'objective',
+  'frontierMetrics',
+  'maxCandidates',
+];
+// Optional user-entered potential totals; saves without them keep the
+// original exact shape.
+function parseCustomPotential(v: unknown): CustomPotential | null {
+  if (!object(v) || !exactKeys(v, ['skills', 'stats'])) return null;
+  const { skills: k, stats: s } = v;
   if (
-    !object(v) ||
-    !exactKeys(v, [
-      'cardStateId',
-      'level',
-      'superAttackLevel',
-      'progression',
-      'current',
-      'inventory',
-      'mode',
-      'context',
-      'objective',
-      'frontierMetrics',
-      'maxCandidates',
-    ])
+    !object(k) ||
+    !exactKeys(k, ['additional', 'critical', 'evasion']) ||
+    !int(k.additional) ||
+    !int(k.critical) ||
+    !int(k.evasion) ||
+    !object(s) ||
+    !exactKeys(s, ['hp', 'attack', 'defense']) ||
+    !int(s.hp) ||
+    !int(s.attack) ||
+    !int(s.defense)
   )
     return null;
+  return {
+    skills: {
+      additional: k.additional,
+      critical: k.critical,
+      evasion: k.evasion,
+    },
+    stats: { hp: s.hp, attack: s.attack, defense: s.defense },
+  };
+}
+
+export function parseBuildRequest(v: unknown): BuildRequest | null {
+  if (!object(v)) return null;
+  const custom = Object.hasOwn(v, 'customPotential');
+  if (
+    !exactKeys(v, custom ? [...REQUEST_KEYS, 'customPotential'] : REQUEST_KEYS)
+  )
+    return null;
+  const customPotential = custom
+    ? parseCustomPotential(v.customPotential)
+    : null;
+  if (custom && !customPotential) return null;
   const { progression: p, current: c, context: x } = v;
   if (
     !object(p) ||
@@ -164,6 +198,7 @@ export function parseBuildRequest(v: unknown): BuildRequest | null {
     objective: v.objective,
     frontierMetrics: [...v.frontierMetrics],
     maxCandidates: v.maxCandidates,
+    ...(customPotential ? { customPotential } : {}),
   } as BuildRequest;
 }
 

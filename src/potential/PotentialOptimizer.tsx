@@ -367,13 +367,7 @@ function CharacterSearch({
     invalidate();
     const current = token.current;
     const saved = structuredClone(request);
-    const gates = recommendationGates(
-      entry,
-      progressions,
-      saved,
-      scope,
-      acknowledged,
-    );
+    const gates = recommendationGates(entry, progressions, saved, scope);
     if (gates.length) {
       const empty: SearchOutcome = {
         comparison: {

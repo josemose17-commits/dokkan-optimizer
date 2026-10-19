@@ -1,10 +1,10 @@
+import { allocationSpace, attainableAllocations } from './allocation';
 import {
   SLOTS,
   type Build,
   type BuildRequest,
   type CharacterCatalog,
   type EvaluatorEntry,
-  type Skill,
   type Slot,
 } from './domain';
 import { buildErrors, orbErrors, requestErrors } from './legality';
@@ -37,11 +37,7 @@ export function estimateCandidateSpace(
   const catalog = entry.model;
   const errors = requestErrors(request, entry);
   if (errors.length) return null;
-  const allocations = request.progression.activatedNodes.reduce(
-    (product, id) =>
-      product * catalog.profile.nodes.find((n) => n.id === id)!.options.length,
-    1,
-  );
+  const allocations = allocationSpace(request, entry).count;
   const pools = slotPools(request, catalog);
   const options = Object.fromEntries(
     SLOTS.map((slot) => [slot, pools[slot].length]),
@@ -56,7 +52,8 @@ export function estimateCandidateSpace(
   };
 }
 
-// Pure, lazy candidate generation. No scoring/evaluation dependency.
+// Pure, lazy candidate generation: every attainable potential allocation
+// combined with every eligible equipment combination. No scoring dependency.
 export function* candidateBuilds(
   request: BuildRequest,
   entry: EvaluatorEntry,
@@ -64,23 +61,8 @@ export function* candidateBuilds(
   const catalog = entry.model;
   const errors = requestErrors(request, entry);
   if (errors.length) throw new Error(errors.join(' '));
-  const nodes = request.progression.activatedNodes.map((id) =>
-    catalog.profile.nodes.find((n) => n.id === id)!,
-  );
   const pools = slotPools(request, catalog);
-  function* choices(
-    index: number,
-    selected: Record<string, Skill>,
-  ): Generator<Record<string, Skill>> {
-    const node = nodes[index];
-    if (!node) {
-      yield selected;
-      return;
-    }
-    for (const option of node.options)
-      yield* choices(index + 1, { ...selected, [node.id]: option });
-  }
-  for (const selected of choices(0, {})) {
+  for (const selected of attainableAllocations(request, entry)) {
     for (const bronze of pools.bronze)
       for (const silver of pools.silver)
         for (const gold of pools.gold) {

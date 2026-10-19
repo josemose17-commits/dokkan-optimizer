@@ -1,5 +1,6 @@
 import {
   METRIC_DIRECTION,
+  METRIC_LABELS,
   type BuildRequest,
   type BuildGroup,
   type EvaluatorEntry,
@@ -8,51 +9,29 @@ import {
 import { buildKey } from '../character-build/generation';
 import type { SearchOutcome } from '../character-build/search';
 import { deltaInfo } from '../character-build/explanation';
+import { objectiveGates, type Gate } from './capabilities';
 import { resolveProgression, type ProgressionCatalog } from './progression';
 
-export type RecommendationScope = 'full-potential' | 'selected-profile';
-export interface RecommendationGate {
-  code: string;
-  message: string;
-}
+// What the search covers: every attainable allocation of a complete template,
+// the documented profile only, or the user's own entered values.
+export type RecommendationScope =
+  'full-potential' | 'selected-profile' | 'custom-input';
+export type RecommendationGate = Gate;
+
+// Experimental (source-model) objectives are allowed and labeled as such;
+// unavailable objectives and unsupported scopes are refused here, before any
+// search, with the same reasons the capability summary shows.
 export function recommendationGates(
   entry: EvaluatorEntry,
   progressions: ProgressionCatalog,
   request: BuildRequest,
   scope: RecommendationScope,
-  acknowledgeProbabilityModel: boolean,
 ): RecommendationGate[] {
   const resolved = resolveProgression(entry, progressions);
   if (!resolved.ok) return [{ code: 'mapping', message: resolved.reason }];
-  const gates: RecommendationGate[] = [];
-  const support = entry.recommendationSupport?.[request.objective];
-  if (!support)
-    gates.push({
-      code: 'effect-coverage',
-      message:
-        'No objective-specific kit/effect coverage declaration exists for this character state. Its text or another character’s evaluator cannot supply one.',
-    });
-  else {
-    gates.push(
-      ...support.blockers.map((message) => ({
-        code: 'missing-mechanic',
-        message,
-      })),
-    );
-    if (
-      !support.evidenceIds.length ||
-      support.evidenceIds.some(
-        (id) =>
-          !entry.model.evidence.some(
-            (e) => e.id === id && e.status !== 'unresolved',
-          ),
-      )
-    )
-      gates.push({
-        code: 'evidence',
-        message: 'Required objective/kit evidence is missing or unresolved.',
-      });
-  }
+  const gates: RecommendationGate[] = [
+    ...objectiveGates(entry, request.objective),
+  ];
   if (
     scope === 'full-potential' &&
     resolved.template.coverage !== 'complete-for-progression'
@@ -61,14 +40,16 @@ export function recommendationGates(
       code: 'allocation-graph',
       message: `Cannot recommend a full potential allocation for this exact state: ${resolved.template.missing.join('; ')}. A growth/profile total does not supply those choices.`,
     });
-  if (
-    ['additionalSuper', 'critical', 'evasion'].includes(request.objective) &&
-    !acknowledgeProbabilityModel
-  )
+  if (scope === 'custom-input' && !request.customPotential)
     gates.push({
-      code: 'probability-model',
+      code: 'custom-input',
+      message: 'Enter your current potential values first.',
+    });
+  if (scope !== 'custom-input' && request.customPotential)
+    gates.push({
+      code: 'custom-input',
       message:
-        'These initial-check rates are source-documented model assumptions, including an unresolved calculator/RNG convention discrepancy. Acknowledge that model to compare it; no full-turn, damage or survival conclusion follows.',
+        'Your own potential values are not a documented allocation; they are compared only as entered.',
     });
   return gates;
 }
@@ -84,7 +65,10 @@ export interface DirectRecommendation {
   scope: RecommendationScope;
   reasons: string[];
   selected: { group: BuildGroup; alternativeIndex: number } | null;
+  // Configurations reaching the best objective value (including the current
+  // build when it ties), and whether the current build is one of them.
   tiedAlternatives: number;
+  currentAmongBest: boolean;
   objective: MetricKey;
   delta: ReturnType<typeof deltaInfo> | null;
   search: SearchOutcome['progress'] & {
@@ -106,6 +90,7 @@ export function recommend(
     reasons: [...gates.map((g) => g.message), ...c.errors],
     selected: null,
     tiedAlternatives: 0,
+    currentAmongBest: false,
     objective: request.objective,
     delta: null,
     search: {
@@ -242,23 +227,19 @@ export function recommend(
     status,
     title:
       status === 'best-found'
-        ? 'Best found so far — search incomplete'
+        ? 'Best found.'
         : status === 'current-best'
-          ? 'Your current build is already best for this objective'
+          ? `Your current build is already best for ${METRIC_LABELS[request.objective]}.`
           : status === 'ties'
-            ? 'Multiple builds tie for this objective'
-            : 'Recommended build',
-    reasons:
-      scope === 'selected-profile'
-        ? [
-            'This result covers the selected documented profile, not the missing full allocation graph.',
-          ]
-        : [],
+            ? 'Multiple builds tie.'
+            : 'Recommended build.',
+    reasons: [],
     selected: {
       group: selected.group,
       alternativeIndex: selected.alternativeIndex,
     },
     tiedAlternatives: alternatives.length,
+    currentAmongBest: currentNoWorse,
     delta: deltaInfo(
       best,
       baseline,
