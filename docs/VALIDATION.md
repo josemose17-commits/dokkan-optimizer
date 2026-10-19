@@ -1,5 +1,50 @@
 # Prototype validation
 
+## Dokkan Potential Optimizer rework — 2026-10-19
+
+**Audit before edits (production).** The live site <https://josemose17-commits.github.io/dokkan-optimizer/>, deployed from main `4dffb0c`, was driven in Chromium 141.0.7390.37 (Playwright 1.56.1) through the session proxy at 1366×900 and 390×844 (Pixel 7 emulation). Observed:
+
+- The default scope was **Full potential allocation**; **Recommend build** could only return "Cannot recommend yet".
+- **Supported progression** was a one-option select whose handler did nothing.
+- Current equipment sat inside the progression section, and six quantity fields were expanded by default.
+- The objective defaulted to HP, and probability objectives needed an acknowledgement checkbox.
+- With an empty inventory, the result was "already best". Totals did not separate potential from equipment, and the same scope caveat appeared four times.
+- Five equal-weight nav items wrapped to four lines on mobile.
+- There were no console errors and no horizontal overflow.
+
+**After (local production build of this branch, same browser and viewports):**
+
+- One workflow, Character → Current build → Goal → Result, under Optimize · Characters · Tools.
+- The support summary appears before any search; the documented profile is a summary; custom values are labeled once.
+- Objectives are grouped by status with none preselected.
+- On desktop, a sticky Optimize/result column; on phones, a single flow with no horizontal overflow.
+- Desktop and mobile screenshots of the home, selected, custom-values, result and unsupported views were visually inspected.
+
+Checks on Node **24.22.0**, with no dependency or lockfile changes:
+
+- `npm ci`, `npm run format:check`, `npm run typecheck`, `npm run build`, `git diff --check`: passed.
+- `npm test`: **434/434 passed**, 16 files: the 407 earlier tests (gate tests updated for model status) plus 27 new:
+  - allocation enumeration and multi-allocation search;
+  - level-ordered ranking;
+  - entered values (evaluation, source breakdown, bounds, saved shape);
+  - capabilities and kit gates;
+  - result text;
+  - server-rendered steps.
+    Expected values are hand-enumerated from the TEST ONLY fixtures and documented numbers.
+- Checked-in Playwright suite in Chromium (desktop and mobile): **107 passed, 1 skipped** (the mobile-only layout check on desktop). The rewritten optimizer spec has 7 scenarios × 2 projects:
+  - the full journey, from selection through capabilities, current build, spare items, goal, result and save, to reload and load;
+  - entered values and invalid input;
+  - current best, ties and an incomplete search;
+  - objective grouping and the evasion context;
+  - an unsupported state without substitution;
+  - save compatibility with the source examples and untouched older settings;
+  - keyboard use with no overflow.
+- Firefox/WebKit, one local run of the same suite through a temporary configuration outside the repository (Firefox build 1495, WebKit build 2215): Firefox desktop **53 passed, 1 skipped**; WebKit desktop **52 passed, 1 skipped, 1 failed**; WebKit iPhone 13 emulation **53 passed, 1 failed**. Every optimizer scenario passed in all three. The two failures are the known WebKit-build renderer crash on `pushState` → reload → navigation in the catalog history test, previously reproduced on a plain static page without app code.
+
+Not covered: search cancellation in the browser, because 16 combinations finish instantly; cancellation and stale-result protection keep their unit tests. Also not covered: real Safari/iOS, screen readers and in-game verification.
+
+**Outcome, bluntly:** **0** real allocation alternatives are searched. The one optimizable state has a single documented allocation, and full allocation stays blocked on the evidence in [EVIDENCE.md](character-build/EVIDENCE.md#focused-allocation-gate-review--2026-10-19), which was not re-audited. The allocation engine is proven only on TEST ONLY graphs. Catalog coverage is unchanged (1 card form, 2 exact states, 1 evaluator, 0 complete board templates). No real data, provider request, credential or purchase is involved.
+
 ## Re-landed base state and Firefox/WebKit run — 2026-10-19
 
 PR #8 was merged into `claude/evaluator-registry` after PR #7 had already been merged, so its record never reached PR #6. This branch merges that reviewed commit (`f6403cf`) unchanged onto PR #6's head `2527f60` and adapts the code and tests from PRs #9/#10 that counted one state. Coverage is now **1 form / 2 exact states (1 EZA, 1 base, 0 SEZA) / 1 limited evaluator**. The production registry is unchanged.

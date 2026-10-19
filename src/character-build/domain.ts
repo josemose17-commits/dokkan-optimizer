@@ -82,12 +82,48 @@ export interface Orb extends Metadata {
   gameItemId: string | null;
 }
 
+// Kit mechanics that can change a Hidden Potential objective. Each state
+// declares what its kit is known to contain; "unknown" fails closed for every
+// objective that the mechanic could change.
+export const KIT_MECHANICS = [
+  'nativeAdditional',
+  'nativeCritical',
+  'nativeEvasion',
+  'attackTriggered',
+  'buildup',
+  'conditional',
+  'formChange',
+] as const;
+export type KitMechanicId = (typeof KIT_MECHANICS)[number];
+export const KIT_MECHANIC_LABELS: Record<KitMechanicId, string> = {
+  nativeAdditional: 'Native additional attacks or additional Supers',
+  nativeCritical: 'Native critical-hit chance',
+  nativeEvasion: 'Native evasion chance',
+  attackTriggered: 'Effects triggered by attacking or performing a Super',
+  buildup: 'Effects that build up during battle',
+  conditional: 'Effects that depend on turn, HP, Ki, allies or enemies',
+  formChange: 'Transformations or other form changes',
+};
+export interface KitMechanic {
+  status: 'absent' | 'present' | 'unknown';
+  evidenceIds: string[];
+  note: string;
+}
+
 export interface CharacterCatalog {
   revision: string;
   card: CardState;
   profile: PotentialProfile;
   orbs: Orb[];
   evidence: Evidence[];
+  kit: Record<KitMechanicId, KitMechanic>;
+}
+
+// Current potential totals entered by the user instead of a documented
+// profile. Board requirements are not checked: these are the user's values.
+export interface CustomPotential {
+  skills: Skills;
+  stats: Stats;
 }
 
 export interface Build {
@@ -172,12 +208,16 @@ export interface BuildRequest {
   objective: AvailableMetric;
   frontierMetrics: AvailableMetric[];
   maxCandidates: number;
+  // Present only when the user replaces the documented profile with their own
+  // current totals (progression.profileId is then CUSTOM_PROFILE_ID).
+  customPotential?: CustomPotential;
 }
 
 // A value's provenance inside one evaluation. Explanations are rendered from
-// these records, never from separately written prose.
+// these records, never from separately written prose. "potential" is a fixed
+// documented profile, "node" a selected choice and "custom" user-entered totals.
 export interface Contribution<T> {
-  source: 'card' | 'potential' | 'node' | 'equip';
+  source: 'card' | 'potential' | 'node' | 'custom' | 'equip';
   label: string;
   slot: Slot | null;
   itemId: string | null;
@@ -253,6 +293,21 @@ export interface ContextDefinition {
   evasionOptions: boolean[];
 }
 
+// How far an objective's calculation can be trusted. "supported": documented
+// arithmetic; "experimental": a source-model comparison whose conventions are
+// unresolved. Unavailable objectives are not offered at all.
+export type ModelStatus = 'supported' | 'experimental';
+export interface ObjectiveModel {
+  group: 'card-stats' | 'skill-chances';
+  status: ModelStatus;
+  // One short sentence: what the objective measures.
+  summary: string;
+  // What decides the ranking, and how robust that order is.
+  basis: string;
+  // Kit mechanics that change this objective when present.
+  mechanics: KitMechanicId[];
+}
+
 // An evaluator implementation is independent of any one character: it reads
 // the entry's model, contexts and objectives.
 export interface EvaluatorImplementation {
@@ -262,6 +317,15 @@ export interface EvaluatorImplementation {
   // What has been checked about this implementation. Mathematical tests are
   // not evidence of game behavior.
   verification: string;
+  // Objectives this implementation can compute, with their model status.
+  objectiveModels: Partial<Record<AvailableMetric, ObjectiveModel>>;
+  // Objectives users may expect but this implementation cannot compute.
+  gaps: { label: string; reason: string }[];
+  // Kit mechanics the implementation models (a present, unmodeled mechanic
+  // blocks the objectives it could change).
+  mechanics: KitMechanicId[];
+  // Whether user-entered potential totals can replace a documented profile.
+  customPotential: boolean;
   // Implementation-specific requirements on an entry (e.g. rule evidence).
   entryErrors?(entry: EvaluatorEntry): string[];
   evaluate(

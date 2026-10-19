@@ -19,6 +19,27 @@ import { initialCheckEvaluator, INITIAL_CHECK_RULES } from './evaluation';
 import { buildErrors, requestErrors } from './legality';
 import { workingSettingsKey } from './registry';
 
+// TEST ONLY kit declaration: every mechanic absent unless overridden.
+export function testOnlyKit(
+  overrides: Partial<CharacterCatalog['kit']> = {},
+): CharacterCatalog['kit'] {
+  const absent = {
+    status: 'absent' as const,
+    evidenceIds: ['test-only-identity'],
+    note: 'TEST ONLY — declared absent.',
+  };
+  return {
+    nativeAdditional: absent,
+    nativeCritical: absent,
+    nativeEvasion: absent,
+    attackTriggered: absent,
+    buildup: absent,
+    conditional: absent,
+    formChange: absent,
+    ...overrides,
+  };
+}
+
 export const FIXTURE_NODE_STATE = 'test-only:fixture-node:base:lv100:sa12';
 export const FIXTURE_STATS_STATE = 'test-only:fixture-stats:base:lv150:sa20';
 const reviewedAt = '2026-10-19';
@@ -132,6 +153,7 @@ const nodeModel: CharacterCatalog = {
     // The shared implementation requires its rule claims to be present.
     ...Object.values(INITIAL_CHECK_RULES).map((id) => claim(id, id)),
   ],
+  kit: testOnlyKit(),
 };
 
 export function fixtureNodeRequest(): BuildRequest {
@@ -179,11 +201,26 @@ export const fixtureNodeEntry: EvaluatorEntry = {
 
 // ---- Fixture B: a different implementation that computes card stats only,
 // so probability metrics are unavailable and only stat objectives exist.
+const testOnlyStat = {
+  group: 'card-stats' as const,
+  status: 'supported' as const,
+  summary: 'TEST ONLY card stat.',
+  basis: 'TEST ONLY sum.',
+  mechanics: [],
+};
 export const testOnlyStatsEvaluator: EvaluatorImplementation = {
   id: 'test-only-stats-only',
   version: '1',
   label: 'TEST ONLY card stats only',
   verification: 'TEST ONLY fixture evaluator.',
+  objectiveModels: {
+    attack: testOnlyStat,
+    defense: testOnlyStat,
+    hp: testOnlyStat,
+  },
+  gaps: [],
+  mechanics: [],
+  customPotential: false,
   evaluate(build, request, entry) {
     const errors = [
       ...requestErrors(request, entry),
@@ -292,6 +329,7 @@ const statsModel: CharacterCatalog = {
     claim('test-only-profile', 'profile'),
     claim('test-only-items', 'items'),
   ],
+  kit: testOnlyKit(),
 };
 
 export function fixtureStatsRequest(): BuildRequest {

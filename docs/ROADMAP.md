@@ -1,20 +1,23 @@
 # Task checklist
 
-Status on `claude/tender-maxwell-o43x7j`, 2026-10-19: open PR #6 at `2527f60` (which contains merged PRs #7, #9 and #10) plus the re-landed PR #8 base-state record. Main remains at `316492d` (PR #5). Nothing in this branch is merged into main or deployed. This supersedes the previous editor-first milestone.
+Status on `claude/tender-maxwell-o43x7j`, 2026-10-19, branched from main `4dffb0c` (PRs #5–#11 merged). This batch reworks the default page into the Dokkan Potential Optimizer and adds the allocation/capability foundation.
 
-## Primary product: Hidden Potential recommendations
+## Primary product: Dokkan Potential Optimizer
 
-- [x] Make character → exact progression/current build → equipment/context/objective → direct result the primary page.
-- [x] Keep editor/import/revisions as secondary maintenance, preserving all old workbench routes and saved data.
-- [x] Add explicit revision-pinned potential-template mappings. Distinguish an aggregate profile from a complete node graph; demonstrate shared mapping structure only with TEST ONLY graphs.
-- [x] Offer both inventory and **Best available in catalog** modes, respecting slot/restriction/quantity checks and retained current items.
-- [x] Direct outcomes: exact gates, recommended/current best/ties, no compatible targets and best found when incomplete. Always retain current baseline and equivalent alternatives.
-- [x] Objective-specific kit/evidence gates; unavailable objectives fail closed; initial-check probability models require explicit acknowledgement.
-- [x] Separate lazy generation from evaluation/ranking; estimate space; budget rejected scans and accepted evaluations; cooperative enumeration and dominance/cancellation.
-- [x] Computed current-to-target changes/deltas and expandable alternatives/evidence/traces, with explicit common-metric frontier scope.
+- [x] One workflow, Character → Current build → Goal → Result, as a desktop workspace (Optimize and the result stay in view) and a single mobile flow. Product identity and navigation: Optimize · Characters · Tools; maintenance, source examples and the legacy demo moved to Tools with their routes and saves intact.
+- [x] Capabilities resolved before any search: equipment per slot, full-allocation availability with the exact missing evidence, entered-value support and objective counts by status. No blocked mode is preselected; a single documented progression is a summary, not a selector.
+- [x] Allocation module: attainable allocations (one option per unlocked choice node) combined with equipment in the existing search; proven on TEST ONLY graphs with hand-enumerated results.
+- [x] User-entered current values (skill levels and stat additions), labeled once “Board requirements not checked.”, evaluated as entered and saved compatibly.
+- [x] Kit mechanics declared per state (absent/present/unknown); unknown or unmodeled mechanics block the objectives they could change.
+- [x] Model status instead of an acknowledgement step: Supported card stats, Experimental skill chances with their level-ordered ranking basis, damage and survival listed as unavailable. No preselected objective.
+- [x] Current equips separate from candidate equipment; spare items in a collapsed editor; unavailable slots/items name their requirement.
+- [x] Result leads with the answer: recommended/current best/ties/best found, baseline → recommendation with units, skill levels split into Hidden Potential / equipment / total, equipment, changes and a calculation-backed reason; details expandable.
+- [x] Explicit revision-pinned potential-template mappings; aggregate profiles never claim graph coverage.
+- [x] Lazy generation separate from evaluation/ranking; budgets on rejected scans and evaluations; cooperative enumeration and dominance; cancellation and stale-result protection.
 - [x] Separate actual catalog/form/state/completeness/evaluator/template counts and unknown source total.
-- [ ] Real complete board templates/progression configurations and joint allocation/equipment recommendations. The existing real record has only a partial 55% aggregate; default full-potential requests remain gated.
-- [ ] Character-specific battle/probability capability extensions. No damage, survival or attack-chain objective until required mechanics are established.
+- [ ] Real complete board templates/progression configurations so the allocation engine searches real alternatives. Blocked on evidence: one owned card's board with route locks and readable choice dialogs, or a complete documented node table bound to a card/template.
+- [ ] A meaningful supported objective beyond card stats (expected damage, survival): needs a verified damage/defense model. Until then, card stats are the only supported objectives and skill chances stay experimental.
+- [ ] Character-specific mechanics (native critical/additional/evasion, attack-triggered, build-up, conditional, form changes) implemented one family at a time with evidence and independent expected values.
 - [ ] Large-catalog search/render profiling and worker/scalable strategy before lifting current bounds.
 
 ## Catalog gate, independently tracked

@@ -10,6 +10,7 @@ import {
   type Restriction,
   type Slot,
 } from './domain';
+import { CUSTOM_PROFILE_ID, ROUTES, customPotentialErrors } from './allocation';
 
 const integer = (n: number) => Number.isSafeInteger(n) && n >= 0;
 const sameSet = (a: string[], b: string[]) =>
@@ -200,7 +201,25 @@ export function requestErrors(
     errors.push(
       `Settings are for ${request.cardStateId} (Lv.${request.level}/SA${request.superAttackLevel}), not ${entry.stateId}; exact states (including EZA and SEZA) are never substituted.`,
     );
-  if (
+  if (request.customPotential) {
+    // User-entered totals replace the documented profile; board requirements
+    // are not checked, so the evaluator must accept such input explicitly.
+    if (!entry.evaluator.customPotential)
+      errors.push('This evaluator cannot use your own potential values.');
+    if (request.progression.profileId !== CUSTOM_PROFILE_ID)
+      errors.push('Your own potential values need the custom progression.');
+    if (request.progression.activatedNodes.length)
+      errors.push(
+        'Your own potential values already include every node; none can be activated separately.',
+      );
+    if (
+      new Set(request.progression.routes).size !==
+        request.progression.routes.length ||
+      !request.progression.routes.every((r) => ROUTES.includes(r))
+    )
+      errors.push('Unknown or duplicate unlocked route.');
+    errors.push(...customPotentialErrors(request.customPotential));
+  } else if (
     request.progression.profileId !== catalog.profile.id ||
     !sameSet(request.progression.routes, catalog.profile.routes)
   )

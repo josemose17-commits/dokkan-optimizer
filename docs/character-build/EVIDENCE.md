@@ -1,5 +1,21 @@
 # First-unit evidence and release boundary
 
+## Kit mechanic declarations — 2026-10-19
+
+The optimizer now gates objectives on declared kit mechanics. For the admitted EZA Goku state these declarations are read from the existing reviewed `eza-kit` claim; **no new fact or source was added** and the data revision is unchanged.
+
+| Mechanic                                      | Declared | Basis                                                                       |
+| --------------------------------------------- | -------- | --------------------------------------------------------------------------- |
+| Native additional attacks / additional Supers | absent   | `eza-kit`: no native additional attacks                                     |
+| Native critical-hit chance                    | absent   | `eza-kit`: no native critical                                               |
+| Native evasion                                | absent   | `eza-kit`: no native evasion                                                |
+| Attack- or Super-triggered effects            | present  | `eza-kit`: the Super Attack lowers enemy DEF (a damage effect; not modeled) |
+| Conditional effects                           | present  | `eza-kit`: timed ATK bonus from the entry turn (a battle stat; not modeled) |
+| Build-up effects                              | unknown  | Not stated by the admitted claim                                            |
+| Form changes                                  | unknown  | Not stated by the admitted claim                                            |
+
+The skill-chance objectives depend only on the first three, so they remain available as experimental source-model comparisons; the present and unknown mechanics affect only battle stats and damage, which are not offered. Any future state with an unknown or unmodeled mechanic relevant to an objective has that objective blocked with the reason shown.
+
 ## Individually recorded base state — 2026-10-19
 
 The bundled catalog adds one real state: the **pre-EZA base state of card 1003211** (`unknown-region:1003211:base:lv120:sa10`). It is the same card form as the admitted EZA state and a separate exact state, with no evaluator. Every value comes from a single page, `https://dokkan.fyi/characters/1003211`. The page was retrieved once on 2026-10-19 at 12:18:28 UTC; its HTML SHA-256 is `facce003…d3ab`, pinned as `sourceRevision`. The values were recorded by hand from the page's delivered data.

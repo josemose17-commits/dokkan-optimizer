@@ -6,27 +6,48 @@ test('navigation keeps the Pages prefix and marks the current page', async ({
   page,
 }) => {
   await page.goto('./');
-  await expect(page).toHaveTitle('Dokkan · Profile/equipment comparison');
-  const nav = page.getByRole('navigation', { name: 'Workbench' });
-  await expect(
-    nav.getByRole('link', { name: 'Profile/equipment comparison' }),
-  ).toHaveAttribute('aria-current', 'page');
+  await expect(page).toHaveTitle('Dokkan Potential Optimizer');
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  // Three destinations; secondary workbenches live under Tools.
+  await expect(nav.getByRole('link')).toHaveText([
+    'Optimize',
+    'Characters',
+    'Tools',
+  ]);
+  await expect(nav.getByRole('link', { name: 'Optimize' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
 
-  await nav.getByRole('link', { name: 'Source build examples' }).click();
+  await nav.getByRole('link', { name: 'Tools' }).click();
+  await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=tools$/);
+  await expect(page).toHaveTitle('Tools · Dokkan Potential Optimizer');
+  await page.getByRole('link', { name: 'Source build examples' }).click();
   await expect(page).toHaveURL(
     /\/dokkan-optimizer\/\?workbench=character-build$/,
   );
-  await expect(page).toHaveTitle('Dokkan Character Builds · Equip comparison');
-  await expect(
-    nav.getByRole('link', { name: 'Source build examples' }),
-  ).toHaveAttribute('aria-current', 'page');
+  await expect(page).toHaveTitle(
+    'Source build examples · Dokkan Potential Optimizer',
+  );
+  await expect(nav.getByRole('link', { name: 'Tools' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
 
-  await nav.getByRole('link', { name: 'Legacy synthetic team demo' }).click();
+  await nav.getByRole('link', { name: 'Tools' }).click();
+  await page.getByRole('link', { name: 'Legacy synthetic team demo' }).click();
   await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=legacy-team$/);
-  await expect(page).toHaveTitle('Dokkan Team Lab · Legacy synthetic demo');
+  await expect(page).toHaveTitle(
+    'Legacy synthetic team demo · Dokkan Potential Optimizer',
+  );
 
-  await nav.getByRole('link', { name: 'Character catalog' }).click();
+  await nav.getByRole('link', { name: 'Tools' }).click();
+  await page.getByRole('link', { name: 'Character maintenance' }).click();
+  await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=definitions$/);
+
+  await nav.getByRole('link', { name: 'Characters' }).click();
   await expect(page).toHaveURL(/\/dokkan-optimizer\/\?workbench=catalog$/);
+  await expect(page).toHaveTitle('Characters · Dokkan Potential Optimizer');
 });
 
 test('production assets load from the Pages prefix', async ({ page }) => {

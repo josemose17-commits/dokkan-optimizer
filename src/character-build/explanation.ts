@@ -13,7 +13,9 @@ import {
   type MetricKey,
   type ProbabilityStep,
   type Skill,
+  type Skills,
   type Slot,
+  type Stats,
 } from './domain';
 
 // Structured explanations built only from computed results: a re-evaluation of
@@ -128,6 +130,50 @@ export interface Explanation {
     contextAssumptions: string[];
     evasionAllowed: boolean;
   };
+}
+
+// Totals split by source, summed from the same trace records the explanation
+// shows: fixed potential skills (a documented profile or the user's entered
+// levels), selected choice nodes, equipment, and the final totals.
+export interface SourceBreakdown {
+  skills: { fixed: Skills; chosen: Skills; equipment: Skills; total: Skills };
+  stats: { card: Stats; potential: Stats; equipment: Stats; total: Stats };
+}
+const zeroSkills = (): Skills => ({ additional: 0, critical: 0, evasion: 0 });
+const zeroStats = (): Stats => ({ hp: 0, attack: 0, defense: 0 });
+export function sourceBreakdown(evaluation: Evaluation): SourceBreakdown {
+  const skills = {
+    fixed: zeroSkills(),
+    chosen: zeroSkills(),
+    equipment: zeroSkills(),
+    total: { ...evaluation.skills },
+  };
+  for (const c of evaluation.trace.skills) {
+    const bucket =
+      c.source === 'equip'
+        ? skills.equipment
+        : c.source === 'node'
+          ? skills.chosen
+          : skills.fixed;
+    for (const key of SKILLS) bucket[key] += c.values[key] ?? 0;
+  }
+  const stats = {
+    card: zeroStats(),
+    potential: zeroStats(),
+    equipment: zeroStats(),
+    total: { ...evaluation.stats },
+  };
+  for (const c of evaluation.trace.stats) {
+    const bucket =
+      c.source === 'card'
+        ? stats.card
+        : c.source === 'equip'
+          ? stats.equipment
+          : stats.potential;
+    for (const key of ['hp', 'attack', 'defense'] as const)
+      bucket[key] += c.values[key] ?? 0;
+  }
+  return { skills, stats };
 }
 
 export const itemLabel = (entry: EvaluatorEntry, id: string | null) =>

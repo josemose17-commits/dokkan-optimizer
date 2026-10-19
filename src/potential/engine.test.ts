@@ -395,7 +395,6 @@ describe('direct recommendations with honest scope', () => {
       snapshotProgressions([gokuEntry]),
       request(),
       'full-potential',
-      false,
     );
     expect(gates.map((g) => g.code)).toEqual(['allocation-graph']);
     expect(gates[0]!.message).toContain(
@@ -410,7 +409,6 @@ describe('direct recommendations with honest scope', () => {
       snapshotProgressions([gokuEntry]),
       r,
       'selected-profile',
-      false,
     );
     expect(gates).toEqual([]);
     const answer = recommend(out, r, 'selected-profile', gates);
@@ -441,7 +439,7 @@ describe('direct recommendations with honest scope', () => {
     const out = await searchBuilds(r, gokuEntry, control());
     const a = recommend(out, r, 'selected-profile', []);
     expect(a.status).toBe('best-found');
-    expect(a.title).toBe('Best found so far — search incomplete');
+    expect(a.title).toBe('Best found.');
     expect(a.search.complete).toBe(false);
   });
   it('keeps a stronger current baseline even if truncation has not reached it', async () => {
@@ -504,7 +502,6 @@ describe('direct recommendations with honest scope', () => {
       snapshotProgressions([entry]),
       request(),
       'selected-profile',
-      false,
     );
     const answer = recommend(await run(), request(), 'selected-profile', gates);
     expect(answer.status).toBe('cannot-recommend');
@@ -513,18 +510,19 @@ describe('direct recommendations with honest scope', () => {
       'Native HP-changing form effect has no implementation.',
     );
   });
-  it('requires explicit objective/kit coverage and model acknowledgement', () => {
+  it('labels source-model objectives experimental instead of gating them', () => {
     const r = request();
     r.objective = 'critical';
+    // No acknowledgement step: the objective is allowed and its status is
+    // reported as experimental by the capability summary.
     expect(
       recommendationGates(
         gokuEntry,
         snapshotProgressions([gokuEntry]),
         r,
         'selected-profile',
-        false,
-      ).map((g) => g.code),
-    ).toEqual(['probability-model']);
+      ),
+    ).toEqual([]);
     const entry = { ...gokuEntry };
     delete entry.recommendationSupport;
     expect(
@@ -533,7 +531,6 @@ describe('direct recommendations with honest scope', () => {
         snapshotProgressions([entry]),
         r,
         'selected-profile',
-        true,
       ).map((g) => g.code),
     ).toEqual(['effect-coverage']);
   });

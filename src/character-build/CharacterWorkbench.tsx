@@ -417,6 +417,11 @@ export default function CharacterWorkbench({
         inputIssues={issueCount}
         onReplace={replaceRequest}
         onOpen={onOpen}
+        refuse={(r) =>
+          r.customPotential
+            ? 'Uses your own potential values, which this source example cannot show. Open it in the optimizer.'
+            : null
+        }
       />
 
       <form onSubmit={compare} className="cb-controls" noValidate>

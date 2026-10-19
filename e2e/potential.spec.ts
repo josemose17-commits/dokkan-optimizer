@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import {
   expect,
   GOKU_OPTIMIZER,
@@ -7,326 +8,323 @@ import {
   WORKING_KEY,
 } from './fixtures';
 
-async function selectCharacter(page: import('@playwright/test').Page) {
-  await page.goto('./');
-  await page.getByLabel('Character and exact state').selectOption(GOKU_STATE);
-}
-async function profile(page: import('@playwright/test').Page) {
-  await page
-    .getByLabel('Recommendation scope')
-    .selectOption('selected-profile');
-}
-const result = (page: import('@playwright/test').Page) =>
-  page.getByRole('region', { name: 'Build recommendation' });
+// The primary optimizer: character → current build → goal → result.
+const OPTIMIZER = `?workbench=optimizer&state=${encodeURIComponent(GOKU_STATE)}`;
+const BASE_STATE = 'unknown-region:1003211:base:lv120:sa10';
+const output = (page: Page) =>
+  page.getByRole('region', { name: 'Optimize and result' });
+const heading = (page: Page) => output(page).getByRole('heading', { level: 2 });
+const optimize = (page: Page) =>
+  page.getByRole('button', { name: 'Optimize', exact: true }).click();
+const goal = (page: Page, name: string) =>
+  page.getByRole('radio', { name: new RegExp(`^${name}`) }).check();
 
-test('limited profile comparison is primary, with maintenance secondary and an exact allocation gate', async ({
+test('the main journey: character, current build, goal, result, save and reload', async ({
   page,
 }) => {
   await page.goto('./');
-  await expect(page).toHaveTitle('Dokkan · Profile/equipment comparison');
-  await expect(
-    page.getByRole('heading', { name: /Find what to change/ }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'New character', exact: true }),
-  ).toHaveCount(0);
-  await page.getByLabel('Character and exact state').selectOption(GOKU_STATE);
-  await expect(page.getByLabel('Supported progression')).toHaveValue(
-    'goku-s-agl:no-dupes:base-board-filled:v1',
+  await expect(page).toHaveTitle('Dokkan Potential Optimizer');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Find the best Hidden Potential build.',
   );
   await page
-    .getByRole('button', { name: 'Recommend build', exact: true })
+    .getByRole('button', { name: /^Super Saiyan 3 Goku · AGL UR · EZA step 7/ })
     .click();
-  await expect(
-    result(page).getByRole('heading', { name: 'Cannot recommend yet' }),
-  ).toBeVisible();
-  await expect(result(page)).toContainText(
+  await expect(page).toHaveURL(
+    new RegExp(`state=${encodeURIComponent(GOKU_STATE)}$`),
+  );
+
+  // What this character can do is shown before any search.
+  const support = page.getByRole('list', {
+    name: 'What this character supports',
+  });
+  await expect(support).toContainText(
+    'Full allocation support not available for this character yet.',
+  );
+  await expect(support).toContainText(
+    '3 bronze · 3 silver · gold: none recorded',
+  );
+  await support.getByText('Why, and what you can do').click();
+  await expect(support).toContainText(
     'Exact selectable node alternatives and increments',
   );
-  await expect(result(page)).not.toContainText('15,827');
-  await page
-    .getByRole('link', { name: 'Character maintenance', exact: true })
-    .click();
-  await expect(
-    page.getByRole('button', { name: 'New character', exact: true }),
-  ).toBeVisible();
-});
 
-test('scoped catalog recommendation is direct and calculation-backed', async ({
-  page,
-}) => {
-  await selectCharacter(page);
-  await profile(page);
-  await page.getByLabel('Equipment mode').selectOption('catalog');
+  // One documented progression is a summary, never a one-option selector.
   await expect(
-    page.getByLabel('Equipment mode').locator('option:checked'),
-  ).toHaveText('Best available in catalog');
-  await page
-    .getByRole('button', { name: 'Recommend build', exact: true })
-    .click();
+    page.getByRole('radio', { name: 'Documented profile' }),
+  ).toBeChecked();
   await expect(
-    result(page).getByRole('heading', {
-      name: 'Multiple builds tie for this objective',
+    page.getByText('55% · base board filled · no duplicate routes', {
+      exact: true,
     }),
   ).toBeVisible();
-  await expect(result(page)).toContainText('Card HP: 15,827');
-  await expect(result(page)).toContainText('+500');
-  await expect(result(page)).toContainText('AGL HP +500 · bronze Lv.5');
-  await expect(result(page)).toContainText('4 compatible configurations');
-  await expect(result(page)).toContainText(
-    'not the missing full allocation graph',
-  );
-  await result(page).getByText('Search details', { exact: true }).click();
-  await expect(result(page)).toContainText(
-    '16 combinations checked · 0 rejected before evaluation · 16 evaluated',
-  );
-  await result(page)
-    .getByText('Calculation trace and evidence', { exact: true })
-    .click();
-  await expect(result(page)).toContainText('15,827');
-});
-
-test('inventory quantities and retained current items are consistent', async ({
-  page,
-}) => {
-  await selectCharacter(page);
-  await profile(page);
-  await page
-    .getByRole('button', { name: 'Recommend build', exact: true })
-    .click();
-  await expect(result(page)).toContainText(
-    'Your current build is already best for this objective',
-  );
-  await expect(result(page)).toContainText('Card HP: 15,327');
-  await page
-    .getByLabel('AGL HP +500 · bronze Lv.5 unequipped quantity', {
-      exact: true,
-    })
-    .fill('1');
-  await page
-    .getByRole('button', { name: 'Recommend build', exact: true })
-    .click();
-  await expect(result(page)).toContainText('Recommended build');
-  await expect(result(page)).toContainText('Card HP: 15,827');
-  await page
-    .getByLabel('Current bronze equipment')
-    .selectOption({ label: 'AGL HP +500 · bronze Lv.5' });
-  await page
-    .getByLabel('AGL HP +500 · bronze Lv.5 unequipped quantity', {
-      exact: true,
-    })
-    .fill('0');
-  await page
-    .getByRole('button', { name: 'Recommend build', exact: true })
-    .click();
-  await expect(result(page)).toContainText(
-    'Your current build is already best for this objective',
-  );
-  await expect(result(page)).toContainText('No changes required.');
-});
-
-test('incomplete searches say best found and preserve a stronger baseline', async ({
-  page,
-}) => {
-  await selectCharacter(page);
-  await profile(page);
-  await page.getByLabel('Equipment mode').selectOption('catalog');
-  await page
-    .getByLabel('Current bronze equipment')
-    .selectOption({ label: 'AGL HP +500 · bronze Lv.5' });
-  await page
-    .getByText('Advanced context, alternative metrics and search limits', {
-      exact: true,
-    })
-    .click();
-  await page.getByLabel('Maximum evaluations', { exact: true }).fill('1');
-  await page
-    .getByRole('button', { name: 'Recommend build', exact: true })
-    .click();
-  await expect(result(page)).toContainText(
-    'Best found so far — search incomplete',
-  );
-  await expect(result(page)).toContainText('Card HP: 15,827');
-  await expect(result(page)).toContainText('No changes required.');
-});
-
-test('probability objectives require an explicit unverified-model acknowledgement', async ({
-  page,
-}) => {
-  await selectCharacter(page);
-  await profile(page);
-  await page.getByLabel('Equipment mode').selectOption('catalog');
-  await page.getByLabel('Optimization objective').selectOption('critical');
-  await page
-    .getByRole('button', { name: 'Recommend build', exact: true })
-    .click();
-  await expect(result(page)).toContainText(
-    'unresolved calculator/RNG convention discrepancy',
-  );
   await expect(
-    result(page).getByRole('heading', { name: 'Cannot recommend yet' }),
-  ).toBeVisible();
-  await page
-    .getByText('Advanced context, alternative metrics and search limits', {
-      exact: true,
-    })
-    .click();
-  await page
-    .getByLabel(
-      'I accept the source-documented initial-check probability model, not independently confirmed game behavior',
-    )
-    .check();
-  await page
-    .getByRole('button', { name: 'Recommend build', exact: true })
-    .click();
-  await expect(result(page)).toContainText('Critical chance: 4.0%');
-  await expect(
-    result(page).getByRole('heading', { name: /^Source-model comparison:/ }),
-  ).toBeVisible();
-  await expect(result(page)).toContainText('+4.0 percentage points');
-  await expect(result(page)).toContainText(
-    'not an overall-strength, damage or survival conclusion',
-  );
-});
-
-test('invalid numeric inputs block search and do not mutate legacy settings', async ({
-  page,
-}) => {
-  await page.goto(GOKU_OPTIMIZER);
-  const before = await page.evaluate(
-    (keys) => keys.map((k) => localStorage.getItem(k)),
-    [WORKING_KEY, LIBRARY_KEY],
-  );
-  await page.goto('./');
-  await page.getByLabel('Character and exact state').selectOption(GOKU_STATE);
-  await profile(page);
-  await page.getByLabel('Equipment mode').selectOption('inventory');
-  const quantity = page.getByLabel(
-    'AGL HP +500 · bronze Lv.5 unequipped quantity',
-    { exact: true },
-  );
-  await quantity.fill('');
-  await expect(quantity).toHaveAttribute('aria-invalid', 'true');
-  await expect(
-    page.getByRole('button', { name: 'Recommend build', exact: true }),
-  ).toBeDisabled();
-  expect(
-    await page.evaluate(
-      (keys) => keys.map((k) => localStorage.getItem(k)),
-      [WORKING_KEY, LIBRARY_KEY],
-    ),
-  ).toEqual(before);
-});
-
-test('coverage and unsupported exact states never imply catalog completeness', async ({
-  page,
-}) => {
-  await page.goto('?workbench=optimizer&state=not-a-real-state');
-  await expect(result(page)).toContainText('Cannot recommend yet');
-  await expect(result(page)).toContainText('No other state is substituted');
-  await page.getByText('Character catalog coverage', { exact: true }).click();
-  await expect(
-    page.getByText('Unknown source total', { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('This is not complete coverage', { exact: false }),
-  ).toBeVisible();
-});
-
-test('the recorded base state is selectable but refused with its own reason', async ({
-  page,
-}) => {
-  await page.goto('./');
-  await page
-    .getByLabel('Character and exact state')
-    .selectOption('unknown-region:1003211:base:lv120:sa10');
-  await expect(result(page)).toContainText('Cannot recommend yet');
-  await expect(result(page)).toContainText(
-    'No evaluator: the progression profile, eligible equipment and evaluation contexts for this pre-EZA state are not admitted.',
-  );
-  // The same card's EZA evaluator is never borrowed for this state.
-  await expect(
-    page.getByRole('button', { name: 'Recommend build', exact: true }),
+    page.getByRole('combobox', { name: /progression|scope/i }),
   ).toHaveCount(0);
-  await expect(page.getByLabel('Supported progression')).toHaveCount(0);
 
-  await page.getByText('Character catalog coverage', { exact: true }).click();
-  const count = (label: string) =>
-    page
-      .locator('dl > div')
-      .filter({ has: page.getByText(label, { exact: true }) })
-      .locator('dd');
-  await expect(count('Exact states')).toHaveText('2');
-  await expect(count('Base (pre-EZA) states')).toHaveText('1');
-  await expect(count('EZA states')).toHaveText('1');
-  await expect(count('States with a limited evaluator')).toHaveText('1');
+  // Current build: an Evasion orb in silver.
+  await page
+    .getByLabel('Current silver equipment')
+    .selectOption({ label: 'Evasion +2 · silver' });
+  // Candidate equipment: my items, with one spare Critical Hit orb.
+  await page.getByRole('radio', { name: 'Use my equipment' }).check();
+  await expect(page.getByText('No spare items entered yet')).toBeVisible();
+  await page.getByText('Edit spare items').click();
+  await page.getByLabel('Critical Hit +2 · silver spare copies').fill('1');
   await expect(
-    page.getByText(
-      '2 exact states are currently bundled, each recorded individually; 1 with a limited evaluator.',
-    ),
+    page.getByText('Spare items: 1 × Critical Hit +2 · silver.'),
   ).toBeVisible();
-});
 
-test('primary named saves remain loadable in the preserved exact-state comparator', async ({
-  page,
-}) => {
-  await selectCharacter(page);
-  await profile(page);
-  await page.getByLabel('Equipment mode').selectOption('catalog');
-  await page
-    .getByLabel('Current bronze equipment')
-    .selectOption({ label: 'AGL HP +500 · bronze Lv.5' });
-  await page
-    .getByText('Saved builds and JSON backups', { exact: true })
-    .click();
-  await page
-    .getByLabel('Name for the current settings')
-    .fill('Potential current HP');
+  // Goal: Critical chance, labeled experimental.
+  await expect(output(page)).toContainText('Choose an objective in step 3.');
+  await goal(page, 'Critical chance');
+  await optimize(page);
+
+  await expect(heading(page)).toHaveText('Recommended build.');
+  await expect(heading(page)).toBeFocused();
+  await expect(output(page)).toContainText('Experimental');
+  await expect(output(page)).toContainText(
+    '0.0% → 4.0% (+4.0 percentage points)',
+  );
+  await expect(
+    output(page).getByRole('list').filter({ hasText: 'Silver:' }),
+  ).toHaveText('Silver: Evasion +2 · silver → Critical Hit +2 · silver');
+  // Potential and equipment levels are shown separately from the total.
+  const critical = output(page).getByRole('row', { name: /^Critical Hit/ });
+  await expect(critical.getByRole('cell')).toHaveText(['0', '+2', '2']);
+  await expect(output(page)).toContainText(
+    'Critical Hit: 0 from Hidden Potential + 2 from equipment = 2 levels.',
+  );
+  await expect(output(page)).toContainText(
+    'Critical chance = 2 (Critical Hit levels) × 2.0% (chance per level) = 4.0%.',
+  );
+
+  // Save, reload and load: the exact state and inputs come back.
+  await page.getByLabel('Name for the current settings').fill('Crit swap');
   await page.getByRole('button', { name: 'Save build', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText(
-    'Saved “Potential current HP”.',
+  await expect(page.getByRole('status')).toHaveText('Saved “Crit swap”.');
+  await page.reload();
+  await expect(page.getByLabel('Character and exact state')).toHaveValue(
+    GOKU_STATE,
   );
-  const saved = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    LIBRARY_KEY,
-  );
-  expect(saved).toContain(GOKU_STATE);
-  await page.goto(GOKU_OPTIMIZER);
   await page
-    .getByRole('button', { name: 'Load Potential current HP', exact: true })
+    .getByRole('button', { name: 'Load Crit swap', exact: true })
     .click();
   await page
     .getByRole('dialog')
     .getByRole('button', { name: 'Load build', exact: true })
     .click();
+  await expect(page.getByLabel('Current silver equipment')).toHaveValue(
+    'generic:silver:evasion:2',
+  );
   await expect(
-    page.getByRole('combobox', { name: 'Current bronze equip', exact: true }),
-  ).toHaveValue('agl:bronze:hp:5');
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), LIBRARY_KEY),
-  ).toBe(saved);
+    page.getByRole('radio', { name: /^Critical chance/ }),
+  ).toBeChecked();
+  await expect(
+    page.getByRole('radio', { name: 'Use my equipment' }),
+  ).toBeChecked();
+  await optimize(page);
+  await expect(heading(page)).toHaveText('Recommended build.');
 });
 
-test('keyboard submission and mobile result layout work under the Pages prefix', async ({
+test('your own current values are labeled once and evaluated as entered', async ({
   page,
 }) => {
-  await selectCharacter(page);
-  await profile(page);
-  await page.getByLabel('Equipment mode').selectOption('catalog');
-  const button = page.getByRole('button', {
-    name: 'Recommend build',
-    exact: true,
-  });
-  await button.focus();
+  await page.goto(OPTIMIZER);
+  await page.getByRole('radio', { name: 'My current values' }).check();
+  await expect(
+    page.getByText('Board requirements not checked.', { exact: true }),
+  ).toHaveCount(1);
+  // Starts from the documented profile: nothing changes until edited.
+  await expect(page.getByLabel('Additional Attack levels')).toHaveValue('5');
+  await expect(page.getByLabel('ATK addition')).toHaveValue('2800');
+  await page.getByLabel('Critical Hit levels').fill('3');
+  await goal(page, 'Critical chance');
+  await optimize(page);
+  await expect(output(page)).toContainText(
+    'Your entered values · equipment search',
+  );
+  await expect(output(page)).toContainText(
+    '6.0% → 10.0% (+4.0 percentage points)',
+  );
+  await expect(output(page)).toContainText(
+    'Critical Hit: 3 from Hidden Potential + 2 from equipment = 5 levels.',
+  );
+
+  // An out-of-range value is reported on its field and blocks the search.
+  await page.getByLabel('Evasion levels').fill('41');
+  await expect(
+    page.getByText('Enter a whole number from 0 to 40.'),
+  ).toBeVisible();
+  await expect(heading(page)).toHaveText('Your recommendation appears here.');
+  await optimize(page);
+  await expect(page.getByLabel('Evasion levels')).toBeFocused();
+  await expect(heading(page)).toHaveText('Your recommendation appears here.');
+});
+
+test('current build wins, ties and incomplete searches are stated plainly', async ({
+  page,
+}) => {
+  await page.goto(OPTIMIZER);
+  await page
+    .getByLabel('Current silver equipment')
+    .selectOption({ label: 'Critical Hit +2 · silver' });
+  await goal(page, 'Critical chance');
+  await optimize(page);
+  await expect(heading(page)).toHaveText(
+    'Your current build is already best for Critical chance.',
+  );
+  await expect(output(page)).toContainText(
+    '3 other configurations reach the same value.',
+  );
+  await expect(output(page)).toContainText(
+    'No changes: keep your current build.',
+  );
+
+  await page.getByLabel('Current silver equipment').selectOption('');
+  await optimize(page);
+  await expect(heading(page)).toHaveText('Multiple builds tie.');
+  await expect(output(page)).toContainText(
+    '4 configurations tie. Your current build is not among them; the one shown needs the fewest changes.',
+  );
+
+  await page.getByText('Advanced search settings').click();
+  await page.getByLabel('Maximum combinations checked').fill('1');
+  await optimize(page);
+  await expect(heading(page)).toHaveText('Best found.');
+  await expect(output(page)).toContainText(
+    'The search stopped early because the combination limit was reached.',
+  );
+  await output(page).getByText('Search completeness').click();
+  await expect(output(page)).toContainText(
+    'Incomplete: a better build may exist',
+  );
+});
+
+test('objectives are grouped by model status; damage and survival are not offered', async ({
+  page,
+}) => {
+  await page.goto(OPTIMIZER);
+  const objectives = page.getByRole('group', { name: 'Objective' });
+  await expect(objectives.getByRole('radio')).toHaveCount(6);
+  await expect(
+    objectives.getByText('Supported', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    objectives.getByText('Experimental', { exact: true }),
+  ).toBeVisible();
+  await expect(objectives).toContainText(
+    'Expected damage: Needs verified damage stages',
+  );
+  await expect(objectives).toContainText('Damage taken and survival:');
+  // No objective is preselected for a new session.
+  await expect(objectives.getByRole('radio', { checked: true })).toHaveCount(0);
+
+  // The evasion context sits next to the evasion objective.
+  await expect(
+    page.getByLabel(/The incoming attack can be evaded/),
+  ).toHaveCount(0);
+  await goal(page, 'Evasion chance');
+  const context = page.getByLabel(/The incoming attack can be evaded/);
+  await expect(context).toBeChecked();
+  await context.uncheck();
+  await optimize(page);
+  await expect(output(page)).toContainText(
+    'Evasion chance = 0.0% (Fixed at 0 by the explicit context: evasion disabled.).',
+  );
+});
+
+test('an unsupported state is explained before any search, without substitution', async ({
+  page,
+}) => {
+  await page.goto(
+    `?workbench=optimizer&state=${encodeURIComponent(BASE_STATE)}`,
+  );
+  const refusal = page.getByRole('region', { name: 'Build recommendation' });
+  await expect(refusal.getByRole('heading')).toHaveText('Not supported yet');
+  await expect(refusal).toContainText(
+    'No evaluator: the progression profile, eligible equipment and evaluation contexts for this pre-EZA state are not admitted.',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Optimize', exact: true }),
+  ).toHaveCount(0);
+  await page.goto('?workbench=optimizer&state=not-a-real-state');
+  await expect(refusal).toContainText(
+    'State not-a-real-state is not in this catalog. No other state is substituted.',
+  );
+  await refusal
+    .getByRole('link', { name: /^Optimize Super Saiyan 3 Goku/ })
+    .click();
+  await expect(page.getByLabel('Character and exact state')).toHaveValue(
+    GOKU_STATE,
+  );
+});
+
+test('saved builds stay compatible with the source examples and older settings', async ({
+  page,
+}) => {
+  await page.goto(OPTIMIZER);
+  await page.evaluate(
+    (key) => localStorage.setItem(key, 'older settings'),
+    WORKING_KEY,
+  );
+  await page
+    .getByLabel('Current bronze equipment')
+    .selectOption({ label: 'AGL HP +500 · bronze Lv.5' });
+  await goal(page, 'Card HP');
+  await page.getByLabel('Name for the current settings').fill('Documented HP');
+  await page.getByRole('button', { name: 'Save build', exact: true }).click();
+  await page.getByRole('radio', { name: 'My current values' }).check();
+  await page.getByLabel('Name for the current settings').fill('My values');
+  await page.getByRole('button', { name: 'Save build', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Saved “My values”.');
+  // The optimizer never writes the older working settings.
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), WORKING_KEY),
+  ).toBe('older settings');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), LIBRARY_KEY),
+  ).toContain(GOKU_STATE);
+
+  await page.evaluate((key) => localStorage.removeItem(key), WORKING_KEY);
+  await page.goto(GOKU_OPTIMIZER);
+  await page
+    .getByRole('button', { name: 'Load Documented HP', exact: true })
+    .click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Load build', exact: true })
+    .click();
+  await expect(page.getByLabel('Current bronze equip')).toHaveValue(
+    'agl:bronze:hp:5',
+  );
+  // Entered values cannot be shown by the source example, so it refuses them.
+  await expect(
+    page.getByRole('button', { name: 'Load My values', exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(
+      'Uses your own potential values, which this source example cannot show. Open it in the optimizer.',
+    ),
+  ).toBeVisible();
+});
+
+test('keyboard users can choose a goal and optimize; results fit the screen', async ({
+  page,
+}) => {
+  await page.goto(OPTIMIZER);
+  await page.getByRole('radio', { name: /^Card ATK/ }).focus();
+  await page.keyboard.press('Space');
+  await page.keyboard.press('ArrowDown');
+  await expect(page.getByRole('radio', { name: /^Card DEF/ })).toBeChecked();
+  await page.getByRole('button', { name: 'Optimize', exact: true }).focus();
   await page.keyboard.press('Enter');
-  await expect(result(page)).toContainText('Card HP: 15,827');
+  await expect(heading(page)).toBeFocused();
+  await expect(heading(page)).toHaveText('Multiple builds tie.');
+  await expect(output(page)).toContainText('8,596 → 9,096 (+500)');
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth - innerWidth,
     ),
   ).toBeLessThanOrEqual(0);
-  await page.reload();
-  await expect(page.getByLabel('Character and exact state')).toHaveValue(
-    GOKU_STATE,
-  );
 });

@@ -1,6 +1,8 @@
-# Limited progression-profile/equipment comparison
+# Dokkan Potential Optimizer
 
-The current primary page compares equipment within one documented progression profile. It has not met the milestone of comparing multiple attainable Hidden Potential allocations for a meaningful character/context objective. Maintenance remains secondary; it does not become game-validated merely by being selectable. This is a reusable first batch with explicit data gates, **not a completed full-potential optimizer**.
+The default page is one workflow: **Character → Current build → Goal → Result**. It searches the attainable Hidden Potential allocations and the equipment it can verify for one exact character state, then states the recommended build, the changes, the improvement and a short calculation-backed reason. Main navigation is **Optimize · Characters · Tools**; maintenance, source examples and the legacy demo are Tools.
+
+**Full allocation optimization is not available for any real character yet.** The allocation engine is real and connected to the search, but no complete, evidence-backed choice-node list exists for a real card, so the one optimizable state has a single documented allocation. Equipment search, user-entered current values and supported/experimental objectives work today.
 
 ## Actual coverage and scope
 
@@ -19,51 +21,58 @@ The current primary page compares equipment within one documented progression pr
 | Complete board templates                  |             0 | One partial aggregate profile; no reconstructed game graph                                          |
 | Source catalog total                      |       Unknown | Comprehensive coverage cannot be reconciled                                                         |
 
-Only the existing filled 55% no-dupe profile is admitted. The product's intended progression scope is broader, but **full potential allocation** currently returns the specific missing alternatives/increments, connections/prerequisites, route/unlock gates and reviewed card-to-board mappings. No automatic route unlocking, inferred percentage equivalence, respec sliders or invented legal totals are offered. No allocation graph was added to real data.
+What each part of the search covers for the one optimizable state:
 
-The explicitly selected documented-profile subset is useful now: choose a card-stat objective, compare current equipment against inventory/catalog choices, receive an exact change and baseline delta, and inspect retained ties/tradeoffs. It does not become a full allocation recommendation. An unregistered/local definition stays selectable and returns its missing template/evaluator gate rather than inheriting Goku behavior.
+- **Allocation:** the documented profile (55%, base board filled, no duplicate routes) is exactly **one** attainable allocation. The engine enumerates one option per unlocked choice node of a template; it is proven on TEST ONLY graphs with hand-enumerated results and is idle for real characters until a real template is admitted. The page shows **Full allocation support not available for this character yet.** before any search, with the missing evidence and the supported alternative.
+- **Entered values:** users may replace the profile with their own current skill levels and stat additions (_Board requirements not checked._). They are evaluated as entered and searched with every equipment combination; they are never called attainable or full allocation. Technical bounds (0–40 levels, 0–50,000 stats) keep arithmetic finite and are not game limits.
+- **Equipment:** 1 allocation × 4 bronze options × 4 silver options × 1 gold option (empty; no gold item recorded) = **16** combinations.
+- **Objectives:** card ATK/DEF/HP are **Supported**; initial extra Super, critical and evasion chances are **Experimental**; expected damage and damage taken/survival are listed as not available and cannot be selected. No objective is preselected.
+
+An unregistered or local state stays selectable and is explained as **Not supported yet** with its own reason; no other state's evaluator is used.
 
 ## Reproduce the supported result
 
-1. `npm ci`, then `npm run dev -- --host 127.0.0.1`. Open `/dokkan-optimizer/`.
-2. Select **Mystery Super Technique · Super Saiyan 3 Goku · AGL UR · eza step 7 · Lv.140/SA15 · Global English**. Full-potential scope reports the missing graph without evaluating candidates.
-3. Select **Selected documented profile only**, keep the filled no-dupe profile/system unlocked and current slots empty. Choose **Best available in catalog** and **Card HP**. If older working settings exist, explicitly restore these inputs rather than deleting saves.
-4. **Recommend build**: 16 combinations, current HP 15,327, target HP 15,827, **bronze → AGL HP +500**, +500 HP. Four configurations tie on HP; the displayed tie needs the fewest changes. Silver changes do not improve HP. No damage conclusion follows.
-5. Inventory mode with no current/inventory items returns **Your current build is already best**. Enter HP-orb quantity 1 to make it available. Retaining an already attached HP orb requires zero unequipped copies in that same slot.
-6. A one-evaluation budget returns **Best found so far — search incomplete**. The current baseline remains considered even when it has not appeared in the candidate prefix. No global optimality is claimed.
+1. `npm ci`, then `npm run dev -- --host 127.0.0.1`. Open `/dokkan-optimizer/` and choose **Super Saiyan 3 Goku · AGL UR · EZA step 7 · Lv.140 / SA15 · Global English**.
+2. **Best available in catalog** (the default for a new session), **Card HP**, **Optimize**: 16 combinations, current HP 15,327, recommended 15,827 with **Bronze: Empty → AGL HP +500 · bronze Lv.5** (+500). Four configurations tie on HP; the one shown needs the fewest changes (**Multiple builds tie.**).
+3. Equip that item now and optimize again: **Your current build is already best for Card HP.**
+4. **Use my equipment** with no spare items: only current equipment can be used. Enter a spare copy to make an item available. An item already equipped can stay in its slot without a spare copy.
+5. **Critical chance** with a silver Critical Hit item: 0.0% → 4.0% (+4.0 percentage points) and the formula _2 (Critical Hit levels) × 2.0% (chance per level) = 4.0%_.
+6. **My current values** with Critical Hit 3: 6.0% → 10.0%.
+7. **Maximum combinations checked** = 1 under Advanced: **Best found.** with the incomplete-search note. The current baseline is always evaluated.
 
-Scope, probability acknowledgement and scan budget are session controls. Named saved inputs retain their older schema and exact state/revisions. The primary flow reads but does not autosave over `dokkan.character-builds.v1`; explicit named saves use the preserved library. Source examples still own their existing autosave behavior. Maintenance uses its separate definition key.
+The optimizer reads but never writes the older working settings (`dokkan.character-builds.v1`); named saves use the preserved library (`dokkan.character-library.v1`). Entered values are an optional field of the saved request, so earlier saves keep their exact shape. The source-example tool refuses saves with entered values instead of loading them partially. Maintenance uses its separate definition key.
 
-## Context and recommendation meaning
+## Model status, kit mechanics and recommendation meaning
 
-Card HP/ATK/DEF are raw card stats + separately recorded profile additions + flat equips. Battle modifiers are excluded. Goku's existing raw HP/ATK/DEF are 12,527 / 11,111 / 5,796, with separately documented +2,800 each for this profile. These facts were not re-verified or promoted in this batch.
+Card HP/ATK/DEF are raw card stats + Hidden Potential additions + flat equipment stats. Battle modifiers are excluded. Goku's raw HP/ATK/DEF are 12,527 / 11,111 / 5,796, with separately documented +2,800 each for this profile.
 
-The legacy initial-check model remains available only after an explicit acknowledgement in the primary flow: turn 1, first appearance, initial attack Super, no external effects; native profile AA5 and no native critical/evasion chance in this scoped check. Its AA trigger, extra-Super, critical and evasion arithmetic remains in the evidence ledger. The FYI/RNG convention discrepancy remains unresolved. Tests demonstrate the implemented arithmetic, not independent game behavior. No full-turn attack chain, enemy damage, battle DEF, survival, clear probability or expected-damage objective is offered. Raw ATK and critical chance are never relabeled optimal damage.
+Each evaluator declares, per objective, a **model status** (supported or experimental), a one-sentence summary, its ranking basis and the kit mechanics that change it. The initial-check skill chances are experimental: turn 1, first appearance, initial attack Super, no external effects. Each depends on a single skill's total level (Additional Attack, Critical Hit or Evasion), so **any convention in which the chance rises with level ranks builds identically**; only the displayed percentages depend on the unresolved source model (the FYI/RNG convention discrepancy remains). A unit test checks that the ranking equals the level ranking. This does not verify the percentages, and no full-turn chain, damage, battle DEF or survival result follows.
 
-Each evaluator now declares objective-specific evidence, exclusions and blocking missing mechanics. An absent declaration, unresolved required evidence, unavailable baseline/candidate objective, mismatched template/revision or calculation failure prevents recommendation. Known unrelated detail gaps do not invalidate pre-battle stat arithmetic. All current real records remain source-documented, **not independently confirmed**. Generic silver restrictions/aliases remain unresolved for independent confirmation; there is no verified-only mode and they must be excluded from any future mode with that name.
+Each state declares its kit mechanics (native additional attacks, native critical, native evasion, attack-triggered, build-up, conditional and form-change effects) as absent, present or unknown, with evidence. A mechanic that is unknown, or present but not modeled, blocks every objective it could change, with that reason shown before any search. Goku's declarations come from its reviewed EZA kit claim: no native additional attacks, critical or evasion, so the skill-chance objectives stay available; build-up and form changes are unknown and block nothing that is offered.
 
-Result outcomes distinguish recommended, current already best, objective ties, no compatible candidates, precise data/mechanics gates and incomplete search. Deterministic tie preference is current build, then fewer changes, then stable input key; this is a presentation rule, not a resource-cost or strength formula. No universal weighted score is used. Alternative legal inputs are retained when complete exposed evaluations coincide.
+Result outcomes distinguish recommended, current build already best, objective ties (stating whether the current build is among them), no compatible candidates, precise data/mechanics gates and incomplete search (**Best found.**). Deterministic tie preference is current build, then fewer changes, then stable input key; this is a presentation rule, not a resource-cost or strength formula. No universal weighted score is used. Alternative inputs are retained when complete exposed evaluations coincide.
 
-Pareto comparisons use the same context and only metrics available across all candidates and baseline. The selected list is explicit; null never supplies a dominance advantage. If cancellation interrupts dominance checks, the frontier is unavailable, not partially certified. Objective ranking can still report best found with incomplete-search language. The declared current baseline always participates.
+Pareto comparisons use the same context and only metrics available across all candidates and baseline. Null never supplies a dominance advantage. If cancellation interrupts dominance checks, the frontier is unavailable. The declared current baseline always participates.
 
 ## Separation and performance
 
-| Layer                        | Files                                              | Responsibility                                                                                                    |
-| ---------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Factual catalog              | `src/character-data/`, `src/data/real/catalog.ts`  | Exact cards/states, field completeness/provenance, normalized contract, update/saved-ID checks                    |
-| Potential profiles/templates | `src/potential/progression.ts`                     | Explicit state/profile/data/template revision mappings; aggregate vs complete topology distinction                |
-| Inputs/compatibility         | `src/character-build/domain.ts`, `legality.ts`     | Progression/current choices, unlocks, type/category/state/slot restrictions, quantities                           |
-| Candidate search             | `generation.ts`, `search.ts`                       | Lazy allocations × compatible slot pools, rejection/evaluation budgets, host scheduling/cancellation              |
-| Evaluation                   | `evaluation.ts`, evaluator registry                | Context-dependent metrics/traces with objective-specific coverage declarations; no UI/storage/provider dependency |
-| Ranking/outcomes             | `comparison.ts`, `src/potential/recommendation.ts` | Baseline, equivalence, objective ties, common-metric frontier, direct changes/deltas and gates                    |
-| UI                           | `src/potential/PotentialOptimizer.tsx`             | Primary workflow, catalog coverage, session inputs, existing named-build UI and computed explanations             |
-| Maintenance                  | `src/character-definitions/`                       | Preserved secondary custom authoring/import/revisions, separately labeled arithmetic model                        |
+| Layer                        | Files                                                                        | Responsibility                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Factual catalog              | `src/character-data/`, `src/data/real/catalog.ts`                            | Exact cards/states, field completeness/provenance, normalized contract, update/saved-ID checks                |
+| Potential profiles/templates | `src/potential/progression.ts`                                               | Explicit state/profile/data/template revision mappings; aggregate vs complete topology distinction            |
+| Allocations                  | `src/character-build/allocation.ts`                                          | Attainable allocations per progression, entered values and their bounds, potential contributions by source    |
+| Inputs/compatibility         | `src/character-build/domain.ts`, `legality.ts`                               | Progression/current choices, unlocks, type/category/state/slot restrictions, quantities                       |
+| Candidate search             | `generation.ts`, `search.ts`                                                 | Allocations × compatible slot pools, rejection/evaluation budgets, host scheduling/cancellation               |
+| Evaluation                   | `evaluation.ts`, evaluator registry                                          | Metrics/traces; objective models, gaps and modeled mechanics declared per implementation                      |
+| Capabilities                 | `src/potential/capabilities.ts`                                              | What a state can evaluate before search: allocation modes, equipment per slot, objective status and kit gates |
+| Ranking/outcomes             | `comparison.ts`, `src/potential/recommendation.ts`                           | Baseline, equivalence, objective ties, common-metric frontier, direct changes/deltas and gates                |
+| Result text                  | `src/character-build/explanation.ts`, `src/potential/result.ts`              | Source breakdown (potential / chosen nodes / equipment / total), changes and short reasons from the trace     |
+| UI                           | `src/potential/` (`PotentialOptimizer`, `CurrentBuild`, `GoalSettings`, ...) | The workflow, support summary, saved builds and the expandable explanation                                    |
+| Maintenance                  | `src/character-definitions/`                                                 | Preserved secondary custom authoring/import/revisions, separately labeled arithmetic model                    |
 
-The search-size estimate is allocation option products × per-slot options (including empty), before inventory filtering. The real profile has 1 allocation × 4 bronze × 4 silver × 1 gold = **16**. Supported choice-node structure is bounded to eight nodes; this technical bound is not a game maximum. A test-only two-node graph enumerates its four exact allocations independently.
+The search-size estimate is allocation count × per-slot options (including empty), before inventory filtering. Supported choice-node structure is bounded to eight nodes; this technical bound is not a game maximum.
 
-The primary engine yields every 128 candidate scans **and** every 128 pairwise dominance comparisons; the browser supplies task scheduling. The engine is pure and accepts an injected clock/cancellation callback. Rejected combinations consume scan budget. Evaluation budget is 1–20,000; scan budget is 1–1,000,000. These protect the prototype, not a scalability claim. Sorting/group preparation remains bounded synchronous work; dominance is still worst-case quadratic but cooperative. Alternative inputs render lazily in pages of 50. An enlarged real catalog needs profiling and likely worker/scalable-search work before lifting limits. The synchronous `compareBuilds` remains a small reference/regression API.
-
-Cancellation and edits invalidate in-flight results. Total compatible count is unknown when truncated. No mutation of the captured request or previous saves is allowed. The independent current baseline is evaluated separately from the candidate budget.
+The engine yields every 128 candidate scans **and** every 128 pairwise dominance comparisons; the browser supplies task scheduling. Rejected combinations consume scan budget. Evaluation budget is 1–20,000; scan budget is 1–1,000,000. These protect the prototype, not a scalability claim. A Web Worker is not justified at 16 combinations; revisit when a real template multiplies the allocation count. Cancellation and edits invalidate in-flight results. Total compatible count is unknown when truncated.
 
 ## Catalog acquisition gate
 
@@ -80,7 +89,7 @@ A focused check on 2026-10-19 inspected two additional public GitHub exports ins
 
 ## Allocation milestone status
 
-The focused board/template check did not establish a complete real allocation set. See the [specific inspected evidence and stop point](character-build/EVIDENCE.md#focused-allocation-gate-review--2026-10-19). No new allocation controls, character, combat metric or assumed board was added. Existing HP/equipment comparisons are regression functionality, not completion of the allocation milestone.
+The focused board/template check did not establish a complete real allocation set. See the [specific inspected evidence and stop point](character-build/EVIDENCE.md#focused-allocation-gate-review--2026-10-19). That gate was not re-audited for this workflow rework: no character, combat metric or assumed board was added. The allocation engine and entered values are foundations; the HP/equipment comparisons are not completion of the allocation milestone. **Concrete user action that would close it:** screenshots of one owned card's whole Hidden Potential board with route locks and its readable choice dialogs, or a complete documented node table bound to that card/template.
 
 ## Remaining batches
 
@@ -90,4 +99,4 @@ The focused board/template check did not establish a complete real allocation se
 - Extend real equipment records/restrictions/IDs with field-level evidence, independently confirm where possible, and keep unresolved items out of any verified-only mode.
 - Profile larger joint searches before expanding UI/engine limits. Collection-wide allocation, investment/resource optimization and full battle simulation remain deferred.
 
-See [validation results](VALIDATION.md), [existing evidence](character-build/EVIDENCE.md), [catalog contracts](CATALOG.md) and [maintenance documentation](CHARACTER_DEFINITIONS.md). No merge or deployment is part of this change.
+See [validation results](VALIDATION.md), [existing evidence](character-build/EVIDENCE.md), [catalog contracts](CATALOG.md) and [maintenance documentation](CHARACTER_DEFINITIONS.md).

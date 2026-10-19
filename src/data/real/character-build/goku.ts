@@ -174,6 +174,45 @@ export const characterCatalog: CharacterCatalog = {
     nodes: [],
   },
   orbs,
+  // Read from the existing reviewed "eza-kit" claim; no new facts. Unstated
+  // mechanics stay unknown, which blocks any objective they could change.
+  kit: {
+    nativeAdditional: {
+      status: 'absent',
+      evidenceIds: ['eza-kit'],
+      note: 'The EZA kit has no native additional attacks.',
+    },
+    nativeCritical: {
+      status: 'absent',
+      evidenceIds: ['eza-kit'],
+      note: 'The EZA kit has no native critical-hit chance.',
+    },
+    nativeEvasion: {
+      status: 'absent',
+      evidenceIds: ['eza-kit'],
+      note: 'The EZA kit has no native evasion.',
+    },
+    attackTriggered: {
+      status: 'present',
+      evidenceIds: ['eza-kit'],
+      note: 'The Super Attack lowers enemy DEF; a damage effect, not modeled.',
+    },
+    buildup: {
+      status: 'unknown',
+      evidenceIds: [],
+      note: 'Not stated by the admitted kit claim.',
+    },
+    conditional: {
+      status: 'present',
+      evidenceIds: ['eza-kit'],
+      note: 'Timed ATK bonus from the entry turn; a battle stat, not modeled.',
+    },
+    formChange: {
+      status: 'unknown',
+      evidenceIds: [],
+      note: 'Not stated by the admitted kit claim.',
+    },
+  },
   evidence: [
     claim(
       'identity',
