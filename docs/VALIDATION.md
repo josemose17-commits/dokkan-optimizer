@@ -1,5 +1,48 @@
 # Prototype validation
 
+## Primary character workbench — 2026-10-19 task validation
+
+Research snapshot dated 2026-10-18; validation completed during the task spanning the UTC date change. Node.js **24.19.0**, headless Chromium **153.0.8010.0**.
+
+- `npm test`: **114/114 passed**, four files. This includes all **47 unchanged legacy tests** and **67 new character-engine/persistence tests**.
+- `npm run typecheck`: **passed**.
+- `npm run build`: **passed**; Vite production assets retain `/dokkan-optimizer/assets/`.
+- `npm run format:check`: **passed**.
+- `git diff --check`: **passed**.
+
+The independent examples cover the explicit 16-item-combination oracle, abstract node-choice and quantity examples, restrictions/prerequisites, conditional evasion, mathematical probability/expectation examples, missing metrics, same-context Pareto tradeoffs/ties, equivalent allocations/equips, baseline dominance under truncation, search disclosure, and storage failures. Hypothetical branch damages test arithmetic only. Successful tests do not establish independent confirmation of game behavior.
+
+### Production browser checks at `/dokkan-optimizer/`
+
+**20/20 passed** against `dist/` served by a local static server that accepts the repository prefix. Desktop **1440 × 1050** and mobile **390 × 844** screenshots were visually inspected, including the primary-page introduction and comparison table. The browser harness is a task-workspace check, not a checked-in Playwright dependency or CI job.
+
+1. Generated JS/CSS URLs retain the prefix and exist.
+2. Character workbench is the default product and document title.
+3. Exact EZA state, source confidence and fixed 55% boundary are visible.
+4. Default 16 legal builds, baseline values, four first-place ties and nine frontier evaluations match hand expectations.
+5. Only supported objectives appear; damage/battle DEF remain unavailable.
+6. Current equips update the baseline and exact absolute/relative/percentage-point deltas.
+7. Inventory quantities and retained current items restrict targets correctly.
+8. Character baseline, inventory and mode survive reload.
+9. Evasion-disabled context groups 16 targets into 12 evaluations, retaining all 16 equip alternatives.
+10. The declared frontier filter preserves six evasion-disabled alternatives and includes baseline dominance.
+11. A two-candidate limit reports truncation/unknown total while retaining the actual baseline.
+12. Unmet potential-system eligibility produces an error and no rankings.
+13. Field evidence distinguishes documentation, mathematical testing and absent independent confirmation.
+14. Mobile primary page has no page-level overflow; the comparison table scrolls internally.
+15. Legacy navigation retains the exact visible synthetic warning.
+16. Legacy search still yields 21 eligible of 56 candidates and seven distinct rotation participants including the friend.
+17. Legacy ownership and character settings persist separately through navigation/reloads; mobile legacy page does not overflow.
+18. Unknown saved schema warns and is preserved until an edit.
+19. Blocked localStorage warns while calculations remain usable.
+20. No uncaught page errors, external requests or root-relative asset requests occur.
+
+An initial storage-failure check hit a serverless Chromium multiple-context lifecycle failure in the harness. It was changed to a same-page storage override and the complete 20-check run passed twice, including the final production bundle. This was not a passing game-mechanics verification test.
+
+The original app, engine, fixture data, legacy storage, dependencies/lockfile, Vite base and Pages workflow were preserved. No merge or deployment was performed. No cross-browser/physical-device/full accessibility audit or in-game verification was performed. Full node respec, full-turn chains, battle stats and damage remain unresolved as described in [the evidence ledger](character-build/EVIDENCE.md).
+
+## Historical synthetic team prototype
+
 Validated on **2026-10-18**, using Node.js 24.19.0.
 
 ## Automated checks

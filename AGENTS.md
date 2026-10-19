@@ -1,5 +1,26 @@
 # Project rules
 
+## Primary character workbench
+
+- The character-build workbench is the primary product and default page. Preserve the synthetic team app as the clearly labeled legacy demo at `?workbench=legacy-team`; do not expand or rewrite it during character work.
+- Keep `src/character-build/{domain,legality,generation,evaluation,comparison}.ts` pure and independent of React, storage, network and data imports. Candidate generation stays separate from evaluation. Never reuse synthetic team ratings or formulas for character performance.
+- The admitted real slice is Global English AGL Mystery Super Technique Super Saiyan 3 Goku, fully EZA step 7 / level 140 / SA15, without SEZA, with the filled 55% no-dupe base board. Full node respec remains blocked on exact graph evidence. Do not add level sliders or guessed nodes. Test-only abstract graphs are not real game data.
+- Keep individual real facts in `src/data/real/`, separate from `src/data/fixtures/`. Records need stable internal IDs, honest source aliases, exact state, field-level evidence, support declarations and review/verification dates. A directory or `support: supported` flag does not imply game verification.
+- Distinguish source documentation, genuinely independent corroboration/in-game evidence, and passing mathematical tests. Never promote the first or third to independent confirmation. All current real evidence has null independent-verification dates.
+- Surface unsupported metrics as unavailable/null, never zero. Offer only supported objectives. Keep card stats, initial-check probabilities and damage separate. No universal weighted score, damage proxy, survival or clear-rate claims.
+- Pareto comparisons require identical context and a common explicitly reported set of available metrics. Preserve exact ties. Missing metrics cannot create false dominance. Deduplicate complete exposed evaluations while retaining every alternative legal allocation/equip and its changes/inventory requirements.
+- Validate eligibility before ranking, fail closed on unknown restrictions/prerequisites, respect quantities, and distinguish attached current equips from unequipped inventory. Catalog mode means ownership ignored within this catalog only. Never imply respec/equip changes are free or affordable; costs/investment optimization are deferred.
+- Disclose the exact catalog/profile/context, source confidence, exclusions, evaluated/unique counts and truncation. A truncated search gives no global optimum. Total legal count is unknown when search stops early.
+- Assess access restrictions, copied expressive content, compiled-dataset rights and individual factual recording separately. Missing bulk permission is not automatically a ban on recording individual numbers. Do not assert a legal permission that was not established; no prohibited/internal endpoints, artwork or unlicensed database imports. Maintain `docs/character-build/EVIDENCE.md` and `DATA_ACCESS.md` when evidence changes.
+- Keep character storage separately versioned (`dokkan.character-builds.v1`). Validate schemas/catalog revision and show corruption/blocked-storage warnings. Do not modify the legacy collection key. Reading invalid saved data must not overwrite it before an explicit edit.
+- Test independent hand arithmetic, legal enumeration, restrictions, condition gates, quantities, equivalent variants, Pareto context/ties/missing values and truncation. Hypothetical branch-damage tests are arithmetic tests, not combat verification. Keep all legacy tests.
+- Before completion run `npm test`, `npm run typecheck`, `npm run build`, and browser checks at `/dokkan-optimizer/` for both workbenches. Report actual results. Preserve Node 24, the lockfile and Pages base/workflow. Do not commit generated output, personal builds, dependencies or browser binaries.
+- Implement on a feature branch and open a PR when requested. Do not merge or deploy unless separately requested.
+
+## Preserved legacy team demo
+
+The following rules apply to the existing synthetic team engine/UI, not to the primary character evaluator.
+
 - Use TypeScript, React, and Vite. Keep `src/engine/` and `src/domain/` independent of React, DOM APIs, storage, network access, and fixture imports. Keep candidate generation separate from evaluation.
 - This is a small-collection reference optimizer. Apply eligibility before scoring. Coverage under **both** leaders is required for **every** participant, including both leaders and the friend. Unknown/unsupported eligibility fails closed, including nested rules and mechanic declarations.
 - Do not add partial coverage by silently weakening the default. Any future exploration mode must require explicit opt-in, show a warning, retain separate coverage reports, and identify ineligible results.
