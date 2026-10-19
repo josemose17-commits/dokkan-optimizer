@@ -5,6 +5,7 @@ import {
   type Build,
   type BuildRequest,
   type CharacterCatalog,
+  type EvaluatorEntry,
   type Orb,
   type Restriction,
   type Slot,
@@ -127,19 +128,50 @@ export function buildErrors(
   return errors;
 }
 
+// Entry-level checks: the entry binds ONE exact state to its model, contexts
+// and objectives. Nothing here falls back to another entry or state.
+export function entryErrors(entry: EvaluatorEntry): string[] {
+  const errors: string[] = [];
+  const { model } = entry;
+  if (
+    model.card.id !== entry.stateId ||
+    model.profile.cardStateId !== entry.stateId
+  )
+    errors.push(
+      `Evaluator ${entry.id} is inconsistent: its data does not describe state ${entry.stateId}.`,
+    );
+  if (
+    !entry.objectives.length ||
+    new Set(entry.objectives).size !== entry.objectives.length ||
+    !entry.objectives.every((m) => AVAILABLE_METRICS.includes(m))
+  )
+    errors.push(`Evaluator ${entry.id} declares no valid objectives.`);
+  if (
+    !entry.contexts.length ||
+    new Set(entry.contexts.map((c) => c.id)).size !== entry.contexts.length ||
+    !entry.contexts.every(
+      (c) =>
+        c.evasionOptions.length > 0 &&
+        c.evasionOptions.every((o) => typeof o === 'boolean'),
+    )
+  )
+    errors.push(`Evaluator ${entry.id} declares no valid contexts.`);
+  errors.push(...(entry.evaluator.entryErrors?.(entry) ?? []));
+  return errors;
+}
+
 export function requestErrors(
   request: BuildRequest,
-  catalog: CharacterCatalog,
+  entry: EvaluatorEntry,
 ): string[] {
-  const errors: string[] = [];
+  const catalog = entry.model;
+  const errors: string[] = entryErrors(entry);
   if (
     catalog.card.support !== 'supported' ||
     catalog.profile.support !== 'supported'
   )
     errors.push('Card/profile support is unavailable.');
   if (
-    catalog.card.awakening !== 'eza-step-7' ||
-    catalog.card.region !== 'global-en' ||
     ![catalog.card.baseStats, catalog.profile.statBonus].every(
       (stats) =>
         Object.values(stats).every(integer) &&
@@ -150,13 +182,12 @@ export function requestErrors(
   )
     errors.push('Invalid or unsupported card/profile facts.');
   if (
-    request.cardStateId !== catalog.card.id ||
+    request.cardStateId !== entry.stateId ||
     request.level !== catalog.card.level ||
-    request.superAttackLevel !== catalog.card.superAttackLevel ||
-    catalog.profile.cardStateId !== catalog.card.id
+    request.superAttackLevel !== catalog.card.superAttackLevel
   )
     errors.push(
-      'Unsupported exact card state, level or SA level; EZA and SEZA differ.',
+      `Settings are for ${request.cardStateId} (Lv.${request.level}/SA${request.superAttackLevel}), not ${entry.stateId}; exact states (including EZA and SEZA) are never substituted.`,
     );
   if (
     request.progression.profileId !== catalog.profile.id ||
@@ -211,6 +242,7 @@ export function requestErrors(
       errors.push(`Unsupported node or unmet prerequisite: ${id}.`);
   }
   const context = request.context;
+  const definition = entry.contexts.find((c) => c.id === context.id);
   if (
     !sameSet(Object.keys(context), [
       'id',
@@ -220,7 +252,7 @@ export function requestErrors(
       'externalEffects',
       'evasionAllowed',
     ]) ||
-    context.id !== 'initial-check-v1' ||
+    !definition ||
     context.battleTurn !== 1 ||
     context.appearance !== 1 ||
     context.initialAttack !== 'super' ||
@@ -230,14 +262,20 @@ export function requestErrors(
     errors.push(
       'Unsupported context: only the initial eligible check without external effects is modeled.',
     );
+  else if (!definition.evasionOptions.includes(context.evasionAllowed))
+    errors.push(
+      `Unsupported context option: evasion ${context.evasionAllowed ? 'allowed' : 'disabled'} is not declared for this evaluator.`,
+    );
   if (request.mode !== 'inventory' && request.mode !== 'catalog')
     errors.push('Unknown equipment mode.');
-  if (!AVAILABLE_METRICS.includes(request.objective))
+  // Only objectives this entry offers; a metric unsupported here is never
+  // ranked even if another evaluator supports it.
+  if (!entry.objectives.includes(request.objective))
     errors.push('Unsupported objective.');
   if (
     !request.frontierMetrics.length ||
     new Set(request.frontierMetrics).size !== request.frontierMetrics.length ||
-    !request.frontierMetrics.every((m) => AVAILABLE_METRICS.includes(m))
+    !request.frontierMetrics.every((m) => entry.objectives.includes(m))
   )
     errors.push('Select distinct supported frontier metrics.');
   if (

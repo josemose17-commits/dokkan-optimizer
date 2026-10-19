@@ -2,8 +2,10 @@ import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { browserStorage } from '../storage/collection';
 import ConfirmDialog from './ConfirmDialog';
 import { download } from './download';
-import type { BuildRequest, CharacterCatalog } from './domain';
+import { SLOTS, type BuildRequest, type EvaluatorEntry } from './domain';
+import { itemLabel } from './explanation';
 import { requestErrors } from './legality';
+import { entryForState } from './registry';
 import {
   buildStatus,
   createSavedBuild,
@@ -39,6 +41,7 @@ const statusLabel: Record<BuildStatus['kind'], string> = {
   ready: 'Ready',
   stale: 'Stale',
   invalid: 'Invalid settings',
+  unsupported: 'No evaluator here',
 };
 const actionLabel: Record<ImportAction, string> = {
   add: 'will be added',
@@ -49,21 +52,50 @@ const actionLabel: Record<ImportAction, string> = {
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 export default function SavedBuilds({
-  catalog,
+  entry,
+  available,
   request,
-  defaults,
   describe,
   inputIssues,
   onReplace,
+  onOpen,
 }: {
-  catalog: CharacterCatalog;
+  // The open evaluator; `available` lists every evaluator this app can open.
+  entry: EvaluatorEntry;
+  available: readonly EvaluatorEntry[];
   request: BuildRequest;
-  defaults: () => BuildRequest;
   describe: (request: BuildRequest) => string;
   // Field errors not yet reflected in `request` (e.g. an invalid limit draft).
   inputIssues: number;
   onReplace: (request: BuildRequest, message: string) => void;
+  // Opens settings in the workbench of their own exact state.
+  onOpen: (
+    target: EvaluatorEntry,
+    request: BuildRequest,
+    message: string,
+  ) => void;
 }) {
+  // Applies settings to the evaluator bound to their exact state, never to
+  // whichever workbench happens to be open.
+  function apply(settings: BuildRequest, message: string) {
+    const target = entryForState(available, settings.cardStateId);
+    if (!target) return;
+    if (target.id === entry.id) onReplace(settings, message);
+    else onOpen(target, settings, message);
+  }
+  // Builds of other states are described with their own entry's labels.
+  function describeBuild(settings: BuildRequest) {
+    const target = entryForState(available, settings.cardStateId);
+    if (target?.id === entry.id) return describe(settings);
+    const equips = SLOTS.filter((s) => settings.current.equips[s] !== null)
+      .map((s) =>
+        target
+          ? itemLabel(target, settings.current.equips[s])
+          : `item ${settings.current.equips[s]}`,
+      )
+      .join(' / ');
+    return `${target ? `${target.model.card.name} (${target.stateId})` : settings.cardStateId} · ${equips || 'No equips'}`;
+  }
   const [library, setLibrary] = useState<LibraryState>(() =>
     loadLibrary(browserStorage()),
   );
@@ -126,7 +158,7 @@ export default function SavedBuilds({
       name,
       now: new Date(),
       request,
-      catalog,
+      entry,
     });
     if (!created.build) {
       setNameError(created.error);
@@ -146,13 +178,13 @@ export default function SavedBuilds({
   function exportAll() {
     // A pending field error means the stored settings differ from what is
     // shown; never export that hidden value.
-    const valid = !inputIssues && !requestErrors(request, catalog).length;
+    const valid = !inputIssues && !requestErrors(request, entry).length;
     download(
       `dokkan-character-builds-${new Date().toISOString().slice(0, 10)}.json`,
       exportBundle({
         working: valid ? request : null,
         builds: library.builds,
-        catalog,
+        entry,
         now: new Date(),
       }),
     );
@@ -174,7 +206,7 @@ export default function SavedBuilds({
     } catch {
       return report('The file could not be read.', true);
     }
-    const parsed = parseImport(text, catalog);
+    const parsed = parseImport(text, available);
     if (!parsed.ok) return report(parsed.error, true);
     setReplaceWorking(false);
     setPreview({ ...parsed, fileName: file.name.slice(0, 120) });
@@ -200,7 +232,7 @@ export default function SavedBuilds({
       summary = `Added ${plural(merged.added, 'build')}; skipped ${plural(merged.duplicates, 'exact duplicate')}; ${merged.reassigned} received a new ID because of an ID conflict.`;
     }
     if (replaceWorking && preview.working?.status.kind === 'ready') {
-      onReplace(
+      apply(
         preview.working.request,
         `${summary} Working settings replaced from ${preview.fileName}.`,
       );
@@ -316,7 +348,7 @@ export default function SavedBuilds({
       {library.builds.length > 0 && (
         <ul className="cb-saved-list">
           {library.builds.map((build) => {
-            const status = buildStatus(build, catalog);
+            const status = buildStatus(build, available);
             return (
               <li key={build.id}>
                 <div>
@@ -329,9 +361,9 @@ export default function SavedBuilds({
                   </span>
                   <p className="cb-muted">
                     Saved {build.savedAt.slice(0, 16).replace('T', ' ')} UTC ·{' '}
-                    {status.kind === 'stale'
+                    {status.kind === 'stale' || status.kind === 'unsupported'
                       ? status.reason
-                      : describe(build.request)}
+                      : describeBuild(build.request)}
                   </p>
                   {status.kind === 'invalid' && (
                     <p className="cb-muted">{status.reason}</p>
@@ -348,15 +380,17 @@ export default function SavedBuilds({
                         title: `Load “${build.name}”?`,
                         body: (
                           <p>
-                            This replaces the workbench settings (current
-                            equips, inventory quantities, context, objective and
-                            limit). Save the current settings first if you need
-                            them.
+                            {build.request.cardStateId === entry.stateId
+                              ? 'This replaces the workbench settings'
+                              : `This opens ${describeBuild(build.request).split(' · ')[0]} and replaces that state's working settings`}{' '}
+                            (current equips, inventory quantities, context,
+                            objective and limit). Save the current settings
+                            first if you need them.
                           </p>
                         ),
                         confirmLabel: 'Load build',
                         onConfirm: () =>
-                          onReplace(
+                          apply(
                             structuredClone(build.request),
                             `Loaded “${build.name}”. Compare to see results.`,
                           ),
@@ -422,7 +456,10 @@ export default function SavedBuilds({
               confirmLabel: 'Reset settings',
               destructive: true,
               onConfirm: () =>
-                onReplace(defaults(), 'Working settings reset to defaults.'),
+                onReplace(
+                  entry.defaults(),
+                  'Working settings reset to defaults.',
+                ),
             })
           }
         >

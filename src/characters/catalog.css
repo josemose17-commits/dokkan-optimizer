@@ -415,3 +415,10 @@
     margin: 0 0 0 8px;
   }
 }
+.catalog-unsupported {
+  border-left: 3px solid #b59759;
+  background: #29261c;
+  color: #f1d5a5;
+  padding: 10px 12px;
+  border-radius: 4px;
+}

@@ -3,6 +3,7 @@ import {
   type Build,
   type BuildRequest,
   type CharacterCatalog,
+  type EvaluatorEntry,
   type Skill,
   type Slot,
 } from './domain';
@@ -31,9 +32,10 @@ function slotPools(
 // one-copy checks can only remove targets, so this is an upper bound.
 export function estimateCandidateSpace(
   request: BuildRequest,
-  catalog: CharacterCatalog,
+  entry: EvaluatorEntry,
 ) {
-  const errors = requestErrors(request, catalog);
+  const catalog = entry.model;
+  const errors = requestErrors(request, entry);
   if (errors.length) return null;
   const allocations = request.progression.activatedNodes.reduce(
     (product, id) =>
@@ -57,9 +59,10 @@ export function estimateCandidateSpace(
 // Pure, lazy candidate generation. No scoring/evaluation dependency.
 export function* generateBuilds(
   request: BuildRequest,
-  catalog: CharacterCatalog,
+  entry: EvaluatorEntry,
 ): Generator<Build> {
-  const errors = requestErrors(request, catalog);
+  const catalog = entry.model;
+  const errors = requestErrors(request, entry);
   if (errors.length) throw new Error(errors.join(' '));
   const nodes = request.progression.activatedNodes.map((id) =>
     catalog.profile.nodes.find((n) => n.id === id)!,

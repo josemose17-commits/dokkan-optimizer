@@ -1,21 +1,25 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import {
-  characterCatalog as catalog,
-  defaultRequest,
-} from '../data/real/character-build/goku';
 import { browserStorage } from '../storage/collection';
 import { compareBuilds } from './comparison';
 import {
-  AVAILABLE_METRICS,
+  METRIC_DIRECTION,
+  METRIC_LABELS as labels,
+  SLOTS,
   type AvailableMetric,
   type Build,
+  type BuildGroup,
   type BuildRequest,
   type ComparisonResult,
-  type MetricKey,
+  type EvaluatorEntry,
+  type Skill,
+  type Slot,
 } from './domain';
+import { download } from './download';
+import { explainGroup, itemLabel } from './explanation';
 import { formatDelta as delta, formatMetric as format } from './format';
 import { estimateCandidateSpace } from './generation';
-import { download } from './download';
+import { orbErrors } from './legality';
+import ResultExplanation from './ResultExplanation';
 import SavedBuilds from './SavedBuilds';
 import {
   INVALID_SETTINGS_NOTICE,
@@ -24,57 +28,142 @@ import {
 } from './storage';
 import './character.css';
 
-const labels: Record<MetricKey, string> = {
-  attack: 'Card ATK',
-  defense: 'Card DEF',
-  hp: 'Card HP',
-  additionalSuper: 'Initial extra Super',
-  additionalTrigger: 'Initial AA trigger',
-  critical: 'Critical chance',
-  evasion: 'Evasion chance',
-  damage: 'Damage',
-  battleDefense: 'Battle DEF',
-};
+// Catalog identity of the exact state being optimized (never from the evaluator).
+export interface Identity {
+  name: string;
+  title: string | null;
+  type: string | null;
+  cardClass: string | null;
+  rarity: string | null;
+  region: string | null;
+  awakening: string;
+  level: number | null;
+  superAttackLevel: number | null;
+  aliases: string[];
+}
+
 const MAX_LIMIT = 20000;
-const shortOrb = (id: string | null) =>
-  id === null
-    ? 'Empty'
-    : (catalog.orbs.find((orb) => orb.id === id)?.label ??
-      `Unknown item (${id})`);
+const SKILL_NAMES: Record<Skill, string> = {
+  additional: 'Additional Attack',
+  critical: 'Critical Hit',
+  evasion: 'Evasion',
+};
 const quantityIssue = (n: number | undefined) =>
   n === undefined || (Number.isSafeInteger(n) && n >= 0 && n <= 999)
     ? null
     : 'Enter a whole number from 0 to 999.';
-const describeRequest = (r: BuildRequest) =>
-  `${shortOrb(r.current.equips.bronze)} / ${shortOrb(r.current.equips.silver)} · ${
-    r.mode === 'catalog' ? 'ownership ignored' : 'inventory'
-  } · evasion ${r.context.evasionAllowed ? 'allowed' : 'disabled'} · sorted by ${
-    labels[r.objective] ?? 'an unsupported objective'
-  }`;
 
-function BuildLabel({ build }: { build: Build }) {
+function BuildLabel({ entry, build }: { entry: EvaluatorEntry; build: Build }) {
+  const slots = SLOTS.filter(
+    (slot) =>
+      build.equips[slot] !== null ||
+      entry.model.orbs.some((orb) => orb.slots.includes(slot)),
+  );
   return (
     <span>
-      {shortOrb(build.equips.bronze)}
-      <br />
-      {shortOrb(build.equips.silver)}
+      {slots.map((slot, i) => (
+        <span key={slot}>
+          {i > 0 && <br />}
+          {itemLabel(entry, build.equips[slot])}
+        </span>
+      ))}
+      {Object.entries(build.choices).map(([node, skill]) => (
+        <span key={node}>
+          <br />
+          {node}: {SKILL_NAMES[skill]}
+        </span>
+      ))}
     </span>
   );
 }
 
-export default function CharacterWorkbench() {
-  const [initial] = useState(() =>
-    loadCharacterState(browserStorage(), defaultRequest(), catalog),
-  );
+// One-line, computed status for a result row: objective vs baseline and
+// frontier membership. Details are in the explanation panel.
+function rowSummary(
+  group: BuildGroup,
+  objective: AvailableMetric,
+  groups: BuildGroup[],
+) {
+  const change = group.deltas[objective];
+  const higher = METRIC_DIRECTION[objective] === 'higher';
+  const relation =
+    change === null || change === 0
+      ? 'ties the baseline'
+      : change > 0 === higher
+        ? 'above the baseline'
+        : 'below the baseline';
+  const dominator = group.dominatedBy;
+  const frontier = group.frontier
+    ? 'on the frontier'
+    : dominator?.kind === 'baseline'
+      ? 'dominated by the baseline'
+      : dominator?.kind === 'group'
+        ? `dominated by #${groups.find((g) => g.id === dominator.id)?.rank ?? '?'}`
+        : 'frontier unavailable';
+  return `${relation} · ${frontier}`;
+}
+
+export default function CharacterWorkbench({
+  entry,
+  identity,
+  available,
+  pending,
+  onOpen,
+}: {
+  entry: EvaluatorEntry;
+  identity: Identity;
+  available: readonly EvaluatorEntry[];
+  pending: { request: BuildRequest; message: string } | null;
+  onOpen: (
+    entry: EvaluatorEntry,
+    request: BuildRequest,
+    message: string,
+  ) => void;
+}) {
+  const model = entry.model;
+  const { profile } = model;
+  const shortItem = (id: string | null) => itemLabel(entry, id);
+  const describeRequest = (r: BuildRequest) =>
+    `${
+      SLOTS.filter((s) => r.current.equips[s] !== null)
+        .map((s) => shortItem(r.current.equips[s]))
+        .join(' / ') || 'No equips'
+    } · ${r.mode === 'catalog' ? 'ownership ignored' : 'inventory'} · evasion ${
+      r.context.evasionAllowed ? 'allowed' : 'disabled'
+    } · sorted by ${labels[r.objective] ?? 'an unsupported objective'}`;
+
+  const [initial] = useState(() => {
+    if (!pending) return loadCharacterState(browserStorage(), entry);
+    // Settings handed over from a saved build are applied and saved at once.
+    const failure = saveCharacterState(
+      browserStorage(),
+      pending.request,
+      entry,
+    );
+    return {
+      state: pending.request,
+      warning: failure ?? pending.message,
+      raw: null,
+    };
+  });
   const [request, setRequest] = useState(initial.state);
   const [notice, setNotice] = useState(initial.warning);
   // Unusable stored settings stay downloadable until an edit replaces them.
   const [unreadable, setUnreadable] = useState(initial.raw);
-  const [result, setResult] = useState<ComparisonResult | null>(() =>
-    compareBuilds(initial.state, catalog),
-  );
+  const [result, setResult] = useState<ComparisonResult | null>(() => {
+    try {
+      return compareBuilds(initial.state, entry);
+    } catch {
+      return null;
+    }
+  });
   const [frontierOnly, setFrontierOnly] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [explained, setExplained] = useState<{
+    groupId: string;
+    alternative: number | undefined;
+  } | null>(null);
+  const explanationRef = useRef<HTMLHeadingElement>(null);
   // The limit is edited as text so a cleared field is not silently replaced.
   const [limitDraft, setLimitDraft] = useState(String(request.maxCandidates));
   const unitRef = useRef<HTMLElement>(null);
@@ -82,9 +171,9 @@ export default function CharacterWorkbench() {
   useEffect(() => {
     const unit = unitRef.current;
     if (!unit || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(([entry]) =>
+    const observer = new IntersectionObserver(([item]) =>
       setIdentityPinned(
-        !entry!.isIntersecting && entry!.boundingClientRect.top < 0,
+        !item!.isIntersecting && item!.boundingClientRect.top < 0,
       ),
     );
     observer.observe(unit);
@@ -98,19 +187,21 @@ export default function CharacterWorkbench() {
     draftValid: boolean,
   ) {
     if (!draftValid) return setNotice(INVALID_SETTINGS_NOTICE);
-    const failure = saveCharacterState(browserStorage(), next, catalog);
+    const failure = saveCharacterState(browserStorage(), next, entry);
     if (!failure) setUnreadable(null);
     setNotice(failure ?? success);
   }
   function change(next: BuildRequest, draftValid = limitIssue === null) {
     setRequest(next);
     setResult(null);
+    setExplained(null);
     setFailure(null);
     persist(next, null, draftValid);
   }
   function replaceRequest(next: BuildRequest, message: string) {
     setRequest(next);
     setResult(null);
+    setExplained(null);
     setFailure(null);
     setLimitDraft(String(next.maxCandidates));
     persist(next, message, true);
@@ -125,17 +216,35 @@ export default function CharacterWorkbench() {
       : 'Enter a whole number from 1 to 20,000.';
   const unlockIssue = request.progression.systemUnlocked
     ? null
-    : 'Required: only an unlocked system with the filled 55% base board is supported.';
+    : `Required: this evaluator supports only an unlocked system with the profile “${profile.label}”.`;
   const frontierIssue = request.frontierMetrics.length
     ? null
     : 'Select at least one metric.';
   const issueCount =
     [limitIssue, unlockIssue, frontierIssue].filter(Boolean).length +
-    catalog.orbs.filter((orb) => quantityIssue(request.inventory[orb.id]))
-      .length;
-  const space = estimateCandidateSpace(request, catalog);
+    model.orbs.filter((orb) => quantityIssue(request.inventory[orb.id])).length;
+  const space = estimateCandidateSpace(request, entry);
+  const context =
+    entry.contexts.find((c) => c.id === request.context.id) ??
+    entry.contexts[0]!;
+  // Items offered per slot: eligible for this exact state and profile.
+  const slotItems = (slot: Slot) =>
+    model.orbs.filter(
+      (orb) =>
+        orb.slots.includes(slot) &&
+        (!orbErrors(orb, slot, request, model).length ||
+          request.current.equips[slot] === orb.id),
+    );
+  const lockedReason = (slot: Slot) =>
+    slot === 'gold' && request.progression.routes.length < 2
+      ? 'requires two unlocked duplicate routes'
+      : slot === 'silver' && request.superAttackLevel < 10
+        ? 'requires SA 10'
+        : `no admitted ${slot} item for this state`;
+
   function compare(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setExplained(null);
     if (issueCount) {
       setResult(null);
       setFailure(
@@ -147,7 +256,7 @@ export default function CharacterWorkbench() {
       return;
     }
     try {
-      setResult(compareBuilds(request, catalog));
+      setResult(compareBuilds(request, entry));
       setFailure(null);
     } catch {
       setFailure(
@@ -157,6 +266,40 @@ export default function CharacterWorkbench() {
   }
   const displayed =
     result?.groups.filter((group) => !frontierOnly || group.frontier) ?? [];
+  // Default explanation: the top-ranked result that changes something.
+  const defaultGroup =
+    result?.groups.find((g) => !g.alternatives.some((a) => a.isCurrent)) ??
+    result?.groups[0];
+  const explainedId = explained?.groupId ?? defaultGroup?.id ?? null;
+  let explanation = null;
+  let explanationError = false;
+  if (result?.current && explainedId) {
+    try {
+      explanation = explainGroup(
+        result,
+        request,
+        entry,
+        explainedId,
+        explained?.alternative,
+      );
+    } catch {
+      explanationError = true;
+    }
+  }
+  function explain(groupId: string, alternative?: number) {
+    setExplained({ groupId, alternative });
+    requestAnimationFrame(() => explanationRef.current?.focus());
+  }
+  const typeLine = [identity.cardClass, identity.type, identity.rarity]
+    .filter(Boolean)
+    .join(' ');
+  const levelLine = `Lv.${identity.level ?? '?'} · SA${identity.superAttackLevel ?? '?'}`;
+  const routesText =
+    profile.routes.length === 0
+      ? 'No duplicate routes'
+      : `${profile.routes.length} duplicate route${profile.routes.length === 1 ? '' : 's'}`;
+  const fixed = profile.fixedSkills;
+
   return (
     <main className="cb-workbench" id="character-workbench">
       <div
@@ -164,11 +307,13 @@ export default function CharacterWorkbench() {
         data-pinned={identityPinned ? 'true' : 'false'}
         aria-hidden={identityPinned ? undefined : true}
       >
-        <span className="cb-identity-type">Super AGL · UR</span>
-        <strong>Super Saiyan 3 Goku</strong>
-        <span>Mystery Super Technique</span>
-        <span>EZA step 7 · Lv.140 · SA15 · not SEZA</span>
-        <span>55% base board · no dupes</span>
+        {typeLine && <span className="cb-identity-type">{typeLine}</span>}
+        <strong>{identity.name}</strong>
+        {identity.title && <span>{identity.title}</span>}
+        <span>
+          {identity.awakening} · {levelLine}
+        </span>
+        <span>{profile.label}</span>
       </div>
       <header className="cb-hero">
         <div>
@@ -176,31 +321,32 @@ export default function CharacterWorkbench() {
             CHARACTER BUILDS / LIMITED REAL-DATA WORKBENCH
           </p>
           <h1>
-            Compare Goku’s
+            Optimize {identity.name}
             <br />
-            <span>skill-orb choices.</span>
+            <span>with explained tradeoffs.</span>
           </h1>
           <p>
-            See the card stats and Hidden Potential checks each equip changes.
-            Keep the tradeoffs visible and compare against your current build.
+            See the card stats and Hidden Potential checks each equip changes,
+            why each result ranks where it does, and what is not modeled.
           </p>
         </div>
         <div className="cb-scope-stamp">
           <strong>01</strong>
           <span>EXACT CARD STATE</span>
-          <b>6 real orbs</b>
-          <span>LIMITED CATALOG</span>
+          <b>{model.orbs.length} items</b>
+          <span>{entry.objectives.length} SUPPORTED OBJECTIVES</span>
         </div>
       </header>
 
       <div className="cb-evidence-notice" role="note">
         <strong>
-          Source-documented model · no independent in-game verification recorded
+          {model.evidence.some((e) => e.status === 'independently-corroborated')
+            ? 'Some facts independently corroborated; see evidence'
+            : 'Source-documented model · no independent in-game verification recorded'}
         </strong>
         <span>
           Mathematical tests validate the implementation, not actual game
-          behavior. Damage is unavailable. Full node respec is deferred until
-          the exact option/prerequisite graph is verified.
+          behavior. Unavailable metrics are listed, never shown as zero.
         </span>
       </div>
       {notice && (
@@ -228,40 +374,49 @@ export default function CharacterWorkbench() {
         ref={unitRef}
       >
         <div className="cb-type">
-          SUPER
+          {identity.cardClass?.toUpperCase() ?? '?'}
           <br />
-          <strong>AGL</strong>
-          <span>UR</span>
+          <strong>{identity.type ?? '?'}</strong>
+          <span>{identity.rarity ?? '?'}</span>
         </div>
         <div>
-          <p className="cb-eyebrow">GLOBAL ENGLISH · MYSTERY SUPER TECHNIQUE</p>
-          <h2 id="unit-title">Super Saiyan 3 Goku</h2>
+          <p className="cb-eyebrow">
+            {(identity.region ?? 'REGION UNKNOWN').toUpperCase()}
+            {identity.title && ` · ${identity.title.toUpperCase()}`}
+          </p>
+          <h2 id="unit-title">{identity.name}</h2>
           <p>
-            Fully EZA step 7 · Lv.140 · SA15 ·{' '}
-            <strong>without Super EZA</strong>
+            {identity.awakening} · {levelLine}
           </p>
           <p className="cb-muted">
-            Database alias 1003211. The same alias can display a different
-            awakening state elsewhere.
+            State <code>{entry.stateId}</code>
+            {identity.aliases.length > 0 &&
+              ` · source alias ${identity.aliases.join(', ')}. The same alias can display a different awakening state elsewhere.`}
           </p>
         </div>
         <div className="cb-profile">
-          <b>55% base board filled</b>
-          <span>No duplicate routes · fixed AA5 / critical0 / evasion0</span>
+          <b>{profile.label}</b>
           <span>
-            No selectable allocation nodes in this profile. Other progression
-            states are excluded.
+            {routesText} · fixed AA{fixed.additional} / critical
+            {fixed.critical} / evasion{fixed.evasion}
+          </span>
+          <span>
+            {profile.nodes.length
+              ? `${request.progression.activatedNodes.length} selectable choice node(s) in this profile.`
+              : 'No selectable allocation nodes in this profile.'}{' '}
+            Other progression states are excluded.
           </span>
         </div>
       </section>
 
       <SavedBuilds
-        catalog={catalog}
+        entry={entry}
+        available={available}
         request={request}
-        defaults={defaultRequest}
         describe={describeRequest}
         inputIssues={issueCount}
         onReplace={replaceRequest}
+        onOpen={onOpen}
       />
 
       <form onSubmit={compare} className="cb-controls" noValidate>
@@ -273,38 +428,73 @@ export default function CharacterWorkbench() {
               Select your matching current equips. Empty slots are the initial
               reference, not a claim about your account.
             </p>
-            {(['bronze', 'silver'] as const).map((slot) => (
-              <label className="cb-field" key={slot}>
-                {slot === 'bronze'
-                  ? 'Current bronze equip'
-                  : 'Current silver equip'}
-                <select
-                  value={request.current.equips[slot] ?? ''}
-                  onChange={(event) =>
-                    change({
-                      ...request,
-                      current: {
-                        ...request.current,
-                        equips: {
-                          ...request.current.equips,
-                          [slot]: event.target.value || null,
+            {SLOTS.map((slot) => {
+              const items = slotItems(slot);
+              if (!items.length)
+                return (
+                  <p className="cb-lock" key={slot}>
+                    {slot[0]!.toUpperCase()}
+                    {slot.slice(1)} slot locked · {lockedReason(slot)}
+                  </p>
+                );
+              return (
+                <label className="cb-field" key={slot}>
+                  {`Current ${slot} equip`}
+                  <select
+                    value={request.current.equips[slot] ?? ''}
+                    onChange={(event) =>
+                      change({
+                        ...request,
+                        current: {
+                          ...request.current,
+                          equips: {
+                            ...request.current.equips,
+                            [slot]: event.target.value || null,
+                          },
                         },
-                      },
-                    })
-                  }
-                >
-                  <option value="">Empty</option>
-                  {catalog.orbs
-                    .filter((orb) => orb.slots.includes(slot))
-                    .map((orb) => (
+                      })
+                    }
+                  >
+                    <option value="">Empty</option>
+                    {items.map((orb) => (
                       <option key={orb.id} value={orb.id}>
                         {orb.label}
                       </option>
                     ))}
-                </select>
-              </label>
-            ))}
-            <p className="cb-lock">Gold locked · zero duplicate routes</p>
+                  </select>
+                </label>
+              );
+            })}
+            {request.progression.activatedNodes.map((nodeId) => {
+              const node = profile.nodes.find((n) => n.id === nodeId);
+              if (!node) return null;
+              return (
+                <label className="cb-field" key={nodeId}>
+                  {`Current choice at ${nodeId} (+${node.levels} levels)`}
+                  <select
+                    value={request.current.choices[nodeId] ?? ''}
+                    onChange={(event) =>
+                      change({
+                        ...request,
+                        current: {
+                          ...request.current,
+                          choices: {
+                            ...request.current.choices,
+                            [nodeId]: event.target.value as Skill,
+                          },
+                        },
+                      })
+                    }
+                  >
+                    {node.options.map((skill) => (
+                      <option key={skill} value={skill}>
+                        {SKILL_NAMES[skill]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              );
+            })}
             <label className="cb-check">
               <input
                 type="checkbox"
@@ -321,8 +511,7 @@ export default function CharacterWorkbench() {
                   })
                 }
               />
-              Hidden Potential is already unlocked; the 55% base board is
-              filled.
+              Hidden Potential is already unlocked; “{profile.label}” applies.
             </label>
             {unlockIssue && (
               <p className="cb-field-error" id="unlock-error">
@@ -362,13 +551,13 @@ export default function CharacterWorkbench() {
               className={request.mode === 'catalog' ? 'cb-notice' : 'cb-muted'}
             >
               {request.mode === 'catalog'
-                ? 'Hypothetical ownership: these six items only, not every equip in the game.'
+                ? `Hypothetical ownership: these ${model.orbs.length} items only, not every equip in the game.`
                 : 'Unequipped copies only. Your current attached equips can also be retained.'}
             </p>
             <div className="cb-inventory">
-              {catalog.orbs.map((orb) => {
+              {model.orbs.map((orb) => {
                 const issue = quantityIssue(request.inventory[orb.id]);
-                const errorId = `qty-error-${orb.id.replaceAll(':', '-')}`;
+                const errorId = `qty-error-${orb.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
                 return (
                   <div className="cb-inventory-row" key={orb.id}>
                     <label>
@@ -416,10 +605,7 @@ export default function CharacterWorkbench() {
           <div>
             <p className="cb-eyebrow">03 / CONTEXT & OBJECTIVE</p>
             <h2 id="context-title">State the comparison</h2>
-            <p>
-              Turn 1 · first appearance · initial Super available · no external
-              effects.
-            </p>
+            <p>{context.assumptions.join(' · ')}.</p>
             <p className="cb-muted">
               Card stats are before leader, passive, link and support
               multipliers. Probabilities describe an eligible check, not a
@@ -427,24 +613,62 @@ export default function CharacterWorkbench() {
             </p>
           </div>
           <div className="cb-context-controls">
-            <label className="cb-field">
-              Incoming-attack assumption
-              <select
-                value={request.context.evasionAllowed ? 'allowed' : 'disabled'}
-                onChange={(event) =>
-                  change({
-                    ...request,
-                    context: {
-                      ...request.context,
-                      evasionAllowed: event.target.value === 'allowed',
-                    },
-                  })
-                }
-              >
-                <option value="allowed">Evasion allowed</option>
-                <option value="disabled">Evasion disabled</option>
-              </select>
-            </label>
+            {entry.contexts.length > 1 && (
+              <label className="cb-field">
+                Evaluation context
+                <select
+                  value={request.context.id}
+                  onChange={(event) =>
+                    change({
+                      ...request,
+                      context: {
+                        ...request.context,
+                        id: event.target.value as typeof request.context.id,
+                      },
+                    })
+                  }
+                >
+                  {entry.contexts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {context.evasionOptions.length > 1 ? (
+              <label className="cb-field">
+                Incoming-attack assumption
+                <select
+                  value={
+                    request.context.evasionAllowed ? 'allowed' : 'disabled'
+                  }
+                  onChange={(event) =>
+                    change({
+                      ...request,
+                      context: {
+                        ...request.context,
+                        evasionAllowed: event.target.value === 'allowed',
+                      },
+                    })
+                  }
+                >
+                  {context.evasionOptions.map((allowed) => (
+                    <option
+                      key={String(allowed)}
+                      value={allowed ? 'allowed' : 'disabled'}
+                    >
+                      {allowed ? 'Evasion allowed' : 'Evasion disabled'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="cb-muted">
+                Incoming-attack assumption fixed by this evaluator: evasion{' '}
+                {context.evasionOptions[0] ? 'allowed' : 'disabled'}.
+              </p>
+            )}
             <label className="cb-field">
               Sort by supported objective
               <select
@@ -456,7 +680,7 @@ export default function CharacterWorkbench() {
                   })
                 }
               >
-                {AVAILABLE_METRICS.map((key) => (
+                {entry.objectives.map((key) => (
                   <option key={key} value={key}>
                     {labels[key]}
                   </option>
@@ -470,7 +694,7 @@ export default function CharacterWorkbench() {
           >
             <legend>Metrics defining non-dominated alternatives</legend>
             <div>
-              {AVAILABLE_METRICS.map((key) => (
+              {entry.objectives.map((key) => (
                 <label className="cb-check" key={key}>
                   <input
                     type="checkbox"
@@ -587,7 +811,7 @@ export default function CharacterWorkbench() {
           </div>
           <div className="cb-baseline">
             <strong>Current baseline</strong>
-            {AVAILABLE_METRICS.map((key) => (
+            {entry.objectives.map((key) => (
               <div key={key}>
                 <span>{labels[key]}</span>
                 <b>{format(result.current!.metrics[key])}</b>
@@ -596,8 +820,8 @@ export default function CharacterWorkbench() {
           </div>
           <p className="cb-search" role="status">
             {result.search.evaluated} legal targets evaluated ·{' '}
-            {result.search.unique} distinct evaluations · {catalog.orbs.length}
-            -item catalog · {catalog.profile.label}
+            {result.search.unique} distinct evaluations · {model.orbs.length}
+            -item catalog · {profile.label}
           </p>
           {result.search.truncated ? (
             <p className="cb-error" role="alert">
@@ -656,7 +880,7 @@ export default function CharacterWorkbench() {
                   <th scope="col" role="columnheader">
                     Rank / target equips
                   </th>
-                  {AVAILABLE_METRICS.map((key) => (
+                  {entry.objectives.map((key) => (
                     <th scope="col" role="columnheader" key={key}>
                       {labels[key]}
                     </th>
@@ -668,13 +892,15 @@ export default function CharacterWorkbench() {
                   const representative =
                     group.alternatives.find((a) => a.isCurrent) ??
                     group.alternatives[0]!;
+                  const selected = explanation?.groupId === group.id;
                   return (
                     <tr
                       role="row"
                       key={group.id}
-                      className={
-                        representative.isCurrent ? 'cb-current-row' : ''
-                      }
+                      className={[
+                        representative.isCurrent ? 'cb-current-row' : '',
+                        selected ? 'cb-explained-row' : '',
+                      ].join(' ')}
                     >
                       <th scope="row" role="rowheader">
                         <div className="cb-row-badges">
@@ -686,7 +912,22 @@ export default function CharacterWorkbench() {
                             <span className="cb-pill">CURRENT</span>
                           )}
                         </div>
-                        <BuildLabel build={representative.build} />
+                        <BuildLabel
+                          entry={entry}
+                          build={representative.build}
+                        />
+                        <span className="cb-row-summary">
+                          {rowSummary(group, request.objective, result.groups)}
+                        </span>
+                        <button
+                          type="button"
+                          className="cb-link-button"
+                          aria-pressed={selected}
+                          aria-controls="result-explanation"
+                          onClick={() => explain(group.id)}
+                        >
+                          Explain #{group.rank}
+                        </button>
                         <details>
                           <summary>
                             {group.alternatives.length} legal equip option
@@ -699,7 +940,10 @@ export default function CharacterWorkbench() {
                           <ul>
                             {group.alternatives.map((alternative, i) => (
                               <li key={i}>
-                                <BuildLabel build={alternative.build} />
+                                <BuildLabel
+                                  entry={entry}
+                                  build={alternative.build}
+                                />
                                 <p>
                                   {alternative.isCurrent
                                     ? 'Retains current choices.'
@@ -713,23 +957,32 @@ export default function CharacterWorkbench() {
                                       alternative.missingInventory,
                                     )
                                       .map(
-                                        ([id, n]) => `${n} × ${shortOrb(id)}`,
+                                        ([id, n]) => `${n} × ${shortItem(id)}`,
                                       )
                                       .join('; ')}
                                     .
                                   </p>
                                 )}
                                 <ul>
-                                  {alternative.changes.map((change) => (
-                                    <li key={change}>{change}</li>
+                                  {alternative.changes.map((item) => (
+                                    <li key={item}>{item}</li>
                                   ))}
                                 </ul>
+                                {group.alternatives.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="cb-link-button"
+                                    onClick={() => explain(group.id, i)}
+                                  >
+                                    Explain this configuration
+                                  </button>
+                                )}
                               </li>
                             ))}
                           </ul>
                         </details>
                       </th>
-                      {AVAILABLE_METRICS.map((key) => (
+                      {entry.objectives.map((key) => (
                         <td role="cell" key={key} data-label={labels[key]}>
                           <b>{format(group.evaluation.metrics[key])}</b>
                           <span>
@@ -746,12 +999,27 @@ export default function CharacterWorkbench() {
               </tbody>
             </table>
           </div>
-          <p className="cb-muted">
-            Initial AA trigger for the baseline:{' '}
-            {format(result.current.metrics.additionalTrigger)}. “Initial extra
-            Super” includes the separate 50% conversion check. It is not the
-            full-turn probability of a second Super.
-          </p>
+          {result.current.metrics.additionalTrigger.value !== null && (
+            <p className="cb-muted">
+              Initial AA trigger for the baseline:{' '}
+              {format(result.current.metrics.additionalTrigger)}. “Initial extra
+              Super” includes the separate 50% conversion check. It is not the
+              full-turn probability of a second Super.
+            </p>
+          )}
+          {explanationError && (
+            <p className="cb-error" role="alert">
+              This result could not be explained from its calculation; it is
+              shown without an explanation.
+            </p>
+          )}
+          {explanation && (
+            <ResultExplanation
+              explanation={explanation}
+              entry={entry}
+              headingRef={explanationRef}
+            />
+          )}
         </section>
       )}
 
@@ -768,7 +1036,7 @@ export default function CharacterWorkbench() {
             estimates.
           </p>
           <ul>
-            {catalog.card.excludedMechanics.map((text) => (
+            {model.card.excludedMechanics.map((text) => (
               <li key={text}>{text}</li>
             ))}
           </ul>
@@ -778,18 +1046,15 @@ export default function CharacterWorkbench() {
       <details className="cb-card cb-evidence">
         <summary>Field-level evidence & assumptions</summary>
         <p>
-          Snapshot {catalog.revision}, reviewed 2026-10-18. Game build:{' '}
-          {catalog.card.gameBuild ?? 'not captured'}. All admitted fields are
-          source-documented; no independent game verification date is recorded.
-          Agreement among sites with unknown upstream sources is not independent
-          confirmation.
+          Data revision {model.revision}, reviewed {model.card.reviewedAt}. Game
+          build: {model.card.gameBuild ?? 'not captured'}. Evaluator {entry.id}{' '}
+          ({entry.evaluator.label}, implementation {entry.evaluator.id} v
+          {entry.evaluator.version}). Agreement among sites with unknown
+          upstream sources is not independent confirmation.
         </p>
-        <p>
-          Mathematical tests are a separate implementation check. Hypothetical
-          branch-damage values appear only in arithmetic tests.
-        </p>
+        <p>{entry.evaluator.verification}</p>
         <div className="cb-claims">
-          {catalog.evidence.map((claim) => (
+          {model.evidence.map((claim) => (
             <article key={claim.id}>
               <strong>
                 {claim.field} <span className="cb-pill">{claim.status}</span>

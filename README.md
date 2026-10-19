@@ -4,7 +4,7 @@ The primary page is a **provider-independent character catalog**, containing **o
 
 **Dokkan Info acquisition is paused pending an approved method.** No scraper, endpoint probe, live provider connection or bulk import is connected. The reusable schema, local JSON validation and update report are described in [catalog documentation](docs/CATALOG.md). You can also **inspect your own normalized catalog file in the browser for one session**. It is validated and compared with the bundled revision, but never stored, merged into the admitted catalog or offered optimization.
 
-The existing limited equip comparison remains at **`/dokkan-optimizer/?workbench=character-build`**. Its evaluation scope and saved-build key/revision are preserved. It now adds **named saved builds, JSON export/import and a confirmed reset** (see [Saved builds](#saved-builds-and-backups)), field-level input errors, and a search-space estimate before comparing. Catalog browsing does not write build storage. Descriptive completeness and executable optimization support are separate.
+The **Build optimizer** (`/dokkan-optimizer/?workbench=character-build`) lists the exact states that have an evaluator; today that is only the Goku state above. The existing limited equip comparison opens at **`?workbench=character-build&state=global-en%3A1003211%3Aeza-7%3Alv140%3Asa15`**. Its evaluation scope and saved-build key/revision are preserved. Evaluators are chosen through an [evaluator registry](#evaluator-registry) by exact state ID, never by name and never by fallback. Every result has a computed [explanation](#result-explanations). It now adds **named saved builds, JSON export/import and a confirmed reset** (see [Saved builds](#saved-builds-and-backups)), field-level input errors, and a search-space estimate before comparing. Catalog browsing does not write build storage. Descriptive completeness and executable optimization support are separate.
 
 **Source-documented model; no independent in-game verification recorded.** Source documentation, independent confirmation of game behavior, and passing mathematical tests are separate. All current field-level independent-verification dates are null. See the [evidence ledger](docs/character-build/EVIDENCE.md).
 
@@ -35,7 +35,7 @@ Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The browser suite
 
 ## Reproduce the first-unit comparison
 
-1. Select **Limited build comparison** in navigation, or open `/dokkan-optimizer/?workbench=character-build`. Confirm the exact **EZA, not SEZA**, Lv.140/SA15 **55% no-dupe** profile. Other evaluation states are not supported. The Hidden Potential system must already be unlocked and the base board filled; this app does not assess unlock affordability.
+1. Select **Build optimizer** in navigation and choose **Super Saiyan 3 Goku** (or use **Optimize this character** in the catalog). Confirm the exact **EZA, not SEZA**, Lv.140/SA15 **55% no-dupe** profile. Other evaluation states are not supported. The Hidden Potential system must already be unlocked and the base board filled; this app does not assess unlock affordability.
 2. Leave both current slots **Empty** for the reference baseline, or select your actual matching equips. Gold is locked. An item absent from this catalog cannot be approximated by another item.
 3. Select **Ownership ignored within this catalog**. This is hypothetical access to the six listed items, not a claim that you own them or that every game equip is considered. For inventory mode, enter **unequipped** quantities; current attached items remain available to retain.
 4. Use **Evasion allowed**, **Initial extra Super** as the objective, all six frontier metrics, and a candidate limit of at least **16**. Click **Compare legal builds**. Turn 1, first appearance, initial Super available and no external effects are fixed.
@@ -45,6 +45,50 @@ Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The browser suite
 8. Change to **Evasion disabled** and compare again: 16 targets collapse to **12 distinct evaluations**, retaining all 16 alternatives. Empty silver and evasion silver can be equivalent for the exposed metrics in this context. No current choice or alternative is discarded.
 
 With inventory mode and zero unequipped/current items, only the empty target is available. Counts never imply ownership. Legal target changes may consume resources or destroy/replace equipment; replacement economics and respec affordability are deferred. No action changes the game.
+
+## Evaluator registry
+
+The optimizer is not hardcoded to Goku. A registry entry (`src/data/real/character-build/registry.ts`) binds **one exact catalog state** to:
+
+- its **evaluation data**: exact-state card facts, the progression profile, compatible equipment and evidence, with a data revision;
+- its **supported contexts** (for example, whether "evasion disabled" may be selected);
+- its **available objectives**;
+- an **evaluator implementation** (`initialCheckEvaluator`, independent of any character);
+- its own **working-settings key**. Goku keeps `dokkan.character-builds.v1`; any other entry would use `dokkan.character-builds.v1:<entry id>`.
+
+The catalog state names its evaluator (`optimization.evaluatorId`). `resolveEvaluator` accepts the pair only if the entry is bound to that exact state and card, and the catalog and evaluator agree on name, title, type, rarity, level, Super Attack level and region. Every refusal shows its exact reason in the catalog and at `?workbench=character-build&state=…`:
+
+- unknown state;
+- no support declared;
+- no implementation registered;
+- the evaluator is bound to another state;
+- the catalog and evaluator data disagree;
+- the registry itself is inconsistent.
+
+Nothing falls back to another evaluator. Saved builds load only into the evaluator bound to their own state, revision and evaluator ID.
+
+The production registry has **one entry**. A second, clearly labeled **TEST ONLY** character (with a gold slot, a choice node and its own items) and a test-only stats-only evaluator live in `src/character-build/registry.fixtures.ts`. Unit tests and server-rendered component tests use them to prove isolation. The browser suite checks that they are absent from the production bundle.
+
+## Result explanations
+
+Selecting **Explain #n** on any result opens a panel generated from that result's own calculation trace. The panel re-evaluates the exact configuration shown, so equivalent alternatives are explained from their own sources. The compact summary shows:
+
+- the proposed vs current equips and choices;
+- the objective value vs the current build in **percentage points** and **relative change**, with relative change stated as undefined against a zero baseline;
+- whether the result ranks above, below or ties the baseline, and its rank and tie count;
+- whether it is on the Pareto frontier, or which result (or the baseline) dominates it and on which metrics.
+
+Expandable sections show:
+
+- stat additions by source;
+- skill levels by source;
+- each probability as a product of its factors, for example `7 (AA levels) × 2.0% = 14.0%` and then `14.0% × 50.0% = 7.0%`;
+- every evidence claim used, labeled **source-documented**, **independently corroborated** or **unresolved**;
+- the mathematical test coverage statement;
+- the data revision, evaluator entry and implementation version, and context;
+- unavailable metrics and unsupported effects.
+
+Each result row also has a one-line computed summary (for example "above the baseline · dominated by #1").
 
 ## Saved builds and backups
 
@@ -83,28 +127,32 @@ Deferred: complex kits, stacking/transformations, collection-wide equipment allo
 
 ## Code and persistence
 
-| Path                                                 | Responsibility                                                                         |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `src/character-data/`                                | Normalized contract, validation, search, identity, stat layers and update assessment   |
-| `src/characters/CatalogBrowser.tsx`                  | Primary search/details, completeness, evidence and read-only saved-build identity      |
-| `src/data/real/catalog.ts`                           | Migration of the existing admitted Goku record; no provider acquisition                |
-| `scripts/catalog.mjs`                                | Local normalized JSON export/validation and compatibility report                       |
-| `src/character-build/domain.ts`                      | Separate real-card/evidence/build/context/metric contracts                             |
-| `src/character-build/legality.ts`, `generation.ts`   | Fail-closed restrictions, node prerequisites, inventory and lazy legal generation      |
-| `src/character-build/evaluation.ts`, `comparison.ts` | Card stats, supported probabilities, baselines, equivalence, ranks and Pareto frontier |
-| `src/character-build/engine.test.ts`                 | Independent arithmetic, enumeration, eligibility and comparison oracles                |
-| `src/character-build/storage.ts`, `storage.test.ts`  | Validated versioned character state; catalog-revision checks and visible failures      |
-| `src/character-build/CharacterWorkbench.tsx`         | Preserved limited comparison inputs/results/evidence UI                                |
-| `src/character-build/library.ts`, `SavedBuilds.tsx`  | Saved-build records, strict parsing, export/import, merge rules and their UI           |
-| `src/character-build/format.ts`                      | Metric and delta presentation (pp, relative change, zero baseline)                     |
-| `src/characters/LocalCatalogImport.tsx`              | Session-only inspection of a user-supplied normalized catalog file                     |
-| `e2e/`, `playwright.config.ts`                       | Checked-in browser suite against the production build                                  |
-| `src/Workbench.tsx`                                  | Catalog, comparison and legacy navigation without server routing                       |
-| `src/data/real/`                                     | Source-documented real facts, separate from fictional fixtures                         |
-| `src/App.tsx`, `src/engine/`, `src/data/fixtures/`   | Preserved legacy team prototype and tests                                              |
-| `AGENTS.md`                                          | Rules for future tasks and evidence admission                                          |
+| Path                                                          | Responsibility                                                                         |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `src/character-data/`                                         | Normalized contract, validation, search, identity, stat layers and update assessment   |
+| `src/characters/CatalogBrowser.tsx`                           | Primary search/details, completeness, evidence and read-only saved-build identity      |
+| `src/data/real/catalog.ts`                                    | Migration of the existing admitted Goku record; no provider acquisition                |
+| `scripts/catalog.mjs`                                         | Local normalized JSON export/validation and compatibility report                       |
+| `src/character-build/domain.ts`                               | Separate real-card/evidence/build/context/metric contracts                             |
+| `src/character-build/legality.ts`, `generation.ts`            | Fail-closed restrictions, node prerequisites, inventory and lazy legal generation      |
+| `src/character-build/evaluation.ts`, `comparison.ts`          | Card stats, supported probabilities, baselines, equivalence, ranks and Pareto frontier |
+| `src/character-build/engine.test.ts`                          | Independent arithmetic, enumeration, eligibility and comparison oracles                |
+| `src/character-build/storage.ts`, `storage.test.ts`           | Validated versioned character state; catalog-revision checks and visible failures      |
+| `src/character-build/CharacterWorkbench.tsx`                  | Generic per-entry workbench: inputs, results, row summaries, evidence                  |
+| `src/character-build/registry.ts`                             | Pure evaluator resolution by exact state ID; registry consistency; no fallback         |
+| `src/data/real/character-build/registry.ts`                   | Production registry (one Goku entry); fixtures live only in tests                      |
+| `src/character-build/explanation.ts`, `ResultExplanation.tsx` | Explanations computed from the calculation trace and comparison result                 |
+| `src/character-build/BuildOptimizerPage.tsx`                  | State picker, exact refusal reasons, per-state workbench and cross-state loads         |
+| `src/character-build/library.ts`, `SavedBuilds.tsx`           | Saved-build records, strict parsing, export/import, merge rules and their UI           |
+| `src/character-build/format.ts`                               | Metric and delta presentation (pp, relative change, zero baseline)                     |
+| `src/characters/LocalCatalogImport.tsx`                       | Session-only inspection of a user-supplied normalized catalog file                     |
+| `e2e/`, `playwright.config.ts`                                | Checked-in browser suite against the production build                                  |
+| `src/Workbench.tsx`                                           | Catalog, comparison and legacy navigation without server routing                       |
+| `src/data/real/`                                              | Source-documented real facts, separate from fictional fixtures                         |
+| `src/App.tsx`, `src/engine/`, `src/data/fixtures/`            | Preserved legacy team prototype and tests                                              |
+| `AGENTS.md`                                                   | Rules for future tasks and evidence admission                                          |
 
-Character settings use `dokkan.character-builds.v1` (contract unchanged). Named saved builds use the separate `dokkan.character-library.v1`. The legacy collection retains `dokkan-team-lab.collection.v1`. Both are local to the browser origin. Invalid/newer schemas, changed catalog revisions, blocked storage and quota errors are surfaced. Reading an invalid character save does not overwrite it until an edit. No saved user state is committed or sent anywhere.
+Character settings use `dokkan.character-builds.v1` for the Goku entry (contract unchanged); any future entry gets `dokkan.character-builds.v1:<entry id>`. Named saved builds use the separate `dokkan.character-library.v1`. The legacy collection retains `dokkan-team-lab.collection.v1`. Both are local to the browser origin. Invalid/newer schemas, changed catalog revisions, blocked storage and quota errors are surfaced. Reading an invalid character save does not overwrite it until an edit. No saved user state is committed or sent anywhere.
 
 Tests using abstract graphs and invented branch-damage values are **mathematical tests, not combat verification or fictional product data**. Existing legacy tests remain unchanged. See [validation](docs/VALIDATION.md) for actual run results.
 

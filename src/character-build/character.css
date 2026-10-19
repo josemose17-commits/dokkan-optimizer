@@ -895,3 +895,112 @@
     transition: none;
   }
 }
+.cb-picker {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+  display: grid;
+  gap: 12px;
+}
+.cb-picker a {
+  display: grid;
+  gap: 4px;
+  padding: 16px 18px;
+  border: 1px solid #355065;
+  border-radius: 10px;
+  background: #0f1c2d;
+}
+.cb-picker a:hover {
+  border-color: #6fa7a0;
+}
+.cb-picker strong {
+  font-size: 17px;
+  color: #fff;
+}
+.cb-unavailable-title {
+  font-size: clamp(28px, 4vw, 40px);
+}
+.cb-row-summary {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #b9cad9;
+}
+.cb-link-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-top: 6px;
+  padding: 4px 0;
+  background: none;
+  color: #93d9c5;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cb-link-button[aria-pressed='true'] {
+  color: #fff;
+  text-decoration-thickness: 2px;
+}
+.cb-explained-row {
+  outline: 2px solid #4f8f86;
+  outline-offset: -2px;
+}
+.cb-explanation {
+  margin-top: 24px;
+}
+.cb-explanation h2:focus {
+  outline: 2px solid var(--mint);
+  outline-offset: 4px;
+}
+.cb-explanation > details {
+  border-top: 1px solid #24364b;
+  padding: 12px 0;
+}
+.cb-explanation > details > summary {
+  font-weight: 600;
+  color: #cfe3ef;
+}
+.cb-explain-summary {
+  display: grid;
+  gap: 10px;
+  padding-left: 18px;
+  margin: 12px 0 18px;
+  line-height: 1.6;
+}
+.cb-explain-table {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.cb-explain-table table {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 12px;
+}
+.cb-explain-table caption {
+  text-align: left;
+  color: #b3c3d5;
+  padding-bottom: 6px;
+}
+.cb-explain-table th,
+.cb-explain-table td {
+  border-top: 1px solid #293d51;
+  padding: 8px 10px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cb-explain-table th[scope='row'],
+.cb-explain-table thead th:first-child {
+  text-align: left;
+  white-space: normal;
+}
+.cb-explain-steps,
+.cb-explain-evidence {
+  display: grid;
+  gap: 10px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}

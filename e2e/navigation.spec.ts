@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, GOKU_OPTIMIZER, test } from './fixtures';
 
 const SYNTHETIC = 'Synthetic demonstration — not real Dokkan recommendations.';
 
@@ -12,13 +12,13 @@ test('navigation keeps the Pages prefix and marks the current page', async ({
     nav.getByRole('link', { name: 'Character catalog' }),
   ).toHaveAttribute('aria-current', 'page');
 
-  await nav.getByRole('link', { name: 'Limited build comparison' }).click();
+  await nav.getByRole('link', { name: 'Build optimizer' }).click();
   await expect(page).toHaveURL(
     /\/dokkan-optimizer\/\?workbench=character-build$/,
   );
-  await expect(page).toHaveTitle('Dokkan Character Builds · Limited workbench');
+  await expect(page).toHaveTitle('Dokkan Character Builds · Build optimizer');
   await expect(
-    nav.getByRole('link', { name: 'Limited build comparison' }),
+    nav.getByRole('link', { name: 'Build optimizer' }),
   ).toHaveAttribute('aria-current', 'page');
 
   await nav.getByRole('link', { name: 'Legacy synthetic team demo' }).click();
@@ -56,7 +56,7 @@ test('legacy demo keeps its exact warning and reference search', async ({
 test('genuine character pages do not carry the synthetic warning', async ({
   page,
 }) => {
-  for (const path of ['./', '?workbench=character-build']) {
+  for (const path of ['./', GOKU_OPTIMIZER]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(page.getByText(SYNTHETIC)).toHaveCount(0);
@@ -67,6 +67,7 @@ test('no page scrolls horizontally', async ({ page }) => {
   for (const path of [
     './',
     '?workbench=character-build',
+    GOKU_OPTIMIZER,
     '?workbench=legacy-team',
   ]) {
     await page.goto(path);
@@ -75,5 +76,24 @@ test('no page scrolls horizontally', async ({ page }) => {
       () => document.documentElement.scrollWidth - window.innerWidth,
     );
     expect(overflow, path).toBeLessThanOrEqual(0);
+  }
+});
+
+test('test-only characters are not shipped in the production bundle', async ({
+  page,
+  request,
+}) => {
+  const scripts: string[] = [];
+  page.on('response', (response) => {
+    if (new URL(response.url()).pathname.endsWith('.js'))
+      scripts.push(response.url());
+  });
+  await page.goto('./');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  expect(scripts.length).toBeGreaterThan(0);
+  for (const url of scripts) {
+    const body = await (await request.get(url)).text();
+    expect(body).not.toContain('TEST ONLY');
+    expect(body).not.toContain('test-only-node-v1');
   }
 });

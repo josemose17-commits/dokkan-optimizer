@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  characterCatalog,
-  defaultRequest,
-  ORB_IDS,
-} from '../data/real/character-build/goku';
+import { gokuEntry } from '../data/real/character-build/registry';
+import { defaultRequest, ORB_IDS } from '../data/real/character-build/goku';
 import {
   buildStatus,
   createSavedBuild,
@@ -40,7 +37,7 @@ function saved(id: string, name = `Build ${id}`): SavedBuild {
     name,
     now,
     request,
-    catalog: characterCatalog,
+    entry: gokuEntry,
   });
   if (!result.build) throw new Error(result.error);
   return result.build;
@@ -98,13 +95,13 @@ describe('saved-build records', () => {
     );
     expect(build.request.level).toBe(140);
     expect(build.request.superAttackLevel).toBe(15);
-    expect(buildStatus(build, characterCatalog)).toEqual({
+    expect(buildStatus(build, [gokuEntry])).toEqual({
       kind: 'ready',
       reason: null,
     });
   });
   it('rejects blank or overlong names and invalid settings', () => {
-    const base = { id: 'x', now, catalog: characterCatalog };
+    const base = { id: 'x', now, entry: gokuEntry };
     expect(
       createSavedBuild({ ...base, name: '   ', request: defaultRequest() })
         .error,
@@ -124,20 +121,22 @@ describe('saved-build records', () => {
   });
   it('marks a different catalog revision stale instead of loading it', () => {
     const build = { ...saved('a'), catalogRevision: 'older-revision' };
-    expect(buildStatus(build, characterCatalog).kind).toBe('stale');
+    expect(buildStatus(build, [gokuEntry]).kind).toBe('stale');
   });
   it('marks a build saved for another evaluator version stale', () => {
     const build = { ...saved('a'), evaluatorVersion: 'goku-initial-check-v0' };
-    const status = buildStatus(build, characterCatalog);
+    const status = buildStatus(build, [gokuEntry]);
     expect(status.kind).toBe('stale');
     expect(status.reason).toContain('goku-initial-check-v0');
   });
   it('marks same-revision settings that fail legality as invalid', () => {
     const build = saved('a');
     build.request.superAttackLevel = 14;
-    const status = buildStatus(build, characterCatalog);
+    const status = buildStatus(build, [gokuEntry]);
     expect(status.kind).toBe('invalid');
-    expect(status.reason).toContain('EZA and SEZA differ');
+    expect(status.reason).toContain(
+      'exact states (including EZA and SEZA) are never substituted',
+    );
   });
 });
 
@@ -222,10 +221,10 @@ describe('JSON export and import', () => {
     const text = exportBundle({
       working,
       builds: [saved('a')],
-      catalog: characterCatalog,
+      entry: gokuEntry,
       now,
     });
-    const preview = parseImport(text, characterCatalog);
+    const preview = parseImport(text, [gokuEntry]);
     expect(preview.ok).toBe(true);
     if (!preview.ok) return;
     expect(preview.working).toEqual({
@@ -243,12 +242,12 @@ describe('JSON export and import', () => {
       exportBundle({
         working: defaultRequest(),
         builds: [],
-        catalog: characterCatalog,
+        entry: gokuEntry,
         now,
       }),
     );
     bundle.catalogRevision = 'older-revision';
-    const preview = parseImport(JSON.stringify(bundle), characterCatalog);
+    const preview = parseImport(JSON.stringify(bundle), [gokuEntry]);
     expect(preview.ok && preview.working?.status.kind).toBe('stale');
   });
   it('counts malformed builds as rejected instead of importing them', () => {
@@ -256,12 +255,12 @@ describe('JSON export and import', () => {
       exportBundle({
         working: null,
         builds: [saved('a')],
-        catalog: characterCatalog,
+        entry: gokuEntry,
         now,
       }),
     );
     bundle.builds.push({ id: 'bad', name: '<img src=x onerror=alert(1)>' });
-    const preview = parseImport(JSON.stringify(bundle), characterCatalog);
+    const preview = parseImport(JSON.stringify(bundle), [gokuEntry]);
     expect(preview.ok).toBe(true);
     if (!preview.ok) return;
     expect(preview.builds).toHaveLength(1);
@@ -282,15 +281,12 @@ describe('JSON export and import', () => {
       'malformed',
     ],
   ])('rejects %s', (_l, text, message) => {
-    const preview = parseImport(text, characterCatalog);
+    const preview = parseImport(text, [gokuEntry]);
     expect(preview.ok).toBe(false);
     if (!preview.ok) expect(preview.error).toContain(message);
   });
   it('rejects oversized input before parsing', () => {
-    const preview = parseImport(
-      `"${'x'.repeat(1024 * 1024)}"`,
-      characterCatalog,
-    );
+    const preview = parseImport(`"${'x'.repeat(1024 * 1024)}"`, [gokuEntry]);
     expect(preview.ok || preview.error).toContain('1 MiB');
   });
   it('rejects malformed working settings', () => {
@@ -298,12 +294,12 @@ describe('JSON export and import', () => {
       exportBundle({
         working: defaultRequest(),
         builds: [],
-        catalog: characterCatalog,
+        entry: gokuEntry,
         now,
       }),
     );
     bundle.working.extra = 1;
-    const preview = parseImport(JSON.stringify(bundle), characterCatalog);
+    const preview = parseImport(JSON.stringify(bundle), [gokuEntry]);
     expect(preview.ok || preview.error).toContain('working settings');
   });
 });

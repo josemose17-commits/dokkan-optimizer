@@ -1,10 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { expect, test, WORKING_KEY } from './fixtures';
+import { expect, test, WORKING_KEY, GOKU_OPTIMIZER } from './fixtures';
 
 test('corrupt working settings warn and are kept until an explicit edit', async ({
   page,
 }) => {
-  await page.goto('?workbench=character-build');
+  await page.goto(GOKU_OPTIMIZER);
   await page.evaluate(
     (key) => window.localStorage.setItem(key, 'not-json'),
     WORKING_KEY,
@@ -15,7 +15,7 @@ test('corrupt working settings warn and are kept until an explicit edit', async 
   ).toBeVisible();
   // Browsing the catalog does not write it either.
   await page.goto('./');
-  await page.goto('?workbench=character-build');
+  await page.goto(GOKU_OPTIMIZER);
   expect(
     await page.evaluate((key) => window.localStorage.getItem(key), WORKING_KEY),
   ).toBe('not-json');
@@ -50,7 +50,7 @@ test('blocked storage is reported while calculations stay usable', async ({
       },
     });
   });
-  await page.goto('?workbench=character-build');
+  await page.goto(GOKU_OPTIMIZER);
   await expect(
     page.getByText(
       'Local storage is unavailable; changes last for this session.',

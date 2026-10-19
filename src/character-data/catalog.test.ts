@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { gokuEntry } from '../data/real/character-build/registry';
 import {
   characterCatalog,
   CARD_STATE_ID,
@@ -670,7 +671,7 @@ describe('snapshot updates and existing saved builds', () => {
     };
     const request = defaultRequest();
     request.inventory['agl:bronze:hp:5'] = 3;
-    expect(saveCharacterState(storage, request, characterCatalog)).toBeNull();
+    expect(saveCharacterState(storage, request, gokuEntry)).toBeNull();
     const raw = values.get(CHARACTER_STORAGE_KEY)!;
     expect(inspectSavedBuildIdentity(raw, catalogSnapshot)).toMatchObject({
       status: 'resolved',
@@ -679,9 +680,7 @@ describe('snapshot updates and existing saved builds', () => {
     const next = structuredClone(catalogSnapshot);
     next.revision = 'catalog-text-update';
     expect(inspectSavedBuildIdentity(raw, next).status).toBe('resolved');
-    expect(
-      loadCharacterState(storage, defaultRequest(), characterCatalog).state,
-    ).toEqual(request);
+    expect(loadCharacterState(storage, gokuEntry).state).toEqual(request);
     expect(values.get(CHARACTER_STORAGE_KEY)).toBe(raw);
     expect(values.get('dokkan-team-lab.collection.v1')).toBe(
       'legacy untouched',

@@ -1,15 +1,19 @@
-import type { BuildRequest, CharacterCatalog } from './domain';
+import type { BuildRequest, EvaluatorEntry } from './domain';
 import { requestErrors } from './legality';
 import { parseBuildRequest } from './library';
+import { WORKING_SETTINGS_KEY } from './registry';
 
-export const CHARACTER_STORAGE_KEY = 'dokkan.character-builds.v1';
+// The original Goku entry's key (unchanged contract). Other entries use the
+// key their registry entry declares, so characters never share settings.
+export const CHARACTER_STORAGE_KEY = WORKING_SETTINGS_KEY;
 type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;
 
 export function loadCharacterState(
   storage: StoragePort | null,
-  defaults: BuildRequest,
-  catalog: CharacterCatalog,
+  entry: EvaluatorEntry,
 ) {
+  const catalog = entry.model;
+  const defaults = entry.defaults();
   // `raw` is returned only when stored data exists but cannot be used, so the
   // page can offer a copy before an explicit edit replaces it.
   let raw: string | null = null;
@@ -23,7 +27,7 @@ export function loadCharacterState(
       'Local storage is unavailable; changes last for this session.',
     );
   try {
-    raw = storage.getItem(CHARACTER_STORAGE_KEY);
+    raw = storage.getItem(entry.storageKey);
     if (raw === null) return fallback(null);
     const parsed: unknown = JSON.parse(raw);
     if (
@@ -38,7 +42,7 @@ export function loadCharacterState(
       throw new Error('Unknown saved schema/catalog.');
     // Structural parse first, then the same legality checks as any request.
     const request = parseBuildRequest(parsed.request);
-    if (!request || requestErrors(request, catalog).length)
+    if (!request || requestErrors(request, entry).length)
       throw new Error('Invalid saved build.');
     return { state: request, warning: null, raw: null };
   } catch {
@@ -54,17 +58,17 @@ export const INVALID_SETTINGS_NOTICE =
 export function saveCharacterState(
   storage: StoragePort | null,
   request: BuildRequest,
-  catalog: CharacterCatalog,
+  entry: EvaluatorEntry,
 ) {
   // Invalid input is a different problem from blocked storage; report it as such.
-  if (requestErrors(request, catalog).length) return INVALID_SETTINGS_NOTICE;
+  if (requestErrors(request, entry).length) return INVALID_SETTINGS_NOTICE;
   try {
     if (!storage) throw new Error('Unavailable');
     storage.setItem(
-      CHARACTER_STORAGE_KEY,
+      entry.storageKey,
       JSON.stringify({
         version: 1,
-        catalogRevision: catalog.revision,
+        catalogRevision: entry.model.revision,
         request,
       }),
     );

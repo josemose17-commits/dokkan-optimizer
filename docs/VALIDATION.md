@@ -1,5 +1,27 @@
 # Prototype validation
 
+## Evaluator registry and result explanations — 2026-10-19
+
+Node 24.22.0, headless Chromium 141 (Playwright 1.56.1). No new real data, evidence or mechanics; the production registry has one entry (the admitted Goku state).
+
+- `npm test`: **281/281 passed** in 10 files. New since the PR #5 follow-up:
+  - 20 registry and isolation tests: resolution by catalog evaluator ID; every refusal code; no fallback; per-entry storage keys; saved-build state binding.
+  - 11 trace and explanation tests: sources, factor products, pp vs relative change, zero baseline, rank ties, dominance by a result or by the baseline, equivalent configurations, unavailable metrics, evidence status, lower-is-better direction.
+  - 7 server-rendered component tests: the TEST ONLY characters render with their own identity, slots, choice node, contexts and objectives, with no Goku text; the page refuses instead of falling back.
+  - 3 delta-format tests.
+  - All earlier tests were moved to registry entries; their expected values are unchanged.
+- `npm run typecheck`, `npm run build`, `npm run format:check`: **passed**.
+- `npm run test:e2e`: **69 passed, 1 skipped** (35 tests × desktop/mobile; the skip is the mobile-only layout check on desktop). New browser coverage:
+  - the state picker;
+  - refusal of unknown/SEZA states with no Goku fallback;
+  - explanation text checked against hand-computed values;
+  - dominance explanation and focus;
+  - zero-baseline wording;
+  - equivalent-configuration explanation;
+  - absence of TEST ONLY fixtures from the production JavaScript.
+
+Not covered in a browser: loading a saved build into another state's workbench. The production registry has only one state, and fixtures are never shipped. The pure resolution (`entryForState`, `buildStatus`) is unit-tested; the UI hand-off is not.
+
 ## PR #5 review follow-up — 2026-10-19
 
 PR #5's first GitHub Actions run (head `710c664`) passed both jobs: **Test and build (Node 24)** and **Playwright (Chromium, production build, Node 24)**; the deploy job was skipped as expected for a pull request. There were no review comments. This follow-up comes from an implementation review, not from CI failures.

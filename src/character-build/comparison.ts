@@ -1,21 +1,27 @@
 import {
+  METRIC_DIRECTION,
   SLOTS,
   type Build,
   type BuildGroup,
   type BuildRequest,
   type CharacterCatalog,
   type ComparisonResult,
+  type Direction,
   type Evaluation,
+  type EvaluatorEntry,
   type MetricKey,
 } from './domain';
 import { buildKey, generateBuilds } from './generation';
-import { evaluateBuild } from './evaluation';
 import { missingInventory, requestErrors } from './legality';
 
 const available = (e: Evaluation, key: MetricKey) =>
   e.metrics[key].value !== null && Number.isFinite(e.metrics[key].value);
 
-export function frontier(evaluations: Evaluation[], requested: MetricKey[]) {
+export function frontier(
+  evaluations: Evaluation[],
+  requested: MetricKey[],
+  direction: (metric: MetricKey) => Direction = (m) => METRIC_DIRECTION[m],
+) {
   const sameContext =
     new Set(evaluations.map((e) => e.comparisonKey)).size <= 1;
   const metricsUsed = requested.filter((key) =>
@@ -24,27 +30,42 @@ export function frontier(evaluations: Evaluation[], requested: MetricKey[]) {
   const omittedMetrics = requested.filter((key) => !metricsUsed.includes(key));
   const comparable =
     sameContext && metricsUsed.length > 0 && evaluations.length > 0;
+  const value = (e: Evaluation, key: MetricKey) => e.metrics[key].value!;
+  const noWorse = (a: Evaluation, b: Evaluation, key: MetricKey) =>
+    direction(key) === 'higher'
+      ? value(a, key) >= value(b, key)
+      : value(a, key) <= value(b, key);
+  const better = (a: Evaluation, b: Evaluation, key: MetricKey) =>
+    direction(key) === 'higher'
+      ? value(a, key) > value(b, key)
+      : value(a, key) < value(b, key);
+  // For each evaluation: the first dominating evaluation in the given order,
+  // and the metrics on which it is strictly better.
+  const dominators = evaluations.map((candidate) => {
+    if (!comparable) return null;
+    const index = evaluations.findIndex(
+      (other) =>
+        metricsUsed.every((key) => noWorse(other, candidate, key)) &&
+        metricsUsed.some((key) => better(other, candidate, key)),
+    );
+    return index < 0
+      ? null
+      : {
+          index,
+          better: metricsUsed.filter((key) =>
+            better(evaluations[index]!, candidate, key),
+          ),
+        };
+  });
   const indices = comparable
-    ? evaluations.flatMap((candidate, index) => {
-        const dominated = evaluations.some(
-          (other) =>
-            metricsUsed.every(
-              (key) =>
-                other.metrics[key].value! >= candidate.metrics[key].value!,
-            ) &&
-            metricsUsed.some(
-              (key) =>
-                other.metrics[key].value! > candidate.metrics[key].value!,
-            ),
-        );
-        return dominated ? [] : [index];
-      })
+    ? evaluations.flatMap((_, index) => (dominators[index] ? [] : [index]))
     : [];
   return {
     metricsUsed: sameContext ? metricsUsed : [],
     omittedMetrics,
     comparable,
     indices,
+    dominators,
     reason: !sameContext
       ? 'Different contexts cannot be compared.'
       : !metricsUsed.length
@@ -88,10 +109,13 @@ function evaluationKey(evaluation: Evaluation): string {
 
 export function compareBuilds(
   request: BuildRequest,
-  catalog: CharacterCatalog,
+  entry: EvaluatorEntry,
 ): ComparisonResult {
+  const catalog = entry.model;
+  const evaluate = (build: Build) =>
+    entry.evaluator.evaluate(build, request, entry);
   const result: ComparisonResult = {
-    errors: requestErrors(request, catalog),
+    errors: requestErrors(request, entry),
     current: null,
     groups: [],
     frontier: {
@@ -110,14 +134,14 @@ export function compareBuilds(
   };
   if (result.errors.length) return result;
   // Baseline is assessed independently, including when enumeration later truncates.
-  result.current = evaluateBuild(request.current, request, catalog);
+  result.current = evaluate(request.current);
   const groups = new Map<string, BuildGroup>();
-  for (const build of generateBuilds(request, catalog)) {
+  for (const build of generateBuilds(request, entry)) {
     if (result.search.evaluated === request.maxCandidates) {
       result.search.truncated = true;
       break;
     }
-    const evaluation = evaluateBuild(build, request, catalog);
+    const evaluation = evaluate(build);
     result.search.evaluated++;
     const key = evaluationKey(evaluation);
     let group = groups.get(key);
@@ -128,6 +152,8 @@ export function compareBuilds(
         evaluation,
         alternatives: [],
         frontier: false,
+        dominatedBy: null,
+        dominatedOn: [],
         deltas: Object.fromEntries(
           Object.entries(evaluation.metrics).map(([metric, value]) => {
             const baseline = result.current!.metrics[metric as MetricKey].value;
@@ -149,10 +175,13 @@ export function compareBuilds(
       isCurrent: buildKey(build) === buildKey(request.current),
     });
   }
+  // Best first in the objective's own direction; ties keep a stable ID order.
+  const sign = METRIC_DIRECTION[request.objective] === 'higher' ? 1 : -1;
   result.groups = [...groups.values()].sort(
     (a, b) =>
-      b.evaluation.metrics[request.objective].value! -
-        a.evaluation.metrics[request.objective].value! ||
+      sign *
+        (b.evaluation.metrics[request.objective].value! -
+          a.evaluation.metrics[request.objective].value!) ||
       a.id.localeCompare(b.id),
   );
   let previous: number | null = null;
@@ -177,6 +206,15 @@ export function compareBuilds(
   };
   f.indices.forEach((index) => {
     if (result.groups[index]) result.groups[index]!.frontier = true;
+  });
+  result.groups.forEach((group, index) => {
+    const dominator = f.dominators[index];
+    if (!dominator) return;
+    group.dominatedBy =
+      dominator.index === result.groups.length
+        ? { kind: 'baseline' }
+        : { kind: 'group', id: result.groups[dominator.index]!.id };
+    group.dominatedOn = dominator.better;
   });
   result.search.unique = result.groups.length;
   if (!result.search.truncated)

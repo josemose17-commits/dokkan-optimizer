@@ -1,5 +1,5 @@
-import type { BuildRequest, CharacterCatalog } from './domain';
-import { EVALUATOR_VERSION } from './evaluation';
+import type { BuildRequest, EvaluatorEntry } from './domain';
+import { entryForState } from './registry';
 import { requestErrors } from './legality';
 
 // Named saved builds and JSON backups. Separate from the working settings key
@@ -21,7 +21,7 @@ export interface SavedBuild {
 }
 export type BuildStatus =
   | { kind: 'ready'; reason: null }
-  | { kind: 'stale' | 'invalid'; reason: string };
+  | { kind: 'stale' | 'invalid' | 'unsupported'; reason: string };
 
 type Obj = Record<string, unknown>;
 const object = (v: unknown): v is Obj =>
@@ -199,22 +199,34 @@ function parseSavedBuild(v: unknown): SavedBuild | null {
     : null;
 }
 
-/** Saved inputs, not results. A different catalog revision is never auto-loaded. */
+/**
+ * Saved inputs, not results. A build is loadable only by the evaluator bound
+ * to its exact state, with the same data revision and evaluator ID; anything
+ * else is kept and labeled, never evaluated against other data.
+ * `available` lists the evaluators this app can open (registry entries that
+ * resolve against the catalog).
+ */
 export function buildStatus(
   build: SavedBuild,
-  catalog: CharacterCatalog,
+  available: readonly EvaluatorEntry[],
 ): BuildStatus {
-  if (build.catalogRevision !== catalog.revision)
+  const entry = entryForState(available, build.request.cardStateId);
+  if (!entry)
+    return {
+      kind: 'unsupported',
+      reason: `No evaluator in this app is bound to state ${build.request.cardStateId}. Retained but not loadable; no other character is substituted.`,
+    };
+  if (build.catalogRevision !== entry.model.revision)
     return {
       kind: 'stale',
-      reason: `Saved against catalog ${build.catalogRevision}; this app uses ${catalog.revision}. Retained but not loadable; no substitution is made.`,
+      reason: `Saved against catalog ${build.catalogRevision}; this app uses ${entry.model.revision}. Retained but not loadable; no substitution is made.`,
     };
-  if (build.evaluatorVersion !== EVALUATOR_VERSION)
+  if (build.evaluatorVersion !== entry.id)
     return {
       kind: 'stale',
-      reason: `Saved for evaluator ${build.evaluatorVersion}; this app uses ${EVALUATOR_VERSION}. Retained but not loadable; results could differ.`,
+      reason: `Saved for evaluator ${build.evaluatorVersion}; this state now uses ${entry.id}. Retained but not loadable; results could differ.`,
     };
-  const errors = requestErrors(build.request, catalog);
+  const errors = requestErrors(build.request, entry);
   return errors.length
     ? { kind: 'invalid', reason: errors.join(' ') }
     : { kind: 'ready', reason: null };
@@ -225,7 +237,7 @@ export function createSavedBuild(input: {
   name: string;
   now: Date;
   request: BuildRequest;
-  catalog: CharacterCatalog;
+  entry: EvaluatorEntry;
 }): { build: SavedBuild; error: null } | { build: null; error: string } {
   const name = input.name.trim();
   if (!name || name.length > MAX_NAME_LENGTH)
@@ -233,7 +245,7 @@ export function createSavedBuild(input: {
       build: null,
       error: `Enter a name of 1–${MAX_NAME_LENGTH} characters.`,
     };
-  if (requestErrors(input.request, input.catalog).length)
+  if (requestErrors(input.request, input.entry).length)
     return {
       build: null,
       error: 'Only valid settings can be saved. Fix the highlighted inputs.',
@@ -243,8 +255,8 @@ export function createSavedBuild(input: {
       id: input.id,
       name,
       savedAt: input.now.toISOString(),
-      catalogRevision: input.catalog.revision,
-      evaluatorVersion: EVALUATOR_VERSION,
+      catalogRevision: input.entry.model.revision,
+      evaluatorVersion: input.entry.id,
       request: structuredClone(input.request),
     },
     error: null,
@@ -355,10 +367,12 @@ export function saveLibrary(
   }
 }
 
+// The top-level revision and evaluator describe the working settings, which
+// belong to the open entry; each saved build carries its own.
 export function exportBundle(input: {
   working: BuildRequest | null;
   builds: SavedBuild[];
-  catalog: CharacterCatalog;
+  entry: EvaluatorEntry;
   now: Date;
 }): string {
   return `${JSON.stringify(
@@ -366,8 +380,8 @@ export function exportBundle(input: {
       format: EXPORT_FORMAT,
       version: 1,
       exportedAt: input.now.toISOString(),
-      catalogRevision: input.catalog.revision,
-      evaluatorVersion: EVALUATOR_VERSION,
+      catalogRevision: input.entry.model.revision,
+      evaluatorVersion: input.entry.id,
       working: input.working,
       builds: input.builds,
     },
@@ -390,7 +404,7 @@ export type ImportPreview =
 /** Imported files are untrusted: bounded, parsed as data only, never executed. */
 export function parseImport(
   textContent: string,
-  catalog: CharacterCatalog,
+  available: readonly EvaluatorEntry[],
 ): ImportPreview {
   if (new TextEncoder().encode(textContent).length > MAX_IMPORT_BYTES)
     return { ok: false, error: 'File exceeds the 1 MiB import limit.' };
@@ -452,7 +466,7 @@ export function parseImport(
           evaluatorVersion: parsed.evaluatorVersion,
           request,
         },
-        catalog,
+        available,
       ),
     };
   }
@@ -464,7 +478,7 @@ export function parseImport(
     working,
     builds: builds
       .filter((b): b is SavedBuild => b !== null)
-      .map((build) => ({ build, status: buildStatus(build, catalog) })),
+      .map((build) => ({ build, status: buildStatus(build, available) })),
     rejected: builds.filter((b) => b === null).length,
   };
 }
