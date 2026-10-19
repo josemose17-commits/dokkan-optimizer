@@ -1,5 +1,15 @@
 # Real-data source review
 
+## Character-workbench follow-up (2026-10-18)
+
+The assessment below describes the original synthetic team prototype. Its lack of an import-ready dataset is not an automatic prohibition on independently recording individual numerical facts. The primary product now uses a narrowly scoped, manually normalized real snapshot, with source-documented confidence and no claim of independent in-game verification.
+
+Read the current [field-level evidence and unresolved gates](character-build/EVIDENCE.md) and [separate access/reuse assessment](character-build/DATA_ACCESS.md). These distinguish ordinary access, expressive copying, compiled-dataset integration, individual numerical facts and mechanics validation. GachaData's documented authenticated API was also assessed; no token was obtained and no data imported. No prohibited internal endpoints, artwork, source calculator implementation or third-party database export is used.
+
+Only the filled 55% no-dupe EZA Goku profile and six individually recorded orbs are admitted. The full node graph and damage remain unresolved. No broader source permission or independent verification is implied.
+
+## Original prototype assessment
+
 Reviewed **2026-10-18**, before implementing the prototype. This was a focused assessment of access and published reuse information, not a bulk-data collection exercise. No third-party card records, artwork, effects, or combat formulas were imported. No internal endpoints were probed and no permission requests were sent.
 
 **Decision: no import-ready real-data source was verified in this pass.** A source needs both an authorized acquisition/reuse path and sufficiently validated, structured mechanics. The prototype therefore displays **“Synthetic demonstration — not real Dokkan recommendations.”** This does not mean that every potential source prohibits reuse.

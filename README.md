@@ -1,118 +1,91 @@
-# Dokkan Team Lab
+# Dokkan Character Builds
 
-> **Synthetic demonstration — not real Dokkan recommendations.**
->
-> Every bundled unit, category, link, effect, and rating is fictional. No real card stats or combat formulas are included. Rankings are transparent heuristics, not simulated win probabilities, damage, or survivability.
+The primary page is a **limited real-data character workbench** for **[Mystery Super Technique] Super Saiyan 3 Goku — Super AGL, Global English, fully EZA step 7, Lv.140 / SA15, without Super EZA**. It compares a small skill-orb catalog against a current build, using card stats and initial Hidden Potential probabilities. It has no damage objective or universal score.
 
-A browser-based TypeScript / React / Vite prototype with a UI-independent small-collection reference optimizer. There is no backend, account login, live database connection, or telemetry.
+**Source-documented model; no independent in-game verification recorded.** Source documentation, independent confirmation of game behavior, and passing mathematical tests are separate. All current field-level independent-verification dates are null. See the [evidence ledger](docs/character-build/EVIDENCE.md).
 
-## Run locally
+The full legal choice-node graph could not be verified. The released progression is therefore fixed to **55%, all no-duplicate base-board nodes filled, zero duplicate routes**. This has native AA5 and no selectable AA/critical/evasion nodes. Full Hidden Potential respec is deferred; arbitrary level triples are never offered. This useful subset compares equipment, not optimal damage builds.
 
-Use **Node.js 24+** and npm. From the repository directory:
+The preserved team prototype is at **`/dokkan-optimizer/?workbench=legacy-team`**, labeled **“Synthetic demonstration — not real Dokkan recommendations.”** Its units, effects and scores remain fictional and isolated. See [legacy documentation](docs/LEGACY_TEAM_DEMO.md).
+
+## Setup and checks
+
+Use **Node.js 24+** and npm:
 
 ```sh
 npm ci
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
-Open the local URL printed by Vite, normally `http://localhost:5173/dokkan-optimizer/`. If your sandbox does not allow network-interface discovery, use `npm run dev -- --host 127.0.0.1`.
+Open `http://127.0.0.1:5173/dokkan-optimizer/`.
 
 ```sh
-npm test                 # engine/reference examples and local persistence tests
-npm run test:watch       # watch mode
-npm run typecheck       # strict TypeScript, no emit
-npm run build           # type checking + production bundle in dist/
-npm run preview         # serve the production bundle locally
-```
-
-## GitHub Pages deployment
-
-The workflow in [`.github/workflows/pages.yml`](.github/workflows/pages.yml) uses **Node.js 24**, installs the lockfile with `npm ci`, runs `npm test`, and runs `npm run build` (which includes strict type checking). Pull requests targeting `main` run validation only. A push to `main` uploads `dist/` and deploys it after the build succeeds. The optional **Run workflow** trigger can deploy `main`; choosing another branch runs validation without uploading or deploying.
-
-**Required manual repository setting:** in [Settings → Pages](https://github.com/josemose17-commits/dokkan-optimizer/settings/pages), under **Build and deployment → Source**, select **GitHub Actions**. Pages was not enabled when this deployment setup was prepared. Set the source before merging this PR. Do not select a branch/folder publishing source or create a separate starter workflow; the checked-in workflow builds the application.
-
-If Actions is disabled by repository or organization policy, enable it in **Settings → Actions → General** and allow the official `actions/checkout`, `actions/setup-node`, `actions/upload-pages-artifact`, `actions/configure-pages`, and `actions/deploy-pages` actions. No personal access token or custom deployment secret is required. The workflow grants `contents: read` by default and grants `pages: write` / `id-token: write` only to the `main` deployment job. That job targets the **`github-pages`** environment and serializes deployments. If an existing environment policy restricts deployment branches, it must permit `main`; any configured required reviewer still needs to approve the job.
-
-After the workflow is merged into `main`, a push to `main` starts deployment automatically. To retry manually, open **Actions → Validate and deploy GitHub Pages → Run workflow** and choose **main**. The manual trigger is available after the workflow exists on the default branch. Check the deployment job's result and its environment URL; a successful local build or PR check alone does not mean the site is live.
-
-Expected address **after a successful deployment**: `https://josemose17-commits.github.io/dokkan-optimizer/`. This README does not assert a completed deployment.
-
-Vite's `base` is explicitly `/dokkan-optimizer/`, so generated JavaScript and CSS URLs retain the repository prefix. To check the production build locally:
-
-```sh
+npm test
+npm run typecheck
 npm run build
 npm run preview -- --host 127.0.0.1
 ```
 
-Open `http://127.0.0.1:4173/dokkan-optimizer/`. Check that scripts and styles load under `/dokkan-optimizer/assets/` and that **“Synthetic demonstration — not real Dokkan recommendations.”** remains visible. If the repository name or hosting path changes, update `base` in `vite.config.ts`. Collection storage belongs to the browser origin, so a local collection is not automatically transferred to the Pages origin.
+Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The project uses React, TypeScript, Vite and Vitest. No backend, telemetry, game-account connection, runtime scraper or external asset requests are needed.
 
-## First run
+## Reproduce the first-unit comparison
 
-1. The demo box starts with nine owned fixtures. Toggle ownership, search names/categories, own all, reset, or clear. Edits persist in this browser's local storage, using a validated versioned envelope. Storage failures and invalid saved data produce a visible warning. No collection data leaves the browser.
-2. Choose an **owned leader** and a **friend leader**. The friend does not need to be owned. A friend matching an owned card still occupies a separate seventh slot.
-3. Choose a synthetic exercise and set its context turn / HP. These are explicit condition inputs, not predictions of battle state. Set a candidate limit and generate teams.
-4. Compare up to five ranked candidates. Inspect each leader's coverage independently, target rotations, reasons, unmet conditions, unsupported mechanics, weaknesses, eligible single swaps, and rejected-candidate diagnostics.
+1. Open the primary URL. Confirm that your intended comparison is the exact **EZA, not SEZA**, Lv.140/SA15 **55% no-dupe** profile. Other states are not supported. The Hidden Potential system must already be unlocked and the base board filled; this app does not assess unlock affordability.
+2. Leave both current slots **Empty** for the reference baseline, or select your actual matching equips. Gold is locked. An item absent from this catalog cannot be approximated by another item.
+3. Select **Ownership ignored within this catalog**. This is hypothetical access to the six listed items, not a claim that you own them or that every game equip is considered. For inventory mode, enter **unequipped** quantities; current attached items remain available to retain.
+4. Use **Evasion allowed**, **Initial extra Super** as the objective, all six frontier metrics, and a candidate limit of at least **16**. Click **Compare legal builds**. Turn 1, first appearance, initial Super available and no external effects are fixed.
+5. Expect **16 legal targets / 16 distinct evaluations**. The unequipped baseline is HP **15,327**, ATK **13,911**, DEF **8,596**; initial AA trigger **10%**, initial-check extra Super **5%**, critical/evasion **0%**.
+6. Silver AA+2 produces an initial AA trigger **14%**, initial-check extra Super **7%**. Silver critical+2 gives **4%** critical chance; silver evasion+2 gives **2%** per eligible incoming attack. Bronze ATK/DEF/HP +500 changes only its corresponding card stat. For example, ATK becomes **14,411**. These are source-model outputs, not independently measured combat results.
+7. Four targets tie for first place on the initial extra-Super objective. Nine evaluations form the frontier when all six metrics are selected. Open row details for every equivalent legal equip option and its current-to-target changes. Deltas use the current baseline; probability deltas are percentage points.
+8. Change to **Evasion disabled** and compare again: 16 targets collapse to **12 distinct evaluations**, retaining all 16 alternatives. Empty silver and evasion silver can be equivalent for the exposed metrics in this context. No current choice or alternative is discarded.
 
-The two exercise presets intentionally change the weighting of arbitrary fixture ratings. For a simple coverage failure, keep Harbor Marshal as friend: Cinder Sprinter has Ember but neither Tide nor Vanguard. Its teams are rejected regardless of its pressure rating. Owning Unknown Sentinel demonstrates an unsupported entry rule that must fail closed.
+With inventory mode and zero unequipped/current items, only the empty target is available. Counts never imply ownership. Legal target changes may consume resources or destroy/replace equipment; replacement economics and respec affordability are deferred. No action changes the game.
 
-## Eligibility before scoring
+## Metrics and comparisons
 
-- A candidate contains exactly six **distinct owned instance IDs**, including the chosen leader, plus one independent friend participant. The current editor represents one instance per fixture card; it does not manage real card copies, levels, potential, or equipment.
-- Every participant, **including the owned leader and friend**, must satisfy both leader rules independently. Failed or unsupported coverage rejects the candidate before rotation search/scoring. There is no partial-coverage mode in this prototype.
-- Explicit unit eligibility rules and unsupported eligibility declarations are hard gates. Unknown rule kinds and unsupported branches in nested rules fail closed. For an `any` rule, an unsupported branch remains unsupported even if another branch is true; this is a conservative reference-model policy.
-- Conditions support category membership, nested all/any, team-category counts, fixed-partner category, turn threshold, HP threshold, and an explicit unsupported rule. Team counts include self and friend. Fixed-partner effects are not assumed for floaters. Partner-dependent eligibility is unsupported before rotation evaluation and fails closed even in a nested rule.
-- Unsupported scoring mechanics are reported and receive no assumed effect bonus. Unsupported link records receive no link credit. Warnings name the missing mechanics. Known base fixture ratings remain hand-authored inputs; they do not fill in the missing mechanics.
+- **Card HP/ATK/DEF:** card base + the fixed +2800 potential bonus + flat equips. They exclude leader, passive, link, support, Ki and Super Attack combat multipliers. Card ATK is not damage; card DEF is not survivability.
+- **Initial AA check:** trigger `0.02 × total AA`; trigger followed by a Super `0.02 × total AA × 0.5`. This is the initial eligible attack's check, not the full-turn probability of another Super or a modeled attack chain.
+- **Critical/evasion:** `0.02 × critical level` per eligible attack and `0.01 × evasion level` per eligible incoming attack, with no native/external chance effects. An evasion-disabled context explicitly assumes 0. No named boss is inferred.
+- **Damage and battle DEF:** unavailable/null with explanations, never zero or replaced by a fixture rating. The objective selector offers supported metrics only.
+- Ranking sorts the selected metric and preserves ties. The frontier uses the same context and the common available selected metrics: no worse on all, better on at least one. Unknown metrics are omitted explicitly, never filled with zeros. There are no universal weights.
+- Equivalent exposed evaluations are grouped with **all** legal allocation/equip alternatives retained. Equivalence is limited to the modeled metrics and does not mean equal costs. Inventory quantities and current attached items are checked before evaluation.
+- Search generation is independent of evaluation. Counts, limits and truncation are reported. If truncated, total legal count is unknown and ranks/frontier apply only to evaluated targets. No global optimum is claimed.
 
-## Reference search and rotations
+## Evidence, data path and remaining gates
 
-`generateCandidates` has no scoring dependency. It fixes the owned leader and enumerates combinations of five other owned instances in stable ID order. `evaluateCandidate` checks eligibility and evaluates each candidate independently. This separation is the seam for a future scalable search strategy.
+Read [field evidence](docs/character-build/EVIDENCE.md), [current access/reuse assessment](docs/character-build/DATA_ACCESS.md), and [the original source review](docs/DATA_SOURCES.md). Access restrictions, copied expressive content, compiled-dataset rights and independently recorded individual numbers are assessed separately. Missing bulk permission is not automatically a ban on recording facts. No blanket legal or data-reuse permission is claimed.
 
-For seven slots, the reference evaluator examines all **105** unordered layouts of two disjoint pairs plus three floaters: choose four fixed participants in 35 ways, then pair them in three ways. The friend participates in this enumeration just like any other slot. The layout with the highest combined synthetic score is selected; deterministic enumeration breaks layout ties. Target rotations are **not guaranteed opening rotations**. Opening order, rotation setup turns, and actual floater scheduling are not simulated.
+`src/data/real/character-build/goku.ts` contains one manually normalized card profile and six numeric orb records with stable internal IDs. Source game item IDs are unknown and remain null. Source confidence and retrieval limitations, including indexed silver item labels, are visible. No artwork, long card descriptions, compiled third-party dataset, source calculator code or internal endpoint response is bundled.
 
-The search accepts at most 30 owned instances, evaluates at most 2,000 combinations (UI default: 300), and returns at most 10 teams (UI: five). Limits apply to combinations **before** eligibility filtering. A small limit can therefore examine only rejected candidates. Results disclose possible/evaluated/eligible/rejected counts, the limit, and truncation. Top-N output does not itself truncate candidate evaluation.
+Remaining gates: exact Goku node options/prerequisites; independent card/orb/probability confirmation; direct current confirmation of generic silver restrictions/IDs; attack-chain behavior; outgoing damage stages and rounding; passive expiry and battle stats. Broader or paid dataset integration requires a separately established access/reuse path. Updates are manual, versioned and reviewed; there is no live updater.
 
-If truncated, results are the **best among evaluated candidates only**; global optimality is not established. A complete search is exhaustive only under this synthetic model, fixed leader/friend/context, and catalog—not an optimal real Dokkan team. Total-score ties use sorted owned instance IDs. The engine runs synchronously after the UI paints its busy state; it is not suitable for a large real collection without a worker and a scalable search method.
+Deferred: complex kits, stacking/transformations, collection-wide equipment allocation, investment priorities, resource-cost optimization, full battle simulation, clear probabilities and survival estimates.
 
-## Transparent scoring
+## Code and persistence
 
-All four component scores are normalized to 0–100. Total is their weighted sum; values are rounded only for display.
+| Path                                                 | Responsibility                                                                         |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `src/character-build/domain.ts`                      | Separate real-card/evidence/build/context/metric contracts                             |
+| `src/character-build/legality.ts`, `generation.ts`   | Fail-closed restrictions, node prerequisites, inventory and lazy legal generation      |
+| `src/character-build/evaluation.ts`, `comparison.ts` | Card stats, supported probabilities, baselines, equivalence, ranks and Pareto frontier |
+| `src/character-build/engine.test.ts`                 | Independent arithmetic, enumeration, eligibility and comparison oracles                |
+| `src/character-build/storage.ts`, `storage.test.ts`  | Validated versioned character state; catalog-revision checks and visible failures      |
+| `src/character-build/CharacterWorkbench.tsx`         | Primary inputs/results/evidence UI                                                     |
+| `src/Workbench.tsx`                                  | Primary/legacy navigation without server routing                                       |
+| `src/data/real/`                                     | Source-documented real facts, separate from fictional fixtures                         |
+| `src/App.tsx`, `src/engine/`, `src/data/fixtures/`   | Preserved legacy team prototype and tests                                              |
+| `AGENTS.md`                                          | Rules for future tasks and evidence admission                                          |
 
-| Component               | Weight | Exact demonstration assumption                                                                                                                                                                                                                                                             |
-| ----------------------- | -----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Leader coverage         |    20% | Covered checks / 14 × 100. Every eligible candidate has 100, so these 20 points are constant. Coverage can never be outweighed by another component.                                                                                                                                       |
-| Synthetic link affinity |    15% | Mean shared synthetic link weight of the two main pairs / total supported catalog link weight × 100. Shared IDs count once per pair; identical fixture-card pairs receive zero affinity by demo convention. Floaters receive no fixed-pair credit. Weights are not real link effects.      |
-| Condition fulfillment   |    25% | Satisfied declared effects / all declared effects × 100; no effects yields 100. Unmet and unsupported effects receive zero credit. This measures declared-condition fulfillment, not raw power. It can favor units with fewer conditions.                                                  |
-| Synthetic scenario fit  |    40% | For each slot, start with hand-authored pressure/sustain/utility ratings, add only satisfied supported fixture bonuses, then clamp each axis to 0–100. Take the scenario-weighted mean across axes, then the mean across seven participants. This is not a damage or survival calculation. |
+Character settings use `dokkan.character-builds.v1`. The legacy collection retains `dokkan-team-lab.collection.v1`. Both are local to the browser origin. Invalid/newer schemas, changed catalog revisions, blocked storage and quota errors are surfaced. Reading an invalid character save does not overwrite it until an edit. No saved user state is committed or sent anywhere.
 
-Both presets use the same four component weights. Opening pressure uses axis weights **0.60 / 0.20 / 0.20**, turn 1, HP 100%; stability uses **0.15 / 0.55 / 0.30**, turn 5, HP 45%. Context controls can override turn/HP. Effects operate on one snapshot, without temporal transitions, stacking histories, probability, or enemies. Link affinity is only one component and must not be treated as total team strength.
+Tests using abstract graphs and invented branch-damage values are **mathematical tests, not combat verification or fictional product data**. Existing legacy tests remain unchanged. See [validation](docs/VALIDATION.md) for actual run results.
 
-The weights live in `src/engine/scoring.ts`. One-unit replacements are the top three already evaluated eligible teams that differ by one owned instance; leader and friend remain fixed. Each alternative has its own layout evaluation. Deltas show both total and component changes. A lower-scoring replacement offers an eligible alternative, not a claimed upgrade. Unexplored swaps are not inferred to be invalid.
+## GitHub Pages
 
-## Data integrity and the real-data blocker
+Vite retains `base: '/dokkan-optimizer/'`. Navigation uses the same prefix and a query parameter for the legacy page, so no SPA fallback/404 rewrite is required. Check both workbenches, asset requests, settings reload and mobile table scrolling at the production prefix.
 
-Read [the dated source assessment](docs/DATA_SOURCES.md) for access methods, published terms, prospective update strategies, and unresolved blockers. No import-ready real-data source was verified. Publicly visible data is not automatically reusable. Fandom text is a possible licensed source, but current access permission, attribution/share-alike handling, structured normalization, and mechanics verification still need work.
+The existing [workflow](.github/workflows/pages.yml) uses Node 24, `npm ci`, `npm test` and `npm run build` (including type checking). PRs to main validate only. Deployment is guarded to pushes to `main` or manual runs of `main`, with the `github-pages` environment and deployment-only `pages: write` / `id-token: write` permissions. This feature PR does not merge or deploy.
 
-- `src/data/fixtures/` contains only clearly marked synthetic fixtures.
-- `src/data/verified/` is intentionally empty except for admission requirements.
-- Records have stable IDs, provenance, reuse information, review date, nullable verification date, awakening state where applicable, and supported/unsupported mechanic declarations.
-- Synthetic verification dates are null. The current reference optimizer rejects `verified` records rather than pretending fixture scoring is a verified evaluator.
-- No runtime scraping, third-party assets, undocumented API calls, or database import is implemented.
+**Manual repository setting:** [Settings → Pages](https://github.com/josemose17-commits/dokkan-optimizer/settings/pages) → **Build and deployment → Source → GitHub Actions**. If repository policies restrict Actions or the deployment environment, allow the checked-in official actions and deployment from `main`. No new secret or setting is introduced by the character feature.
 
-Unmodeled real mechanics include damage, defense/survivability, Ki, same-name restrictions and linking, exact leader boosts, opening randomness, transformations, domains, items, enemy actions, and real category/effect semantics. The demo convention for identical-card link affinity is not asserted to be a game rule.
-
-## Structure
-
-| Path                                        | Responsibility                                                               |
-| ------------------------------------------- | ---------------------------------------------------------------------------- |
-| `src/domain/types.ts`                       | Records, rule language, provenance, requests, results                        |
-| `src/engine/`                               | Pure generation, rules, eligibility, layouts, scoring, ranking, replacements |
-| `src/engine/reference.test.ts`              | Independently enumerated candidates, arithmetic, and layout examples         |
-| `src/data/fixtures/` / `src/data/verified/` | Isolated synthetic fixtures / future verified data                           |
-| `src/storage/`                              | Validated versioned local persistence and failure handling                   |
-| `src/components/`, `src/App.tsx`            | Collection editor, configuration, results and explanations                   |
-| `docs/DATA_SOURCES.md`                      | Source research and real-data admission gate                                 |
-| `AGENTS.md`                                 | Rules for future coding tasks                                                |
-
-## Remaining work
-
-Establish authorized data access and attribution, verify mechanics independently, add a real evaluation model, model supported encounter/turn behavior, expand collection state, and add a worker plus a scalable search method. Continue to disclose unsupported mechanics and search scope. This prototype does not establish real-world team quality.
+After an authorized merge, main's workflow may publish to `https://josemose17-commits.github.io/dokkan-optimizer/`. Check the actual deployment job/environment before claiming the site is live. A passing PR build does not establish deployment.
