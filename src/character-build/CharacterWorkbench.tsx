@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   characterCatalog as catalog,
   defaultRequest,
@@ -11,9 +11,11 @@ import {
   type Build,
   type BuildRequest,
   type ComparisonResult,
-  type Metric,
   type MetricKey,
 } from './domain';
+import { formatDelta as delta, formatMetric as format } from './format';
+import { estimateCandidateSpace } from './generation';
+import SavedBuilds from './SavedBuilds';
 import { loadCharacterState, saveCharacterState } from './storage';
 import './character.css';
 
@@ -28,27 +30,19 @@ const labels: Record<MetricKey, string> = {
   damage: 'Damage',
   battleDefense: 'Battle DEF',
 };
+const MAX_LIMIT = 20000;
 const shortOrb = (id: string | null) =>
   catalog.orbs.find((orb) => orb.id === id)?.label ?? 'Empty';
-function format(metric: Metric): string {
-  return metric.value === null
-    ? 'Unavailable'
-    : metric.unit === 'probability'
-      ? `${(metric.value * 100).toFixed(1)}%`
-      : metric.value.toLocaleString('en-US');
-}
-function delta(value: number | null, baseline: Metric): string {
-  if (value === null || baseline.value === null) return 'Unavailable';
-  if (Math.abs(value) < 1e-10) return 'No change';
-  const sign = value > 0 ? '+' : '−';
-  if (baseline.unit === 'probability')
-    return `${sign}${Math.abs(value * 100).toFixed(1)} pp`;
-  const relative =
-    baseline.value === 0
-      ? ''
-      : ` (${sign}${Math.abs((value / baseline.value) * 100).toFixed(2)}%)`;
-  return `${sign}${Math.abs(value).toLocaleString('en-US')}${relative}`;
-}
+const quantityIssue = (n: number | undefined) =>
+  n === undefined || (Number.isSafeInteger(n) && n >= 0 && n <= 999)
+    ? null
+    : 'Enter a whole number from 0 to 999.';
+const describeRequest = (r: BuildRequest) =>
+  `${shortOrb(r.current.equips.bronze)} / ${shortOrb(r.current.equips.silver)} · ${
+    r.mode === 'catalog' ? 'ownership ignored' : 'inventory'
+  } · evasion ${r.context.evasionAllowed ? 'allowed' : 'disabled'} · sorted by ${
+    labels[r.objective]
+  }`;
 
 function BuildLabel({ build }: { build: Build }) {
   return (
@@ -71,14 +65,63 @@ export default function CharacterWorkbench() {
   );
   const [frontierOnly, setFrontierOnly] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // The limit is edited as text so a cleared field is not silently replaced.
+  const [limitDraft, setLimitDraft] = useState(String(request.maxCandidates));
+  const unitRef = useRef<HTMLElement>(null);
+  const [identityPinned, setIdentityPinned] = useState(false);
+  useEffect(() => {
+    const unit = unitRef.current;
+    if (!unit || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) =>
+      setIdentityPinned(
+        !entry!.isIntersecting && entry!.boundingClientRect.top < 0,
+      ),
+    );
+    observer.observe(unit);
+    return () => observer.disconnect();
+  }, []);
   function change(next: BuildRequest) {
     setRequest(next);
     setResult(null);
     setFailure(null);
     setNotice(saveCharacterState(browserStorage(), next, catalog));
   }
-  function compare(event: FormEvent) {
+  function replaceRequest(next: BuildRequest, message: string) {
+    change(next);
+    setLimitDraft(String(next.maxCandidates));
+    setNotice(saveCharacterState(browserStorage(), next, catalog) ?? message);
+  }
+  const limitNumber = Number(limitDraft);
+  const limitIssue =
+    limitDraft.trim() !== '' &&
+    Number.isSafeInteger(limitNumber) &&
+    limitNumber >= 1 &&
+    limitNumber <= MAX_LIMIT
+      ? null
+      : 'Enter a whole number from 1 to 20,000.';
+  const unlockIssue = request.progression.systemUnlocked
+    ? null
+    : 'Required: only an unlocked system with the filled 55% base board is supported.';
+  const frontierIssue = request.frontierMetrics.length
+    ? null
+    : 'Select at least one metric.';
+  const issueCount =
+    [limitIssue, unlockIssue, frontierIssue].filter(Boolean).length +
+    catalog.orbs.filter((orb) => quantityIssue(request.inventory[orb.id]))
+      .length;
+  const space = estimateCandidateSpace(request, catalog);
+  function compare(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (issueCount) {
+      setResult(null);
+      setFailure(
+        `Fix ${issueCount} highlighted input${issueCount === 1 ? '' : 's'} before comparing.`,
+      );
+      event.currentTarget
+        .querySelector<HTMLElement>('[aria-invalid="true"]')
+        ?.focus();
+      return;
+    }
     try {
       setResult(compareBuilds(request, catalog));
       setFailure(null);
@@ -92,6 +135,17 @@ export default function CharacterWorkbench() {
     result?.groups.filter((group) => !frontierOnly || group.frontier) ?? [];
   return (
     <main className="cb-workbench" id="character-workbench">
+      <div
+        className="cb-identity-bar"
+        data-pinned={identityPinned ? 'true' : 'false'}
+        aria-hidden={identityPinned ? undefined : true}
+      >
+        <span className="cb-identity-type">Super AGL · UR</span>
+        <strong>Super Saiyan 3 Goku</strong>
+        <span>Mystery Super Technique</span>
+        <span>EZA step 7 · Lv.140 · SA15 · not SEZA</span>
+        <span>55% base board · no dupes</span>
+      </div>
       <header className="cb-hero">
         <div>
           <p className="cb-eyebrow">
@@ -131,7 +185,11 @@ export default function CharacterWorkbench() {
         </p>
       )}
 
-      <section className="cb-card cb-unit" aria-labelledby="unit-title">
+      <section
+        className="cb-card cb-unit"
+        aria-labelledby="unit-title"
+        ref={unitRef}
+      >
         <div className="cb-type">
           SUPER
           <br />
@@ -160,7 +218,15 @@ export default function CharacterWorkbench() {
         </div>
       </section>
 
-      <form onSubmit={compare} className="cb-controls">
+      <SavedBuilds
+        catalog={catalog}
+        request={request}
+        defaults={defaultRequest}
+        describe={describeRequest}
+        onReplace={replaceRequest}
+      />
+
+      <form onSubmit={compare} className="cb-controls" noValidate>
         <div className="cb-control-grid">
           <section className="cb-card" aria-labelledby="current-title">
             <p className="cb-eyebrow">01 / COMPARISON BASELINE</p>
@@ -204,6 +270,8 @@ export default function CharacterWorkbench() {
             <label className="cb-check">
               <input
                 type="checkbox"
+                aria-invalid={unlockIssue ? true : undefined}
+                aria-describedby={unlockIssue ? 'unlock-error' : undefined}
                 checked={request.progression.systemUnlocked}
                 onChange={(event) =>
                   change({
@@ -218,6 +286,11 @@ export default function CharacterWorkbench() {
               Hidden Potential is already unlocked; the 55% base board is
               filled.
             </label>
+            {unlockIssue && (
+              <p className="cb-field-error" id="unlock-error">
+                {unlockIssue}
+              </p>
+            )}
             <p className="cb-muted">
               This comparison does not unlock nodes or equip anything in-game.
             </p>
@@ -255,28 +328,44 @@ export default function CharacterWorkbench() {
                 : 'Unequipped copies only. Your current attached equips can also be retained.'}
             </p>
             <div className="cb-inventory">
-              {catalog.orbs.map((orb) => (
-                <label className="cb-inventory-row" key={orb.id}>
-                  <span>{orb.label}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="999"
-                    step="1"
-                    aria-label={`Unequipped copies: ${orb.label}`}
-                    value={request.inventory[orb.id] ?? 0}
-                    onChange={(event) =>
-                      change({
-                        ...request,
-                        inventory: {
-                          ...request.inventory,
-                          [orb.id]: event.target.valueAsNumber || 0,
-                        },
-                      })
-                    }
-                  />
-                </label>
-              ))}
+              {catalog.orbs.map((orb) => {
+                const issue = quantityIssue(request.inventory[orb.id]);
+                const errorId = `qty-error-${orb.id.replaceAll(':', '-')}`;
+                return (
+                  <div className="cb-inventory-row" key={orb.id}>
+                    <label>
+                      <span>{orb.label}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="999"
+                        step="1"
+                        inputMode="numeric"
+                        aria-label={`Unequipped copies: ${orb.label}`}
+                        aria-invalid={issue ? true : undefined}
+                        aria-describedby={issue ? errorId : undefined}
+                        value={request.inventory[orb.id] ?? 0}
+                        onChange={(event) =>
+                          change({
+                            ...request,
+                            inventory: {
+                              ...request.inventory,
+                              [orb.id]: Number.isNaN(event.target.valueAsNumber)
+                                ? 0
+                                : event.target.valueAsNumber,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                    {issue && (
+                      <p className="cb-field-error" id={errorId}>
+                        {issue}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <p className="cb-muted">
               Legal target changes may consume items/resources. Replacement and
@@ -337,13 +426,17 @@ export default function CharacterWorkbench() {
               </select>
             </label>
           </div>
-          <fieldset className="cb-frontier-options">
+          <fieldset
+            className="cb-frontier-options"
+            aria-describedby={frontierIssue ? 'frontier-error' : undefined}
+          >
             <legend>Metrics defining non-dominated alternatives</legend>
             <div>
               {AVAILABLE_METRICS.map((key) => (
                 <label className="cb-check" key={key}>
                   <input
                     type="checkbox"
+                    aria-invalid={frontierIssue ? true : undefined}
                     checked={request.frontierMetrics.includes(key)}
                     onChange={(event) =>
                       change({
@@ -358,28 +451,65 @@ export default function CharacterWorkbench() {
                 </label>
               ))}
             </div>
+            {frontierIssue && (
+              <p className="cb-field-error" id="frontier-error">
+                {frontierIssue}
+              </p>
+            )}
           </fieldset>
           <div className="cb-submit-row">
-            <label className="cb-field">
-              Candidate limit
+            <div className="cb-field">
+              <label htmlFor="candidate-limit">Candidate limit</label>
               <input
+                id="candidate-limit"
                 type="number"
                 min="1"
-                max="20000"
+                max={MAX_LIMIT}
                 step="1"
-                value={request.maxCandidates}
-                onChange={(event) =>
-                  change({
-                    ...request,
-                    maxCandidates: event.target.valueAsNumber || 1,
-                  })
+                inputMode="numeric"
+                aria-invalid={limitIssue ? true : undefined}
+                aria-describedby={
+                  limitIssue ? 'limit-error space-estimate' : 'space-estimate'
                 }
+                value={limitDraft}
+                onChange={(event) => {
+                  const text = event.target.value;
+                  setLimitDraft(text);
+                  const n = Number(text);
+                  if (
+                    text.trim() !== '' &&
+                    Number.isSafeInteger(n) &&
+                    n >= 1 &&
+                    n <= MAX_LIMIT
+                  )
+                    change({ ...request, maxCandidates: n });
+                  else {
+                    setResult(null);
+                    setFailure(null);
+                  }
+                }}
               />
-            </label>
+              {limitIssue && (
+                <p className="cb-field-error" id="limit-error">
+                  {limitIssue}
+                </p>
+              )}
+            </div>
             <button className="cb-primary" type="submit">
-              Compare legal builds <span aria-hidden="true">↗</span>
+              Compare legal builds
             </button>
           </div>
+          <p className="cb-muted cb-space" id="space-estimate">
+            {space
+              ? `Search space before inventory checks: ${space.slotOptions.bronze} bronze × ${space.slotOptions.silver} silver × ${space.slotOptions.gold} gold option${space.slotOptions.gold === 1 ? '' : 's'} (each including empty) × ${space.allocations} allocation${space.allocations === 1 ? '' : 's'} = ${space.upperBound.toLocaleString('en-US')} targets at most.${
+                  limitIssue
+                    ? ''
+                    : space.upperBound > Number(limitDraft)
+                      ? ` The limit of ${Number(limitDraft).toLocaleString('en-US')} is below this bound, so the search may be truncated.`
+                      : ' The limit covers the full space; evaluation runs instantly in the page.'
+                }`
+              : 'Search space unavailable until the inputs are valid.'}
+          </p>
         </section>
       </form>
 
@@ -472,37 +602,42 @@ export default function CharacterWorkbench() {
             className="cb-table-wrap"
             tabIndex={0}
             role="region"
-            aria-label="Build comparison table; scroll horizontally on small screens"
+            aria-label="Build comparison table"
           >
-            <table className="cb-table">
+            {/* Explicit roles keep table semantics when narrow screens restyle rows as cards. */}
+            <table className="cb-table" role="table">
               <caption>
                 Sorted by {labels[request.objective]}; equal objective values
-                share a rank. Deltas are against the current baseline. pp =
-                percentage points.
+                share a rank. Deltas are against the current baseline: pp =
+                percentage points; rel. and % = relative change; n/a = zero
+                baseline, so relative change is undefined.
               </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Rank / target equips</th>
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th scope="col" role="columnheader">
+                    Rank / target equips
+                  </th>
                   {AVAILABLE_METRICS.map((key) => (
-                    <th scope="col" key={key}>
+                    <th scope="col" role="columnheader" key={key}>
                       {labels[key]}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {displayed.map((group) => {
                   const representative =
                     group.alternatives.find((a) => a.isCurrent) ??
                     group.alternatives[0]!;
                   return (
                     <tr
+                      role="row"
                       key={group.id}
                       className={
                         representative.isCurrent ? 'cb-current-row' : ''
                       }
                     >
-                      <th scope="row">
+                      <th scope="row" role="rowheader">
                         <div className="cb-row-badges">
                           <b>#{group.rank}</b>
                           {group.frontier && (
@@ -556,7 +691,7 @@ export default function CharacterWorkbench() {
                         </details>
                       </th>
                       {AVAILABLE_METRICS.map((key) => (
-                        <td key={key}>
+                        <td role="cell" key={key} data-label={labels[key]}>
                           <b>{format(group.evaluation.metrics[key])}</b>
                           <span>
                             {delta(

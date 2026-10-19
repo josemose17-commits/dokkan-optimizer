@@ -17,7 +17,7 @@ import {
   hiddenPotentialChance,
   independentChecks,
 } from './evaluation';
-import { generateBuilds } from './generation';
+import { estimateCandidateSpace, generateBuilds } from './generation';
 import { buildErrors, orbErrors, requestErrors } from './legality';
 
 const cloneCatalog = () => structuredClone(characterCatalog);
@@ -539,5 +539,57 @@ describe('comparisons, ties, equivalence, context and search scope', () => {
       .groups)
       for (const key of ['damage', 'battleDefense'] as MetricKey[])
         expect(group.deltas[key]).toBeNull();
+  });
+});
+
+describe('candidate-space estimate before search (hand-counted)', () => {
+  it('counts four bronze × four silver × one locked gold option for the real profile', () => {
+    // Empty + three AGL bronze items; empty + three silver items; gold empty only.
+    expect(estimateCandidateSpace(defaultRequest(), characterCatalog)).toEqual({
+      allocations: 1,
+      slotOptions: { bronze: 4, silver: 4, gold: 1 },
+      upperBound: 16,
+      exceedsLimit: false,
+    });
+  });
+  it('is an upper bound: inventory checks can only remove targets', () => {
+    const request = defaultRequest();
+    request.mode = 'inventory';
+    expect(estimateCandidateSpace(request, characterCatalog)!.upperBound).toBe(
+      16,
+    );
+    expect([...generateBuilds(request, characterCatalog)]).toHaveLength(1);
+  });
+  it('multiplies abstract allocation options and flags a limit that will truncate', () => {
+    const c = cloneCatalog();
+    c.profile.routes = ['topLeft'];
+    c.profile.nodes = (['test-a', 'test-b'] as const).map((id): ChoiceNode => ({
+      id,
+      options: ['additional', 'critical', 'evasion'],
+      prerequisites: [],
+      route: 'topLeft',
+      levels: 1,
+      minSuperAttackLevel: 10,
+      evidenceIds: ['base-board'],
+      reviewedAt: '2026-10-18',
+      verifiedAt: null,
+      support: 'supported',
+    }));
+    const r = defaultRequest();
+    r.progression.routes = ['topLeft'];
+    r.progression.activatedNodes = ['test-a', 'test-b'];
+    r.current.choices = { 'test-a': 'critical', 'test-b': 'critical' };
+    r.maxCandidates = 100;
+    // 3 × 3 allocations × 16 equip combinations = 144.
+    expect(estimateCandidateSpace(r, c)).toMatchObject({
+      allocations: 9,
+      upperBound: 144,
+      exceedsLimit: true,
+    });
+  });
+  it('returns no estimate for an ineligible request', () => {
+    const request = defaultRequest();
+    request.superAttackLevel = 14;
+    expect(estimateCandidateSpace(request, characterCatalog)).toBeNull();
   });
 });
