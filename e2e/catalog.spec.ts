@@ -15,10 +15,11 @@ test('search and filters use admitted fields, with an empty state and reset', as
 }) => {
   await page.goto('?workbench=catalog');
   const count = page.locator('.catalog-result-count');
-  await expect(count).toHaveText('1 card form · 1 matching state');
+  // One card form with two exact states (EZA and the pre-EZA base state).
+  await expect(count).toHaveText('1 card form · 2 matching states');
 
   await page.getByLabel('Name, title or ID').fill('mystery GOKU');
-  await expect(count).toHaveText('1 card form · 1 matching state');
+  await expect(count).toHaveText('1 card form · 2 matching states');
   await page.getByLabel('Type', { exact: true }).selectOption('TEQ');
   await expect(count).toHaveText('0 card forms · 0 matching states');
   await expect(
@@ -27,12 +28,13 @@ test('search and filters use admitted fields, with an empty state and reset', as
 
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.getByLabel('Name, title or ID')).toHaveValue('');
-  await expect(count).toHaveText('1 card form · 1 matching state');
+  await expect(count).toHaveText('1 card form · 2 matching states');
 
   await page
     .getByLabel('Optimization support', { exact: true })
     .selectOption('unavailable');
-  await expect(count).toHaveText('0 card forms · 0 matching states');
+  // Only the base state lacks an evaluator.
+  await expect(count).toHaveText('1 card form · 1 matching state');
   await page
     .getByLabel('Optimization support', { exact: true })
     .selectOption('limited');
@@ -189,4 +191,41 @@ test('local catalog files are validated as data and browsed only for the session
   await expect(
     page.getByRole('link', { name: 'Compare documented profile' }),
   ).toBeVisible();
+});
+
+test('the individually recorded base state shows its own facts and why it cannot be optimized', async ({
+  page,
+}) => {
+  await page.goto('?workbench=catalog');
+  await page.getByRole('button', { name: /Base \(no EZA\)/ }).click();
+  await expect(page).toHaveURL(
+    /state=unknown-region%3A1003211%3Abase%3Alv120%3Asa10$/,
+  );
+  const details = page.locator('article.catalog-details');
+  await expect(details).toContainText(
+    'Base (no EZA) · Region unknown · Lv.120 / SA10',
+  );
+  const raw = details.getByRole('row', { name: /^Raw card stats/ });
+  await expect(raw).toContainText('9,500');
+  await expect(raw).toContainText('8,672');
+  await expect(raw).toContainText('4,623');
+  await expect(details).toContainText('AGL Type Ki +3 and ATK +3000.');
+  await expect(
+    details.getByRole('heading', { name: 'Optimization support: unavailable' }),
+  ).toBeVisible();
+  await expect(details).toContainText(
+    'No evaluator: the progression profile, eligible equipment and evaluation contexts for this pre-EZA state are not admitted.',
+  );
+  // Same card as the EZA state with an evaluator, but none is borrowed.
+  await expect(
+    details.getByRole('link', { name: 'Compare documented profile' }),
+  ).toHaveCount(0);
+  const rawField = details
+    .locator('.catalog-field')
+    .filter({ hasText: 'HP 9,500 · ATK 8,672 · DEF 4,623' });
+  await rawField.getByText('Evidence: source-documented').click();
+  await expect(rawField).toContainText('Retrieved: 2026-10-19');
+  await expect(rawField).toContainText(
+    'Independent confirmation: none recorded',
+  );
 });

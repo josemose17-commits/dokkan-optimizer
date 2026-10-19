@@ -10,6 +10,8 @@ export const COVERAGE_LABELS: Record<
 > = {
   cardForms: 'Unique card forms',
   awakeningRelationships: 'Established awakening relationships',
+  exactStates: 'Exact states',
+  baseStates: 'Base (pre-EZA) states',
   ezaStates: 'EZA states',
   sezaStates: 'SEZA states',
   completeRequiredRecords: 'Complete required-detail records',
@@ -29,6 +31,9 @@ export function catalogCoverage(
   return {
     cardForms: snapshot.cards.length,
     awakeningRelationships: snapshot.cards.filter((c) => c.fromCardId !== null)
+      .length,
+    exactStates: snapshot.states.length,
+    baseStates: snapshot.states.filter((s) => s.awakening.kind === 'base')
       .length,
     ezaStates: snapshot.states.filter((s) => s.awakening.kind === 'eza').length,
     sezaStates: snapshot.states.filter((s) => s.awakening.kind === 'seza')

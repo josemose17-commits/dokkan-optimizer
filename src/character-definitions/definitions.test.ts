@@ -893,6 +893,31 @@ describe('existing Goku compatibility and catalog copying', () => {
     );
     expect(check(copy).ok).toBe(true);
   });
+  it('copies the recorded base state as its own state, never the EZA facts', () => {
+    const copy = copyCatalogState(
+      catalogSnapshot,
+      'unknown-region:1003211:base:lv120:sa10',
+      { state: 'user:base', card: 'user:card', build: 'user:build' },
+    )!;
+    const d = copy.definition;
+    expect(d.rawStats).toEqual({ hp: 9500, attack: 8672, defense: 4623 });
+    expect([d.level, d.superAttackLevel]).toEqual([120, 10]);
+    expect(d.awakening).toEqual({ kind: 'base', step: null });
+    // Unknown region stays unknown rather than borrowing "global-en".
+    expect(d.region).toBe('');
+    expect(d.sourceBinding?.stateId).toBe(
+      'unknown-region:1003211:base:lv120:sa10',
+    );
+    expect(d.links).toBe(null);
+    expect(d.categories).toBe(null);
+    expect(d.abilities.map((a) => a.wording)).toEqual([
+      'AGL Type Ki +3 and ATK +3000.',
+      'Battle to the End: ATK +100% for 7 turns from the character’s entry turn.',
+      'Dragon Fist (12 Ki): supreme damage to the enemy and lowers DEF.',
+    ]);
+    expect(d.abilities.every((a) => a.effects.length === 0)).toBe(true);
+    expect(check(copy).ok).toBe(true);
+  });
   it('never substitutes Goku when a requested source state is absent', () =>
     expect(
       copyCatalogState(catalogSnapshot, 'missing', {

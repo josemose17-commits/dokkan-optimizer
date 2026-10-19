@@ -4,9 +4,11 @@ The catalog is preserved at `?workbench=catalog`; the default product is now the
 
 ## Bundled coverage
 
-**1 admitted card form; 1 EZA state; 0 base states; 0 SEZA states.** Ordinary starting/awakened/transformed classification remains unknown rather than guessed. The exact existing saved-build ID is preserved: `global-en:1003211:eza-7:lv140:sa15`.
+**1 card form; 2 exact states: 1 EZA state and 1 base state; 0 SEZA states.** Ordinary starting/awakened/transformed classification remains unknown rather than guessed. The exact existing saved-build ID is preserved: `global-en:1003211:eza-7:lv140:sa15`.
 
-Values and evidence come only from the existing `src/data/real/character-build/goku.ts` record. Of 11 detail fields, 6 are complete, 2 are partial summaries and 3 are missing. Name/title evidence is separate. Missing leader details, links and categories are null with reasons. Legacy `categories: []` meant "not imported", not an established empty set.
+The base state, `unknown-region:1003211:base:lv120:sa10`, is an individually recorded, single-source record from `src/data/real/catalog-states/1003211-base.ts`. Of its 11 detail fields, 8 are complete, 1 is partial and 2 are missing; it has no evaluator. See the [evidence ledger](character-build/EVIDENCE.md).
+
+The EZA state's values and evidence come only from the existing `src/data/real/character-build/goku.ts` record. Of 11 detail fields, 6 are complete, 2 are partial summaries and 3 are missing. Name/title evidence is separate. Missing leader details, links and categories are null with reasons. Legacy `categories: []` meant "not imported", not an established empty set.
 
 All available fields are source-documented; **0 fields have independent confirmation**. Existing review dates are retained. Previously uncaptured retrieval dates, source revisions, game build and independent confirmations remain null. The new snapshot creation date records local normalization only.
 

@@ -1,6 +1,6 @@
 # Task checklist
 
-Status on `codex/potential-recommendations`, 2026-10-19. Stacked on open PR #6 at `9cc0cce` to preserve merged PR #9's editor and PR #7's registry/explanations. Main remains at `316492d` (PR #5). Nothing in this branch is merged or deployed. This supersedes the previous editor-first milestone.
+Status on `claude/tender-maxwell-o43x7j`, 2026-10-19: open PR #6 at `2527f60` (which contains merged PRs #7, #9 and #10) plus the re-landed PR #8 base-state record. Main remains at `316492d` (PR #5). Nothing in this branch is merged into main or deployed. This supersedes the previous editor-first milestone.
 
 ## Primary product: Hidden Potential recommendations
 
@@ -21,9 +21,11 @@ Status on `codex/potential-recommendations`, 2026-10-19. Stacked on open PR #6 a
 
 - [x] Inspect actual small export/schema samples and relevant project license/provenance for two additional public datasets. No import against an imagined schema; no repeated blocked-provider review.
 - [x] Document exact findings and external action once in [OPTIMIZER.md](OPTIMIZER.md#catalog-acquisition-gate).
+- [x] Individually record one state from a permitted public page (robots.txt checked, one page, pinned retrieval date and page hash, field-level provenance): the pre-EZA base state of card 1003211. Single source, region unknown, no evaluator ([evidence](character-build/EVIDENCE.md)).
+- [ ] Cross-checked individual records. On 2026-10-19 Fandom and DokkanStats answered automated retrieval with a Cloudflare challenge, leaving dokkan.fyi as the only reachable source. A second reachable source or dated in-game captures are needed before a record is called corroborated; the Super EZA state also needs raw stats and a step.
 - [ ] Approved current text export/snapshot distribution path, representative import, reconciliation and reviewed updates preserving saved identities.
 
-Current real coverage: **1 form / 0 established awakening relationships / 1 EZA / 0 SEZA / 0 complete-required detail records / 1 limited evaluator / 0 complete board templates**. One incomplete record/ambiguous form mapping is preserved; the total source catalog is unknown. No test fixture is counted as real coverage.
+Current real coverage: **1 form / 0 established awakening relationships / 2 exact states (1 EZA, 1 base, 0 SEZA) / 0 complete-required detail records / 1 limited evaluator / 0 complete board templates**. Two incomplete records and one ambiguous form mapping are preserved; the total source catalog is unknown. No test fixture is counted as real coverage.
 
 ## Preserved infrastructure
 

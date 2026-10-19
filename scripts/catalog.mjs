@@ -27,7 +27,7 @@ try {
       mode: 0o600,
     });
     process.stdout.write(
-      'Exported existing admitted record only. No provider acquisition occurred.\n',
+      'Exported the bundled catalog (individually recorded states only). No provider acquisition occurred.\n',
     );
   } else if (command === 'validate' && file && !extra.length) {
     const snapshot = await load(file);

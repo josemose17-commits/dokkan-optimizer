@@ -4,18 +4,20 @@ The current primary page compares equipment within one documented progression pr
 
 ## Actual coverage and scope
 
-| Measure                                   | Bundled count | Meaning                                                                                              |
-| ----------------------------------------- | ------------: | ---------------------------------------------------------------------------------------------------- |
-| Unique card forms                         |             1 | Existing admitted SS3 Goku; no new cards imported                                                    |
-| Established awakening relationships       |             0 | Unknown form mapping is preserved, not inferred                                                      |
-| EZA states                                |             1 | Global English, EZA step 7, Lv.140 / SA15                                                            |
-| SEZA states                               |             0 | No substitution for EZA                                                                              |
-| Complete required-detail records          |             0 | All 11 catalog detail fields plus region/state identity define completeness; Goku remains incomplete |
-| States with a limited evaluator           |             1 | Card-stat/initial-check subset only                                                                  |
-| Ambiguous form mappings                   |             1 | The existing form relationship is unknown                                                            |
-| Explicit unparsed/excluded source records |             0 | No bulk source was imported; this is not a claim that a source has no exclusions                     |
-| Complete board templates                  |             0 | One partial aggregate profile; no reconstructed game graph                                           |
-| Source catalog total                      |       Unknown | Comprehensive coverage cannot be reconciled                                                          |
+| Measure                                   | Bundled count | Meaning                                                                                             |
+| ----------------------------------------- | ------------: | --------------------------------------------------------------------------------------------------- |
+| Unique card forms                         |             1 | Existing admitted SS3 Goku; no new cards imported                                                   |
+| Established awakening relationships       |             0 | Unknown form mapping is preserved, not inferred                                                     |
+| Exact states                              |             2 | The EZA state below and the same card's individually recorded base state                            |
+| Base (pre-EZA) states                     |             1 | Lv.120 / SA10, region unknown, single source; no evaluator                                          |
+| EZA states                                |             1 | Global English, EZA step 7, Lv.140 / SA15                                                           |
+| SEZA states                               |             0 | No substitution for EZA                                                                             |
+| Complete required-detail records          |             0 | All 11 catalog detail fields plus region/state identity define completeness; both states incomplete |
+| States with a limited evaluator           |             1 | Card-stat/initial-check subset only                                                                 |
+| Ambiguous form mappings                   |             1 | The existing form relationship is unknown                                                           |
+| Explicit unparsed/excluded source records |             0 | No bulk source was imported; this is not a claim that a source has no exclusions                    |
+| Complete board templates                  |             0 | One partial aggregate profile; no reconstructed game graph                                          |
+| Source catalog total                      |       Unknown | Comprehensive coverage cannot be reconciled                                                         |
 
 Only the existing filled 55% no-dupe profile is admitted. The product's intended progression scope is broader, but **full potential allocation** currently returns the specific missing alternatives/increments, connections/prerequisites, route/unlock gates and reviewed card-to-board mappings. No automatic route unlocking, inferred percentage equivalence, respec sliders or invented legal totals are offered. No allocation graph was added to real data.
 

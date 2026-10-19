@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { BASE_STATE_ID } from '../data/real/catalog-states/1003211-base';
+import { CATALOG_CARD_ID } from '../data/real/character-build/goku';
+import { productionRegistry } from '../data/real/character-build/registry';
+import { resolveEvaluator } from '../character-build/registry';
 import { gokuEntry } from '../data/real/character-build/registry';
 import {
   characterCatalog,
@@ -28,7 +32,7 @@ import { fixtureFact, fixtureSnapshot } from './catalog.fixtures';
 import { validateCatalog } from './validation';
 
 describe('normalized import contract (fixtures are fictional, not game verification)', () => {
-  it('admits the existing real record without expanding cards/states or inventing missing fields', () => {
+  it('admits one card with two exact states and invents no missing fields', () => {
     expect(validateCatalog(catalogSnapshot).ok).toBe(true);
     expect(catalogCounts(catalogSnapshot)).toEqual({
       cards: 1,
@@ -36,8 +40,8 @@ describe('normalized import contract (fixtures are fictional, not game verificat
       awakenedForms: 0,
       transformedForms: 0,
       unclassifiedForms: 1,
-      states: 1,
-      baseStates: 0,
+      states: 2,
+      baseStates: 1,
       ezaStates: 1,
       sezaStates: 0,
       unknownStates: 0,
@@ -54,6 +58,90 @@ describe('normalized import contract (fixtures are fictional, not game verificat
       partial: 2,
       missing: 3,
       independentlyConfirmed: 0,
+    });
+  });
+  it('records the individually researched base state with pinned, field-level provenance', () => {
+    const state = resolveState(catalogSnapshot, BASE_STATE_ID)!;
+    // Same card form as the EZA state, but a separate exact state.
+    expect(state.cardId).toBe(catalogSnapshot.states[0]!.cardId);
+    expect(state.id).not.toBe(catalogSnapshot.states[0]!.id);
+    expect([state.awakening, state.region]).toEqual([
+      { kind: 'base', step: null },
+      null,
+    ]);
+    const f = state.fields;
+    expect([f.level.value, f.superAttackLevel.value]).toEqual([120, 10]);
+    expect(f.rawStats.value).toEqual({ hp: 9500, attack: 8672, defense: 4623 });
+    expect(f.leaderSkill.value).toBe('AGL Type Ki +3 and ATK +3000.');
+    expect(f.superAttack.completeness).toBe('partial');
+    expect([f.links.value, f.categories.value]).toEqual([null, null]);
+    expect(f.links.note).toContain('not assigned to this state');
+    expect(completeness(f)).toEqual({
+      total: 11,
+      complete: 8,
+      partial: 1,
+      missing: 2,
+      independentlyConfirmed: 0,
+    });
+    for (const fact of Object.values(f))
+      for (const ref of fact.provenance)
+        expect(ref).toMatchObject({
+          sourceId: 'reference:https://dokkan.fyi/characters/1003211',
+          sourceRevision:
+            'sha256:facce003bb3f6389a0fd4195f31efd1eb91cf0ff5dca877b1522cf4d5d64d3ab',
+          retrievedAt: '2026-10-19',
+          status: 'source-documented',
+          independentConfirmation: null,
+        });
+    expect(state.potentialProfiles).toEqual([]);
+    expect(state.optimization).toMatchObject({
+      status: 'unavailable',
+      evaluatorId: null,
+    });
+  });
+  it('never resolves one state’s level/SA or evaluator through the other state', () => {
+    const eza = catalogSnapshot.states[0]!.id;
+    expect(
+      resolveBuildState(catalogSnapshot, {
+        cardStateId: BASE_STATE_ID,
+        level: 120,
+        superAttackLevel: 10,
+      })?.id,
+    ).toBe(BASE_STATE_ID);
+    expect(
+      resolveBuildState(catalogSnapshot, {
+        cardStateId: eza,
+        level: 120,
+        superAttackLevel: 10,
+      }),
+    ).toBeNull();
+    // Same card, different state: the Goku EZA evaluator is not reused.
+    const resolution = resolveEvaluator(
+      productionRegistry,
+      catalogSnapshot,
+      BASE_STATE_ID,
+    );
+    expect(resolution.ok || [resolution.code, resolution.reason]).toEqual([
+      'not-supported',
+      'No evaluator: the progression profile, eligible equipment and evaluation contexts for this pre-EZA state are not admitted. Descriptive record only.',
+    ]);
+    expect(resolveEvaluator(productionRegistry, catalogSnapshot, eza).ok).toBe(
+      true,
+    );
+  });
+  it('adds the base state as a compatible update that keeps every existing ID', () => {
+    const previous = fromAdmittedRecord(characterCatalog, CATALOG_CARD_ID);
+    const update = assessCatalogUpdate(previous, catalogSnapshot);
+    expect(update).toMatchObject({
+      compatible: true,
+      issues: [],
+      changes: [],
+      cardChanges: [],
+      sourceChanges: [],
+      addedCards: [],
+      removedCards: [],
+      addedStates: [BASE_STATE_ID],
+      removedStates: [],
     });
   });
   it('keeps test fixtures out of normal imports while allowing explicit test-only validation', () => {
