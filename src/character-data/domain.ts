@@ -95,6 +95,17 @@ export interface CatalogState {
     assumptions: string;
     statAdditions: Fact<StatBlock>;
   }[];
+  // Historical source columns are observations, not executable progression
+  // profiles. Never derive route choices or intermediate totals from them.
+  reportedStats?: {
+    id: string;
+    label: string;
+    level: number | null;
+    potentialPercent: number | null;
+    dupeRoutes: number | null;
+    note: string;
+    totals: Fact<StatBlock>;
+  }[];
   optimization: {
     status: 'unavailable' | 'limited';
     evaluatorId: string | null;

@@ -13,7 +13,7 @@ import {
   CARD_STATE_ID,
   defaultRequest,
 } from '../data/real/character-build/goku';
-import { catalogSnapshot } from '../data/real/catalog';
+import { reviewedCatalogSnapshot as catalogSnapshot } from '../data/real/catalog';
 import {
   CHARACTER_STORAGE_KEY,
   loadCharacterState,

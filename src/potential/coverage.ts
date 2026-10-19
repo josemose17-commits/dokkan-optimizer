@@ -8,9 +8,9 @@ export const COVERAGE_LABELS: Record<
   keyof ReturnType<typeof catalogCoverage>,
   string
 > = {
-  cardForms: 'Unique card forms',
+  cardForms: 'Catalog card identities',
   awakeningRelationships: 'Established awakening relationships',
-  exactStates: 'Exact states',
+  exactStates: 'Recorded states (some levels unresolved)',
   baseStates: 'Base (pre-EZA) states',
   ezaStates: 'EZA states',
   sezaStates: 'SEZA states',

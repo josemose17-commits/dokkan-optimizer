@@ -8,7 +8,7 @@ import {
   GOHAN_CARD_ID,
   GOHAN_PAGE,
   GOHAN_STATE_ID,
-} from '../character-build/gohan-kit';
+} from '../character-build/gohan-kit.ts';
 
 export const gohanSource: CatalogSource = {
   id: 'reference:1020091-eza-kit',

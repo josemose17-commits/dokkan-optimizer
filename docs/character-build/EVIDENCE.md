@@ -1,5 +1,21 @@
 # First-unit evidence and release boundary
 
+## Historical UR/LR factual catalog — 2026-10-19
+
+This update admits descriptive records from the actual published MNprojects JSON, not new executable mechanics. It preserves the reviewed Goku/Gohan records verbatim. [Source, access/license boundary, excluded fields and reconciliation](../../src/data/real/mnprojects/NOTICE.md); [manifest](../../src/data/real/mnprojects/manifest.json).
+
+| Fact / mapping                                              | Actual evidence                                                                            | Status / limit                                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Names, IDs, type/class/rarity, links/categories             | Allowlisted columns in pinned JSON blob `e42a990…78a58`, with exact row/field locators     | Source-documented; missing/conflicting fields stay null; no provider-ID conversion           |
+| Base and EZA revisions                                      | Base card row; nonempty explicit EZA description fields                                    | EZA presence only; no guessed step/region/level/stat scope; 0 SEZA                           |
+| Raw max stats on non-EZA-bearing single rows                | Explicit max-level HP/ATK/DEF columns and maxLevel                                         | Source-documented in this historical scope, not current-game verification                    |
+| Source base/max/free-dupe/rainbow totals                    | Direct numerical columns; separately labeled observations                                  | Percentage, route count and selected skills unknown; not potential additions or battle stats |
+| EZA-bearing raw stats                                       | Source includes demonstrably mixed scopes, e.g. Goku ID1321 maxLevel140 but 9500/8672/4623 | Unavailable for exact awakening rather than assigned incorrectly                             |
+| Complete selectable graph / intermediate duplicate profiles | Not present in this file                                                                   | Still blocked; no graph inference from growth totals                                         |
+| Executable combat/probability                               | Not established by roster JSON                                                             | Existing assumptions/gates unchanged; 0 new evaluators or winners                            |
+
+Representative checks first used LR Broly trio11900, LR Vegito11168, Goku1321, duplicate11066 and conflicts12521. Broly reports raw21575/15275/7744, free-dupe23575/17275/9744 and rainbow26975/20275/12344 at its source-reported max150. These are source observations, not hand-inferred combat values. Tests independently list expected mappings and preserve exact existing state/save revisions; passing tests do not corroborate game mechanics. Every new fact has null independent confirmation.
+
 ## Kit mechanic declarations — 2026-10-19
 
 The optimizer now gates objectives on declared kit mechanics. For the admitted EZA Goku state these declarations are read from the existing reviewed `eza-kit` claim; **no new fact or source was added** and the data revision is unchanged.

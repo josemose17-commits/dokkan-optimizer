@@ -508,7 +508,11 @@ export default function PotentialOptimizer({
   const guided = others.filter(
     (s) => resolveKit(snapshot, [gohanKit], s.id).ok,
   );
-  const unsupported = others.filter((s) => !guided.includes(s));
+  // The searchable catalog, rather than thousands of native options, handles
+  // browse-only records. Keep the chosen unsupported state visible here.
+  const unsupported = others.filter(
+    (s) => !guided.includes(s) && s.id === selected,
+  );
   const state = snapshot.states.find((s) => s.id === selected) ?? null;
   const name = state ? stateName(snapshot, state) : null;
   const isLocal = local.some((d) => d.definition.id === selected);
@@ -560,7 +564,7 @@ export default function PotentialOptimizer({
               </optgroup>
             )}
             {unsupported.length > 0 && (
-              <optgroup label="Not supported yet">
+              <optgroup label="Selected reference record — evaluation unavailable">
                 {unsupported.map(option)}
               </optgroup>
             )}
@@ -617,7 +621,17 @@ export default function PotentialOptimizer({
           if (e.currentTarget.open) setBrowseMounted(true);
         }}
       >
-        <summary>Search characters and inspect details</summary>
+        <summary>
+          Search characters and inspect details ·{' '}
+          {snapshot.cards.length.toLocaleString('en-US')} UR/LR reference
+          identities
+        </summary>
+        <p className="po-muted">
+          UR/LR reference catalog ·{' '}
+          {snapshot.cards.length.toLocaleString('en-US')} catalog identities ·
+          includes a historical 2023 snapshot. Source identity/state
+          completeness and evaluator support are shown separately.
+        </p>
         {browseMounted && (
           <CatalogBrowser
             embedded
@@ -702,20 +716,23 @@ export default function PotentialOptimizer({
           ))}
         </dl>
         <p>
-          {coverage.exactStates} exact{' '}
+          {coverage.exactStates} recorded{' '}
           {coverage.exactStates === 1 ? 'state is' : 'states are'} currently
-          bundled, each recorded individually; {coverage.evaluatorStates} with a
-          limited evaluator. This is not complete coverage; unsupported
-          characters are kept in catalog/maintenance rather than silently
-          assigned an evaluator. No new provider dataset is imported.
+          bundled (some historical source states have unresolved levels);{' '}
+          {coverage.evaluatorStates} with a limited evaluator. This is not
+          complete current-game coverage; unsupported characters are kept in
+          catalog/maintenance rather than silently assigned an evaluator.
+          Historical data is not a current roster or full potential-system
+          claim.
         </p>
         <a href={`${import.meta.env.BASE_URL}?workbench=catalog`}>
           Browse factual details and completeness
         </a>
         <p>
-          Bulk catalog acquisition needs an approved Dokkan Info text
+          The historical MNprojects JSON is bundled without runtime API
+          requests. A fresh Dokkan Info integration still needs an approved
           export/schema and terms covering caching, public distribution and
-          updates. No provider integration is connected.
+          updates.
         </p>
         <p>
           The retired synthetic team key{' '}

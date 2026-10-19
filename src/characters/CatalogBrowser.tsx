@@ -26,12 +26,14 @@ import {
 } from '../character-data/domain';
 import LocalCatalogImport, { clip } from './LocalCatalogImport';
 import './catalog.css';
+import datasetLicenseUrl from '../data/real/mnprojects/LICENSE-AGPL-3.0.txt?url';
 
 const PAGE_SIZE = 50;
 const fmt = (value: number) => value.toLocaleString('en-US');
 const stateLabel = (state: CatalogState) =>
   `${state.awakening.kind === 'base' ? 'Base (no EZA)' : state.awakening.kind.toUpperCase()}${state.awakening.step === null ? '' : ` step ${state.awakening.step}`} · ${state.region ?? 'Region unknown'} · Lv.${state.fields.level.value ?? '?'} / SA${state.fields.superAttackLevel.value ?? '?'}`;
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const plural = (n: number, word: string) =>
+  `${fmt(n)} ${word}${n === 1 ? '' : 's'}`;
 
 type SessionFile = { fileName: string; snapshot: CatalogSnapshot };
 
@@ -152,7 +154,7 @@ function CatalogDetails({
       className="catalog-panel catalog-details"
       aria-labelledby="character-name"
     >
-      <p className="eyebrow">EXACT CARD / STATE</p>
+      <p className="eyebrow">RECORDED CARD / STATE</p>
       <h2 id="character-name">{card.name.value ?? card.id}</h2>
       <p className="catalog-subtitle">
         {card.title.value ?? 'Title unavailable'}
@@ -205,6 +207,70 @@ function CatalogDetails({
           formula.
         </p>
       </details>
+      {state.reportedStats && (
+        <section aria-label="Historical source stat tables">
+          <h3>Historical source stat tables</h3>
+          <p className="catalog-notice">
+            These are reported columns from the 2023 snapshot, not calculated
+            build profiles. Unknown percentages and routes remain unknown; a
+            free-dupe/rainbow label does not establish selectable skills or
+            intermediate totals.
+          </p>
+          <div className="catalog-table-wrap">
+            <table>
+              <caption>
+                Source-reported totals; not added to the raw-stat illustration
+                or optimizer.
+              </caption>
+              <thead>
+                <tr>
+                  <th>Source column</th>
+                  <th>Level</th>
+                  <th>Potential</th>
+                  <th>Dupe routes</th>
+                  <th>HP</th>
+                  <th>ATK</th>
+                  <th>DEF</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.reportedStats.map((p) => (
+                  <tr key={p.id}>
+                    <th scope="row">{p.label}</th>
+                    <td>{p.level ?? 'Unknown'}</td>
+                    <td>
+                      {p.potentialPercent === null
+                        ? 'Unknown'
+                        : `${p.potentialPercent}%`}
+                    </td>
+                    <td>{p.dupeRoutes ?? 'Unknown'}</td>
+                    {(['hp', 'attack', 'defense'] as const).map((k) => (
+                      <td key={k}>
+                        {p.totals.value
+                          ? fmt(p.totals.value[k])
+                          : 'Unavailable'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <details>
+            <summary>Stat-table scope and field evidence</summary>
+            <dl>
+              {state.reportedStats.map((p) => (
+                <Field
+                  key={p.id}
+                  label={p.label}
+                  fact={p.totals}
+                  snapshot={snapshot}
+                />
+              ))}
+            </dl>
+          </details>
+        </section>
+      )}
       <section aria-labelledby="stat-layers">
         <h3 id="stat-layers">Keep stat layers separate</h3>
         <label>
@@ -453,6 +519,25 @@ export default function CatalogBrowser({
   const remaining = rows.length - visible.length;
   return (
     <div className="catalog-shell" id="character-catalog">
+      {isBundled && (
+        <p className="subtle">
+          Historical UR/LR factual reference by{' '}
+          <a
+            href="https://github.com/MNprojects/DokkanAPI"
+            target="_blank"
+            rel="noreferrer"
+          >
+            MNprojects / Michael Nash
+          </a>
+          ; upstream facts credited to Dragon Ball Z Dokkan Battle Wiki
+          contributors. Dataset:{' '}
+          <a href={datasetLicenseUrl} download="MNprojects-AGPL-3.0.txt">
+            AGPL-3.0 license copy
+          </a>
+          . Repository commit: 2023-01-22; source game version unknown. Existing
+          reviewed records remain separate.
+        </p>
+      )}
       {!embedded && (
         <>
           <header className="catalog-hero">
@@ -480,22 +565,22 @@ export default function CatalogBrowser({
               <b>{plural(counts.states, 'awakening state')}</b>
               <span>
                 {isBundled
-                  ? 'NO EXPANDED REAL CATALOG'
+                  ? 'HISTORICAL UR/LR REFERENCE'
                   : 'NOT ADMITTED OR REVIEWED'}
               </span>
             </div>
           </header>
           <div className="catalog-notice" role="note">
             <strong>
-              Dokkan Info acquisition is paused pending an approved method.
+              Historical source snapshot — not a complete current roster.
             </strong>
             <p>
-              No provider import is connected. The bundled catalog holds{' '}
+              The bundled catalog holds{' '}
               {plural(bundledCounts.cards, 'card form')} and{' '}
-              {plural(bundledCounts.states, 'exact state')}, each recorded
-              individually with field-level references; it is not a complete
-              roster. Synthetic catalog fixtures are confined to automated
-              tests.
+              {plural(bundledCounts.states, 'recorded state')}, including the
+              pinned MNprojects factual import and separate reviewed records.
+              Unknown levels, region and progression remain explicit. Test
+              fixtures are confined to automated tests.
             </p>
           </div>
         </>
@@ -536,6 +621,23 @@ export default function CatalogBrowser({
           Coverage, evidence definitions and snapshot provenance
         </summary>
         <p>{snapshot.coverage.scope}</p>
+        {isBundled && (
+          <p>
+            Historical UR/LR data: MNprojects/Michael Nash, with upstream
+            factual references credited to the Dragon Ball Z Dokkan Battle Wiki
+            contributors. The factual dataset retains the{' '}
+            <a
+              href="https://github.com/MNprojects/DokkanAPI/blob/c28a0248e36d97ebb678345d97be746f5f98d656/LICENSE"
+              target="_blank"
+              rel="noreferrer"
+            >
+              published AGPL-3.0 license
+            </a>
+            . Artwork and copied skill prose are excluded. The original reviewed
+            Goku/Gohan records are kept separately; matching names are not
+            automatic ID mappings.
+          </p>
+        )}
         <p>
           {counts.cards} card forms: {counts.startingForms} starting ·{' '}
           {counts.awakenedForms} ordinary awakened · {counts.transformedForms}{' '}
@@ -578,9 +680,10 @@ export default function CatalogBrowser({
           </li>
         </ul>
         <p>
-          Source license and bulk-reuse scope remain unassessed unless a
-          specific grant is recorded. No artwork, source database or calculator
-          implementation is included.
+          Each source records its own license and reuse basis; unknown rights
+          remain unknown. The published MNprojects factual projection is
+          included under its recorded license. No artwork, copied skill prose or
+          calculator implementation is included.
         </p>
         <ul>
           {snapshot.sources.map((source) => (
@@ -601,6 +704,18 @@ export default function CatalogBrowser({
             </li>
           ))}
         </ul>
+        {snapshot.coverage.excluded.length > 0 && (
+          <details>
+            <summary>Excluded source records</summary>
+            <ul>
+              {snapshot.coverage.excluded.map((e) => (
+                <li key={`${e.sourceId}:${e.recordId}`}>
+                  <code>{e.recordId}</code> — {e.reason}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </details>
       <LocalCatalogImport
         bundled={bundled}

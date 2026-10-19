@@ -15,11 +15,13 @@ test('search and filters use admitted fields, with an empty state and reset', as
 }) => {
   await page.goto('?workbench=catalog');
   const count = page.locator('.catalog-result-count');
-  // Two card forms; Goku has two states and Gohan has one kit-guidance state.
-  await expect(count).toHaveText('2 card forms · 3 matching states');
+  // The full historical import is paginated; reviewed records remain separate.
+  await expect(count).toHaveText(
+    'Showing 50 of 794 matching card forms · 1,109 matching states',
+  );
 
   await page.getByLabel('Name, title or ID').fill('mystery GOKU');
-  await expect(count).toHaveText('1 card form · 2 matching states');
+  await expect(count).toHaveText('2 card forms · 4 matching states');
   await page.getByLabel('Type', { exact: true }).selectOption('TEQ');
   await expect(count).toHaveText('0 card forms · 0 matching states');
   await expect(
@@ -28,13 +30,17 @@ test('search and filters use admitted fields, with an empty state and reset', as
 
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.getByLabel('Name, title or ID')).toHaveValue('');
-  await expect(count).toHaveText('2 card forms · 3 matching states');
+  await expect(count).toHaveText(
+    'Showing 50 of 794 matching card forms · 1,109 matching states',
+  );
 
   await page
     .getByLabel('Optimization support', { exact: true })
     .selectOption('unavailable');
-  // Base Goku and kit-guidance Gohan both lack a numerical evaluator.
-  await expect(count).toHaveText('2 card forms · 2 matching states');
+  // Historical states, base Goku and kit-guidance Gohan lack a numerical evaluator.
+  await expect(count).toHaveText(
+    'Showing 50 of 794 matching card forms · 1,108 matching states',
+  );
   await page
     .getByLabel('Optimization support', { exact: true })
     .selectOption('limited');
@@ -206,7 +212,12 @@ test('the individually recorded base state shows its own facts and why it cannot
   page,
 }) => {
   await page.goto('?workbench=catalog');
-  await page.getByRole('button', { name: /Base \(no EZA\)/ }).click();
+  await page
+    .locator('.catalog-result')
+    .filter({ hasText: 'Mystery Super Technique' })
+    .first()
+    .getByRole('button', { name: /Base \(no EZA\)/ })
+    .click();
   await expect(page).toHaveURL(
     /state=unknown-region%3A1003211%3Abase%3Alv120%3Asa10$/,
   );

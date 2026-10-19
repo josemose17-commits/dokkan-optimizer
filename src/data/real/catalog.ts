@@ -7,21 +7,35 @@ import {
   gohanSource,
   gohanState,
 } from './catalog-states/1020091-eza.ts';
+import { mnCatalog, MN_SOURCE } from './mnprojects/catalog.ts';
 
-// No provider adapter or fetch is connected. Test fixtures never enter this
-// module. The existing Goku state identities are retained; the new Gohan
-// exact state supplies reviewed kit guidance, not a numerical evaluator.
+// The pinned factual import is build-time data; there is no runtime provider
+// request. Test fixtures never enter this module. Reviewed Goku/Gohan state
+// identities and evaluator bindings remain separate from historical records.
 const admitted = fromAdmittedRecord(characterCatalog, CATALOG_CARD_ID);
-const result = validateCatalog({
+export const reviewedCatalogSnapshot = {
   ...admitted,
   revision: 'admitted-catalog-2026-10-19.3',
-  coverage: {
-    ...admitted.coverage,
-    scope: `Two card identities, three exact states: the original two Goku states and one individually documented EZA Gohan kit-guidance state. Region/form mappings remain unknown where unstated. No provider catalog imported or reconciled.`,
-  },
   sources: [...admitted.sources, baseStateSource, gohanSource],
   cards: [...admitted.cards, gohanCard],
   states: [...admitted.states, baseState(CATALOG_CARD_ID), gohanState],
+};
+const result = validateCatalog({
+  ...admitted,
+  revision: 'ur-lr-reference-catalog-2026-10-19.1',
+  coverage: {
+    ...admitted.coverage,
+    scope: `Two reviewed card identities plus ${mnCatalog.report.importedCards} historical UR/LR source identities from MNprojects/DokkanAPI (last repository commit 2023-01-22). ${mnCatalog.report.sourceRows} source rows reconciled: ${mnCatalog.report.acceptedRows} accepted, ${mnCatalog.report.excludedRows.length} excluded. ${mnCatalog.report.embeddedFormsNotMapped} embedded forms lack complete mappings and are not counted as additional cards. Descriptive source states are not all fully identified; region/level/form ambiguities remain explicit. Source IDs are not automatically merged with the reviewed cards. Not a complete current-game roster.`,
+    excluded: [...admitted.coverage.excluded, ...mnCatalog.exclusions],
+  },
+  sources: [...admitted.sources, baseStateSource, gohanSource, MN_SOURCE],
+  cards: [...admitted.cards, gohanCard, ...mnCatalog.cards],
+  states: [
+    ...admitted.states,
+    baseState(CATALOG_CARD_ID),
+    gohanState,
+    ...mnCatalog.states,
+  ],
 });
 if (!result.ok)
   throw new Error(`Invalid bundled catalog: ${result.errors.join('; ')}`);
