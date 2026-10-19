@@ -1,10 +1,11 @@
 name: Validate and deploy GitHub Pages
 
+# Pull requests into any branch are validated (stacked PRs included); they
+# never deploy. Only main is published.
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 # Pull requests and build steps do not receive deployment permissions.

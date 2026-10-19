@@ -2,7 +2,7 @@
 
 ## What the workflow enforces
 
-[`.github/workflows/pages.yml`](../.github/workflows/pages.yml) is the only workflow. One job, **Test and build (Node 24)**, runs on every pull request to `main`, every push to `main` and manual runs:
+[`.github/workflows/pages.yml`](../.github/workflows/pages.yml) is the only workflow. One job, **Test and build (Node 24)**, runs on every pull request (into any branch, so stacked PRs are validated too), every push to `main` and manual runs:
 
 1. `npm ci` from the lockfile.
 2. `npm run format:check`.
