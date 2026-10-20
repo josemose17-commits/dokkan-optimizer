@@ -89,9 +89,9 @@ describe('transitive native probability providers', () => {
   it('keeps unknown critical overlap gated for a count objective', () => {
     const m = criticalDependency();
     m.potential.critical = 'unknown';
-    expect(
-      evaluateSequence(m, input(m), ['expectedAttacks']).status,
-    ).toBe('unavailable');
+    expect(evaluateSequence(m, input(m), ['expectedAttacks']).status).toBe(
+      'unavailable',
+    );
   });
   it('includes evasion for hit-triggered effects when damage is zero', () => {
     const { m, s } = incomingDependency();

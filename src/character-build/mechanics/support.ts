@@ -551,7 +551,9 @@ export function requiredEffects(
       // on a critical must not run with native critical effects omitted.
       if (effect.dependencies.includes('event:critical'))
         for (const provider of effects.filter((e) => e.family === 'critical')) {
-          const coverage = model.coverage.find((c) => c.effectId === provider.id);
+          const coverage = model.coverage.find(
+            (c) => c.effectId === provider.id,
+          );
           if (
             (!coverage || !excludedFor(coverage, scenario)) &&
             !ids.has(provider.id)
