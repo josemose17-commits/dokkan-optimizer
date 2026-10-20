@@ -17,6 +17,8 @@ import {
   type Slot,
   type Stats,
 } from './domain';
+import { evaluateRegisteredBuild, evaluatorFor } from './execution';
+import { SEQUENCE_METRICS, type SequenceMetric } from './mechanics/domain';
 
 // Structured explanations built only from computed results: a re-evaluation of
 // the selected configuration (for its trace), the baseline evaluation and the
@@ -39,7 +41,7 @@ export function deltaInfo(
   const absolute = value - baseline;
   return {
     absolute,
-    unit: unit === 'probability' ? 'pp' : 'stat',
+    unit: unit === 'probability' || unit === 'ratio' ? 'pp' : 'stat',
     relative: baseline === 0 ? null : absolute / baseline,
   };
 }
@@ -53,6 +55,10 @@ interface Part {
 }
 
 export interface Explanation {
+  // The selected alternative is re-evaluated above; visible source tables
+  // must use its trace, not the group's representative configuration.
+  evaluation: Evaluation;
+  sequence?: Evaluation['trace']['sequence'];
   groupId: string;
   alternativeIndex: number;
   isCurrent: boolean;
@@ -206,11 +212,7 @@ export function explainGroup(
   if (!alternative) return null;
   // Re-evaluate the exact configuration shown so its trace matches it; an
   // equivalent alternative can reach the same metrics from other sources.
-  const evaluation = entry.evaluator.evaluate(
-    alternative.build,
-    request,
-    entry,
-  );
+  const evaluation = evaluateRegisteredBuild(alternative.build, request, entry);
   if (!sameMetrics(evaluation, group.evaluation))
     throw new Error('Alternative does not reproduce its group evaluation.');
 
@@ -297,7 +299,10 @@ export function explainGroup(
     : null;
 
   const unavailable = METRIC_KEYS.filter(
-    (k) => evaluation.metrics[k].value === null,
+    (k) =>
+      evaluation.metrics[k].value === null &&
+      (request.context.id === 'event-sequence-v1' ||
+        !SEQUENCE_METRICS.includes(k as SequenceMetric)),
   ).map((k) => ({ metric: k, reason: evaluation.metrics[k].reason }));
 
   // Evidence in first-use order: contributions, probability rules, metrics.
@@ -315,7 +320,22 @@ export function explainGroup(
       },
   );
 
-  const context = entry.contexts.find((c) => c.id === request.context.id)!;
+  const selectedContext = request.context;
+  const scenario =
+    selectedContext.id === 'event-sequence-v1'
+      ? entry.sequence?.scenarios.find(
+          (s) => s.id === selectedContext.scenarioId,
+        )
+      : null;
+  const context = entry.contexts.find((c) => c.id === selectedContext.id) ?? {
+    id: selectedContext.id,
+    label: scenario?.label ?? 'Unavailable event scenario',
+    assumptions: [
+      ...(entry.sequence?.model.assumptions ?? []),
+      ...(scenario?.assumptions ?? []),
+    ],
+  };
+  const implementation = evaluatorFor(entry, request)!;
   return {
     groupId,
     alternativeIndex: chosen,
@@ -367,15 +387,19 @@ export function explainGroup(
     model: {
       entryId: entry.id,
       stateId: entry.stateId,
-      evaluatorId: entry.evaluator.id,
-      evaluatorVersion: entry.evaluator.version,
-      evaluatorLabel: entry.evaluator.label,
-      verification: entry.evaluator.verification,
+      evaluatorId: implementation.id,
+      evaluatorVersion: implementation.version,
+      evaluatorLabel: implementation.label,
+      verification: implementation.verification,
       dataRevision: entry.model.revision,
       contextId: context.id,
       contextLabel: context.label,
       contextAssumptions: context.assumptions,
       evasionAllowed: request.context.evasionAllowed,
     },
+    ...(evaluation.trace.sequence
+      ? { sequence: evaluation.trace.sequence }
+      : {}),
+    evaluation,
   };
 }

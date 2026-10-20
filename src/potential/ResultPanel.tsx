@@ -26,6 +26,7 @@ import {
   whyLines,
 } from './result';
 import StatusBadge from './StatusBadge';
+import SequenceTrace from './SequenceTrace';
 
 export interface Answer {
   value: DirectRecommendation;
@@ -185,7 +186,9 @@ export default function ResultPanel({
           selected.alternativeIndex,
         )
       : null;
-  const breakdown = group ? sourceBreakdown(group.evaluation) : null;
+  const breakdown = explanation
+    ? sourceBreakdown(explanation.evaluation)
+    : null;
   const metric = group?.evaluation.metrics[request.objective];
   const baseline = outcome?.comparison.current?.metrics[request.objective];
   const changes =
@@ -207,6 +210,12 @@ export default function ResultPanel({
       <h2 id="po-result-title" tabIndex={-1} ref={resultRef}>
         {value.title}
       </h2>
+      {explanation?.sequence && (
+        <details>
+          <summary>Event timing and branches</summary>
+          <SequenceTrace sequence={explanation.sequence} />
+        </details>
+      )}
       {!selected ? (
         <>
           <ul className="po-reasons">

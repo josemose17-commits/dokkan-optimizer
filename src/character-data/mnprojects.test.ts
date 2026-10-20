@@ -165,10 +165,10 @@ describe('full pinned UR/LR reconciliation and compatibility', () => {
     ).toBe(true);
     expect(validateCatalog(catalogSnapshot).ok).toBe(true);
     expect(catalogCounts(catalogSnapshot)).toMatchObject({
-      cards: 794,
-      states: 1109,
+      cards: 795,
+      states: 1110,
       baseStates: 793,
-      ezaStates: 316,
+      ezaStates: 317,
       sezaStates: 0,
       excluded: 3,
     });

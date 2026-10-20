@@ -4,6 +4,7 @@
 import { catalogSnapshot } from '../data/real/catalog';
 import { fixtureFact } from '../character-data/catalog.fixtures';
 import type { CatalogSnapshot, CatalogState } from '../character-data/domain';
+import { sequenceNullMetrics } from './execution';
 import {
   SLOTS,
   type BuildRequest,
@@ -251,6 +252,7 @@ export const testOnlyStatsEvaluator: EvaluatorImplementation = {
       reason: 'TEST ONLY — not computed by this evaluator.',
     });
     const metrics: Metrics = {
+      ...sequenceNullMetrics('TEST ONLY — event metrics not computed.'),
       attack: stat(stats.attack),
       defense: stat(stats.defense),
       hp: stat(stats.hp),

@@ -41,7 +41,9 @@ const OBJECTIVE_SKILL: Partial<Record<AvailableMetric, Skill>> = {
 
 const number = (n: number) => n.toLocaleString('en-US');
 export function formatValue(value: number, unit: Metric['unit']): string {
-  return unit === 'probability' ? formatPercent(value) : number(value);
+  return unit === 'probability' || unit === 'ratio'
+    ? formatPercent(value)
+    : number(value);
 }
 
 // "Baseline → recommendation (+change)" in the objective's own unit.
@@ -54,7 +56,7 @@ export function improvementText(
   if (Math.abs(delta) < 1e-10) return `${formatValue(value, unit)} (no change)`;
   const sign = delta > 0 ? '+' : '−';
   const change =
-    unit === 'probability'
+    unit === 'probability' || unit === 'ratio'
       ? `${sign}${Math.abs(delta * 100).toFixed(1)} percentage points`
       : `${sign}${number(Math.abs(delta))}`;
   return `${formatValue(baseline, unit)} → ${formatValue(value, unit)} (${change})`;
@@ -95,6 +97,12 @@ function bySource(parts: { source: string; value: number }[]) {
 // Two or three short, calculation-backed sentences for the objective.
 export function whyLines(x: Explanation): string[] {
   const metric = x.objective.metric;
+  if (x.sequence)
+    return [
+      `${METRIC_LABELS[metric]} = ${formatValue(x.objective.value, metric === 'attackRaise' || metric === 'defenseRaise' ? 'ratio' : 'count')}, summed over ${x.sequence.result.branches.length} nonzero branches.`,
+      `Scenario: ${x.sequence.scenario}. Event timing and branch-local counters are recorded in the sequence trace.`,
+      'This comparison uses the declared event model; it does not calculate damage or survival.',
+    ];
   const skill = OBJECTIVE_SKILL[metric];
   if (!skill) {
     const key = metric as keyof typeof STAT_NAMES;

@@ -12,6 +12,7 @@ import {
   type MetricKey,
 } from './domain';
 import { buildKey, generateBuilds } from './generation';
+import { evaluateRegisteredBuild } from './execution';
 import { missingInventory, requestErrors } from './legality';
 
 const available = (e: Evaluation, key: MetricKey) =>
@@ -123,6 +124,10 @@ function changes(
 function evaluationKey(evaluation: Evaluation): string {
   return JSON.stringify([
     evaluation.comparisonKey,
+    // Event objectives can leave card-stat metrics unavailable while their
+    // source totals are still shown in the build breakdown. Preserve those
+    // exposed differences without changing the legacy v1 grouping contract.
+    evaluation.trace.sequence ? [evaluation.stats, evaluation.skills] : null,
     Object.entries(evaluation.metrics)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([key, metric]) => [key, metric.value, metric.reason]),
@@ -132,7 +137,7 @@ function evaluationKey(evaluation: Evaluation): string {
 export function createComparison(request: BuildRequest, entry: EvaluatorEntry) {
   const catalog = entry.model;
   const evaluate = (build: Build) =>
-    entry.evaluator.evaluate(build, request, entry);
+    evaluateRegisteredBuild(build, request, entry);
   const result: ComparisonResult = {
     errors: requestErrors(request, entry),
     current: null,

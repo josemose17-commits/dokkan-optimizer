@@ -11,12 +11,20 @@ import { allocationSpace } from '../character-build/allocation';
 import { resolveEvaluator } from '../character-build/registry';
 import { resolveKit } from '../character-build/kit';
 import { gohanKit } from '../data/real/character-build/gohan-kit';
+import { uiGokuKit } from '../data/real/character-build/ui-goku-kit';
+import { realMechanics } from '../data/real/character-build/mechanics';
+import { resolveMechanics } from '../character-build/mechanics/registry';
+import CharacterMechanics from './CharacterMechanics';
 import CatalogBrowser from '../characters/CatalogBrowser';
 import CharacterAnalysis from './CharacterAnalysis';
 import '../character-build/character.css';
 import { loadCharacterState } from '../character-build/storage';
 import { estimateCandidateSpace } from '../character-build/generation';
 import { requestErrors } from '../character-build/legality';
+import {
+  evaluateRegisteredBuild,
+  objectivesFor,
+} from '../character-build/execution';
 import {
   searchBuilds,
   type SearchOutcome,
@@ -176,10 +184,10 @@ function Workspace({
   pending: BuildRequest | null;
   onOpen: (entry: EvaluatorEntry, request: BuildRequest) => void;
 }) {
-  const { entry, capabilities } = useMemo(() => {
+  const entry = useMemo(() => {
     const resolved = resolveProgression(original, progressions);
     const entry = resolved.ok ? resolved.entry : original;
-    return { entry, capabilities: resolveCapabilities(entry, progressions) };
+    return entry;
   }, [original, progressions]);
   // Older working settings are read but never written here; saves are explicit.
   const [initial] = useState(() => loadCharacterState(browserStorage(), entry));
@@ -196,6 +204,10 @@ function Workspace({
       : stored && !initial.warning
         ? initial.state
         : { ...initial.state, mode: 'catalog' },
+  );
+  const capabilities = useMemo(
+    () => resolveCapabilities(entry, progressions, request),
+    [entry, progressions, request],
   );
   // No objective is preselected for a new session: none of the supported
   // ones is a meaningful default for every player.
@@ -244,7 +256,7 @@ function Workspace({
   const evaluation = useMemo(() => {
     if (errors.length) return null;
     try {
-      return entry.evaluator.evaluate(request.current, request, entry);
+      return evaluateRegisteredBuild(request.current, request, entry);
     } catch {
       return null;
     }
@@ -370,6 +382,29 @@ function Workspace({
               invalidate();
               setBudget(n);
             }}
+            onContext={(context) => {
+              const next = { ...request, context };
+              const available = resolveCapabilities(entry, progressions, next)
+                .objectives.filter((o) => o.status !== 'unavailable')
+                .map((o) => o.metric);
+              const objectives = available.length
+                ? available
+                : objectivesFor(entry, next);
+              const sameModel = request.context.id === context.id;
+              setObjectiveChosen(sameModel && objectiveChosen);
+              update({
+                ...next,
+                objective:
+                  sameModel && objectives.includes(request.objective)
+                    ? request.objective
+                    : objectives[0]!,
+                frontierMetrics: sameModel
+                  ? request.frontierMetrics.filter((m) =>
+                      objectives.includes(m),
+                    )
+                  : [...objectives],
+              });
+            }}
           />
         </div>
         <div
@@ -472,7 +507,12 @@ export default function PotentialOptimizer({
   const resolution = selected
     ? resolveEvaluator(registry, snapshot, selected)
     : null;
-  const kit = selected ? resolveKit(snapshot, [gohanKit], selected) : null;
+  const kit = selected
+    ? resolveKit(snapshot, [gohanKit, uiGokuKit], selected)
+    : null;
+  const mechanics = selected
+    ? resolveMechanics(snapshot, realMechanics, selected)
+    : null;
   const params = new URLSearchParams(window.location.search);
   const browsing =
     params.get('workbench') === 'catalog' ||
@@ -506,7 +546,7 @@ export default function PotentialOptimizer({
   );
   const others = snapshot.states.filter((s) => !supported.includes(s));
   const guided = others.filter(
-    (s) => resolveKit(snapshot, [gohanKit], s.id).ok,
+    (s) => resolveKit(snapshot, [gohanKit, uiGokuKit], s.id).ok,
   );
   // The searchable catalog, rather than thousands of native options, handles
   // browse-only records. Keep the chosen unsupported state visible here.
@@ -641,14 +681,21 @@ export default function PotentialOptimizer({
         )}
       </details>
       {kit?.ok && <CharacterAnalysis key={kit.kit.revision} kit={kit.kit} />}
+      {mechanics?.ok && (
+        <CharacterMechanics
+          key={mechanics.record.revision}
+          record={mechanics.record}
+        />
+      )}
       {resolution?.ok && (
         <section aria-label="Limited progression-profile and equipment comparison">
           <h2 className="po-comparison-title">
             Limited progression-profile / equipment comparison
           </h2>
           <p className="po-muted">
-            This evaluator is separate from kit guidance. It does not select
-            potential nodes or model a full attack chain, damage or survival.
+            Initial-check and opt-in event comparisons have separate contexts.
+            They do not establish a complete potential board, verified battle
+            damage or survival.
           </p>
           <Workspace
             key={`${resolution.entry.id}:${nonce}`}

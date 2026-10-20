@@ -52,6 +52,12 @@ export const PHASES = [
   'after-attack',
   'before-hit',
   'after-hit',
+  'appearance-start',
+  'attack-activation',
+  'super-activation',
+  'damage-calculation',
+  'after-evade',
+  'turn-end',
   'other',
 ] as const;
 export type Phase = (typeof PHASES)[number];

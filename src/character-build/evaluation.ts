@@ -16,6 +16,7 @@ import {
 } from './domain';
 import { potentialContributions } from './allocation';
 import { buildErrors, requestErrors } from './legality';
+import { sequenceNullMetrics } from './execution';
 
 export function hiddenPotentialChance(level: number, skill: Skill): number {
   const p = level * (skill === 'evasion' ? 0.01 : 0.02);
@@ -48,11 +49,11 @@ const nonZero = <K extends string>(values: Partial<Record<K, number>>) =>
     Object.entries(values).filter(([, v]) => v !== 0 && v !== undefined),
   ) as Partial<Record<K, number>>;
 
-export function evaluateBuild(
+export function collectBuildContributions(
   build: Build,
   request: BuildRequest,
   entry: EvaluatorEntry,
-): Evaluation {
+) {
   const catalog = entry.model;
   const errors = [
     ...requestErrors(request, entry),
@@ -109,6 +110,26 @@ export function evaluateBuild(
   for (const c of trace.skills)
     for (const key of ['additional', 'critical', 'evasion'] as const)
       skills[key] += c.values[key] ?? 0;
+
+  return { stats, skills, trace };
+}
+
+export function evaluateBuild(
+  build: Build,
+  request: BuildRequest,
+  entry: EvaluatorEntry,
+): Evaluation {
+  if (request.context.id !== 'initial-check-v1')
+    throw new Error(
+      'The v1 initial-check evaluator cannot execute an event sequence.',
+    );
+  const { stats, skills, trace } = collectBuildContributions(
+    build,
+    request,
+    entry,
+  );
+  const catalog = entry.model,
+    { card } = catalog;
 
   const sourceEvidence = (
     contributions: Contribution<Partial<Record<string, number>>>[],
@@ -192,6 +213,7 @@ export function evaluateBuild(
     reason,
   });
   const metrics: Metrics = {
+    ...sequenceNullMetrics(),
     attack: stat('attack'),
     defense: stat('defense'),
     hp: stat('hp'),

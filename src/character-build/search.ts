@@ -36,7 +36,8 @@ export async function searchBuilds(
     control.maxScanned > 1_000_000
   )
     throw new Error('Scan budget must be an integer from 1 to 1000000.');
-  const chunk = control.chunkSize ?? 128;
+  const chunk =
+    control.chunkSize ?? (input.context.id === 'event-sequence-v1' ? 1 : 128);
   if (!Number.isSafeInteger(chunk) || chunk < 1 || chunk > 1024)
     throw new Error('Chunk size must be an integer from 1 to 1024.');
   const request = structuredClone(input);

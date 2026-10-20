@@ -4,7 +4,7 @@ The catalog is integrated into the [primary character workspace](OPTIMIZER.md). 
 
 ## Bundled coverage
 
-**794 catalog identities / 1,109 recorded states.** This combines the unchanged 2 reviewed identities / 3 states with **792 historical source identities / 1,106 states**. Names are never used to merge provider identities into reviewed IDs; counts are not distinct current-game characters. The source snapshot is January 2023, not a complete current roster.
+**795 catalog identities / 1,110 recorded states.** This combines the 3 reviewed identities / 4 states with **792 historical source identities / 1,106 states**. Names are never used to merge provider identities into reviewed IDs; counts are not distinct current-game characters. The source snapshot is January 2023, not a complete current roster.
 
 | Reconciliation item        | Count / handling                                                                                     |
 | -------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -59,7 +59,7 @@ npm run catalog:export -- ../admitted-catalog.json
 npm run catalog:validate -- ../admitted-catalog.json
 ```
 
-Export serializes the same complete bundled reference snapshot (794 identities / 1,109 states); it acquires nothing. Validation reads local normalized JSON only, with a 20 MiB file-size limit. It prints path-specific errors or actual counts and never replaces the bundled catalog.
+Export serializes the same complete bundled reference snapshot (795 identities / 1,110 states); it acquires nothing. Validation reads local normalized JSON only, with a 20 MiB file-size limit. It prints path-specific errors or actual counts and never replaces the bundled catalog.
 
 Compare two locally prepared snapshots:
 
@@ -101,8 +101,12 @@ The command makes no network request, verifies the exact Git blob hash, enforces
 
 1. Open **Search characters and inspect details** (`/dokkan-optimizer/?workbench=catalog`). Search `Broly Cheelai`; filter **LR / PHY / Joined Forces**. Select its base state and inspect the source free-dupe/rainbow table. Percentages and duplicate routes remain unknown; no arbitrary intermediate profiles are offered.
 2. Search `mnprojects:card:11168`, filter **EZA**, and select the state. Level/SA/raw-stat scope remain explicitly unavailable; the base state's reported tables are not relabeled EZA. SEZA has no source records.
-3. Clear filters: first 50 of 794 identities render; **Show 50 more** expands pagination. Open coverage for counts, exclusions, evidence definitions and source license; the visible license download works under the Pages prefix.
+3. Clear filters: first 50 of 795 identities render; **Show 50 more** expands pagination. Open coverage for counts, exclusions, evidence definitions and source license; the visible license download works under the Pages prefix.
 4. Select reviewed Goku `1003211`, EZA, then inspect the 55% illustration. Raw/potential/equip/unavailable battle layers remain separate. Only its bound numerical evaluator enables comparison. Historical source matches receive no borrowed evaluator.
 5. Export/validate the bundled catalog with the CLI and inspect the file in the session-only browser importer. No saves or bundled data are overwritten. Existing exact state URLs and named/working builds retain their original revision and values.
 
 No verified-only orb mode is added; unresolved silver items are not promoted. A complete real node graph, all duplicate percentages, damage objectives, probability refinement, purchases, merge and deployment remain outside this catalog import.
+
+## Individual event record, 2026-10-20
+
+The exact unknown-region AGL LR EZA Ultra Instinct Goku state (Lv150 / SA25, source alias 1020311) adds one reviewed identity/state. Raw statistics remain null; the page’s HiPo display is not a raw-stat assertion. Native-only event support is separate from full build/equipment support. No historical identity is merged by name or guessed source-ID conversion. The historical projection, original pins, exclusions and 1,106 source states are unchanged. See [event coverage](CHARACTER_MECHANICS.md).

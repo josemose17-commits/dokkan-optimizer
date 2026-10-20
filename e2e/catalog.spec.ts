@@ -17,7 +17,7 @@ test('search and filters use admitted fields, with an empty state and reset', as
   const count = page.locator('.catalog-result-count');
   // The full historical import is paginated; reviewed records remain separate.
   await expect(count).toHaveText(
-    'Showing 50 of 794 matching card forms · 1,109 matching states',
+    'Showing 50 of 795 matching card forms · 1,110 matching states',
   );
 
   await page.getByLabel('Name, title or ID').fill('mystery GOKU');
@@ -31,7 +31,7 @@ test('search and filters use admitted fields, with an empty state and reset', as
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.getByLabel('Name, title or ID')).toHaveValue('');
   await expect(count).toHaveText(
-    'Showing 50 of 794 matching card forms · 1,109 matching states',
+    'Showing 50 of 795 matching card forms · 1,110 matching states',
   );
 
   await page
@@ -39,7 +39,7 @@ test('search and filters use admitted fields, with an empty state and reset', as
     .selectOption('unavailable');
   // Historical states, base Goku and kit-guidance Gohan lack a numerical evaluator.
   await expect(count).toHaveText(
-    'Showing 50 of 794 matching card forms · 1,108 matching states',
+    'Showing 50 of 795 matching card forms · 1,109 matching states',
   );
   await page
     .getByLabel('Optimization support', { exact: true })

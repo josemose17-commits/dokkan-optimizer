@@ -258,7 +258,10 @@ describe('eligibility before evaluation', () => {
   });
   it('fails closed on unrecognized context effects', () => {
     const r = defaultRequest();
-    r.context = { ...r.context, mysteryEffect: true } as typeof r.context;
+    r.context = {
+      ...r.context,
+      mysteryEffect: true,
+    } as unknown as typeof r.context;
     expect(compareBuilds(r, gokuEntry).groups).toEqual([]);
     expect(compareBuilds(r, gokuEntry).errors.join(' ')).toContain(
       'Unsupported context',

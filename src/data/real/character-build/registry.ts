@@ -1,5 +1,5 @@
 import {
-  AVAILABLE_METRICS,
+  INITIAL_METRICS,
   type EvaluatorEntry,
 } from '../../../character-build/domain';
 import { initialCheckEvaluator } from '../../../character-build/evaluation';
@@ -10,6 +10,7 @@ import {
   characterCatalog,
   defaultRequest,
 } from './goku';
+import { gokuSequence } from './goku-sequence';
 
 // Production evaluator registry. Each entry binds ONE exact catalog state to
 // its evaluation data; the catalog state names the entry by ID. Test-only
@@ -31,13 +32,14 @@ export const gokuEntry: EvaluatorEntry = {
       evasionOptions: [true, false],
     },
   ],
-  objectives: [...AVAILABLE_METRICS],
+  objectives: [...INITIAL_METRICS],
   evaluator: initialCheckEvaluator,
   // The original working-settings key and payload contract are unchanged.
   storageKey: WORKING_SETTINGS_KEY,
   defaults: defaultRequest,
+  sequence: gokuSequence,
   recommendationSupport: Object.fromEntries(
-    AVAILABLE_METRICS.map((metric) => [
+    INITIAL_METRICS.map((metric) => [
       metric,
       {
         scope: ['attack', 'defense', 'hp'].includes(metric)

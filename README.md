@@ -2,9 +2,9 @@
 
 **Character kit → intended slot and role → potential emphasis → equip priorities → explanation.** One primary workspace, with factual browsing, saved builds and maintenance kept secondary.
 
-The searchable catalog now includes a **historical UR/LR factual import**, alongside the existing reviewed kit guidance and limited Goku comparison. It is not a complete current roster or full potential-allocation optimizer.
+The searchable catalog now includes a **historical UR/LR factual import**, alongside reviewed kit guidance, explicit versioned event mechanics and the preserved limited Goku comparison. It is not a complete current roster or full potential-allocation optimizer.
 
-- **Catalog:** 792 source identities (679 UR, 113 LR) from MNprojects/DokkanAPI’s published January 2023 JSON, plus 2 separately reviewed identities. Combined: **794 catalog identities / 1,109 recorded states**. Source aliases are not guessed into the reviewed IDs; matching names may appear separately.
+- **Catalog:** 792 source identities (679 UR, 113 LR) from MNprojects/DokkanAPI’s published January 2023 JSON, plus 3 separately reviewed identities. Combined: **795 catalog identities / 1,110 recorded states**. Source aliases are not guessed into the reviewed IDs; matching names may appear separately.
 - **Hidden Potential details:** source-reported base/max/free-dupe/rainbow stat columns are visible with field references. The export does not establish every duplicate percentage, intermediate profile, choice node or route. These remain unknown, not interpolated. No new character receives numerical optimization support from inclusion in the catalog.
 - **Evidence and reuse:** factual projection only, under the published repository AGPL-3.0 notice; credit MNprojects/Michael Nash and upstream Wiki contributors. No artwork or copied skill descriptions. See the [dataset notice and license](src/data/real/mnprojects/NOTICE.md), [provenance/reconciliation manifest](src/data/real/mnprojects/manifest.json), and [catalog/update guide](docs/CATALOG.md).
 
@@ -13,7 +13,9 @@ Existing supported features remain:
 - **TEQ UR EZA Gohan (Teen), “Power Beyond the Extremes”, untransformed, Lv140 / SA15.** Intended slot 1, main rotation, defensive buildup; Additional-led priorities from guard before attacking and lasting Super DEF effects. This is a documented design judgment, not a numerical damage/survival optimum. An opening-protection override explains the different tradeoff. Region and numeric EZA step are unestablished, not guessed.
 - **Cannot recommend exact levels or items yet:** no complete attainable allocation set is bound to this state/progression, compatible items are not admitted, and attack-chain/guard-trigger interactions remain unresolved. No baseline improvement is claimed for Gohan. There are **0 complete real board templates** and **0 new exact allocation winners**.
 - **Existing Goku comparison retained:** AGL UR EZA Super Saiyan 3 Goku, Global English, step 7, Lv140 / SA15. One fixed 55% no-duplicate profile (AA5), or entered current totals whose board requirements are not checked, combined with 3 bronze and 3 unresolved silver records. Card stat objectives and experimental initial-check probabilities remain separate from damage/survival. This is a limited progression-profile/equipment comparison.
-- **Optimization coverage:** 1 numerical evaluator, 1 reviewed Gohan kit-guidance policy, 0 complete real allocation templates. Historical imports have partial details and no evaluator. No verified-only equipment mode exists; unresolved silver items remain labeled. Test fixtures do not ship as characters.
+- **Versioned event mechanics:** native/dependent attacks, native critical/evasion, all-type-effectiveness properties, 12/18-Ki and initial/additional Super filters, timed/permanent ATK/DEF effect factors, branch-local conditions, buildup, expiration and terminal branches. These are declared model implementations, not verified damage/survival mechanics. [Exact coverage and limits](docs/CHARACTER_MECHANICS.md).
+- **AGL LR EZA Ultra Instinct Goku, Lv150 / SA25:** exact-state kit guidance plus native-only entry-evasion and Super-count previews (one initial Super plus a 77% native opportunity gives 1.77 expected Supers). Unknown additional-Super variant, repeated critical overlap, later evasion and revival semantics remain gated; no board/equipment recommendation is admitted.
+- **Optimization coverage:** 1 exact state with its original evaluator plus an opt-in event evaluator, 2 reviewed kit-guidance states, 0 complete real allocation templates. Historical imports have partial details and no evaluator. No verified-only equipment mode exists; unresolved silver items remain labeled. Test fixtures do not ship as characters.
 
 The synthetic team demo and duplicate source-example screen have been retired. Old URLs return intentionally to the workspace. Old browser storage is **not deleted or migrated**. Git history preserves the demo.
 
@@ -50,6 +52,12 @@ Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The browser suite
 
 Default scope: untransformed early buildup, before attacking on battle turn 3 / second appearance, with a qualifying Super; no incoming damage or attack counter is assumed. The entry-turn reduction is recorded but not applied to that context. No transformation, attack-chain, battle DEF, damage, survival, cost or affordability calculation is offered.
 
+## Explicit event contexts
+
+Choose the documented SS3 Goku state, then **Goal → Evaluation model → Explicit event sequence v1**. Select a supplied one/two-appearance sequence and a count objective before Optimize. The same baseline, eligibility, inventory, ties, cancellation and incomplete-search handling apply. Open **Event timing and branches** for activation, completed counters, effect factors and model assumptions. Old initial-check settings remain the default.
+
+Choose the exact Ultra Instinct Goku EZA state and open **Character event mechanics** for the bounded native-only contexts. Their potential/equipment inputs are explicitly excluded; they are not build recommendations. Gohan’s event record shows which selected effects have implementations and why numerical objectives remain blocked. No paused provider or separate prototype is used.
+
 ## Retained Goku comparisons and saves
 
 Choose the Goku quick pick. Its heading says **Limited progression-profile / equipment comparison**. Choose an objective before **Optimize**. From empty equipment, Critical chance under catalog mode has four ties at 4% in the experimental model (baseline 0%). Card HP has four ties at 15,827 (baseline 15,327), not a defensive-build recommendation. One documented allocation × 16 equipment combinations is not full potential optimization.
@@ -66,7 +74,7 @@ Storage contracts remain `dokkan.character-builds.v1` (Goku working copy), `dokk
 2. Search `Broly Cheelai`, filter **LR / PHY / Joined Forces**, and select the base state. Inspect raw stats, separate historical stat columns, unknown potential percentages, field references and unavailable optimization support.
 3. Search `mnprojects:card:11168` and select **EZA**. Unknown level/SA/raw-stat scope stays unavailable; no SEZA state is invented. Reviewed Goku/Gohan quick picks retain their original IDs and behavior.
 
-The import reconciles **796 rows**: **793 accepted**, **3 excluded** (two conflicting-ID rows and one Zeni material). One duplicate identity shares two reported tables. **125 embedded forms** lack complete mappings and are reported without counting them as additional characters. Imported states: **792 base + 314 EZA = 1,106**, with no SEZA. Combined states: **793 base + 316 EZA = 1,109**. These are catalog entries, not a count of unique current-game cards, fully completed records or all awakening forms.
+The import reconciles **796 rows**: **793 accepted**, **3 excluded** (two conflicting-ID rows and one Zeni material). One duplicate identity shares two reported tables. **125 embedded forms** lack complete mappings and are reported without counting them as additional characters. Imported states: **792 base + 314 EZA = 1,106**, with no SEZA. Combined states: **793 base + 317 EZA = 1,110**. These are catalog entries, not a count of unique current-game cards, fully completed records or all awakening forms.
 
 The source’s EZA descriptions establish a revision exists, not its exact level/step or stat scope. Source-reported total columns never become raw stats, potential additions or battle stats by inference. Copied effects with missing icons/footnotes are omitted. Source documentation is not independent in-game confirmation. The production bundle includes a license download and visible attribution; it makes no API call.
 

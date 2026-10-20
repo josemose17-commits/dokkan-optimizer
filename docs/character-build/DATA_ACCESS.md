@@ -71,3 +71,9 @@ Public readable [FYI 1020091](https://dokkan.fyi/characters/1020091) and [Dokkan
 Direct host HTML/robots requests returned 403, so no raw response, source hash or right to bulk extraction is claimed; no alternative fingerprint, private endpoint or access-control workaround was used. Browser-readable facts and bulk dataset reuse are distinct questions. A data license/bulk permission remains null, not a presumed grant. No public data snapshot beyond the authored normalized individual observations is imported.
 
 The separate broad-catalog gate remains the approved Dokkan Info export/schema/revision and terms for caching, public repository/Pages redistribution and updates. No renewed provider audit, API credentials, purchase or contact is part of this implementation.
+
+## Individual event-mechanics references — 2026-10-20
+
+Two specifically targeted public FYI character pages were read using web retrieval: [Gohan EZA 1020091](https://dokkan.fyi/characters/1020091) and [UI Goku EZA 1020311](https://dokkan.fyi/characters/1020311). This was individual factual research for exact states, not a catalog crawl, API integration or bulk import. The robots.txt URL was unavailable through the retrieval tool; no direct-host retry, alternative endpoint, session/login, asset mirror, calculator implementation or access-control workaround was used. Existing provider holds remain.
+
+Selected original short wording and individually recorded numbers are retained with field-level references and original factual summaries. No raw response was available, so source revisions/hashes remain null. Public readability is not represented as a dataset-reuse license or independent game verification. No Dokkan Info acquisition, purchase, credentials or provider outreach occurred. The MNprojects source projection, upstream credits, AGPL notice and original commit/blob pin remain unchanged; only its separate combined-catalog count reflects the new reviewed identity/state.

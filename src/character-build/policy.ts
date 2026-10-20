@@ -110,6 +110,31 @@ export function kitGuidance(
       text: 'The supplied context disables evasion; do not prioritize Evasion for this context. This is not a claim about a named boss.',
       effectIds: [],
     });
+  const guarantee = effects.filter(
+    (e) =>
+      e.family === 'evasion' &&
+      e.target === 'self' &&
+      e.amount === 1 &&
+      e.unit === 'probability' &&
+      inspectCondition(e.condition, context).state === 'met',
+  );
+  if (kit.policy === 'conditional-evasion-v1' && guarantee.length) {
+    initial.emphasis = evasionAllowed
+      ? 'Additional Evasion cannot improve an active native evasion guarantee; keep the remaining build tradeoff unresolved.'
+      : 'The supplied context disables evasion, including the native guarantee; no exact alternate allocation is established.';
+    initial.why = [
+      {
+        text: 'This policy applies only while the documented native guarantee is active. It does not infer a full Additional/Critical split or extend entry-turn protection to later appearances.',
+        effectIds: guarantee.map((e) => e.id),
+      },
+    ];
+    initial.equipment = [
+      {
+        text: 'Evaluate equipment for the other supported job only after the native attack chain, critical interactions and attainable choices are admitted. No exact item recommendation is made here.',
+        effectIds: guarantee.map((e) => e.id),
+      },
+    ];
+  }
   const native = effects.filter((e) =>
     ['additional-attack', 'additional-super'].includes(e.family),
   );

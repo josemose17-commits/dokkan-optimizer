@@ -3,6 +3,7 @@ import {
   METRIC_LABELS,
   type AvailableMetric,
   type BuildRequest,
+  type Context,
   type EvaluatorEntry,
 } from '../character-build/domain';
 import { itemLabel } from '../character-build/explanation';
@@ -39,6 +40,7 @@ export default function GoalSettings({
   onChange,
   onObjective,
   onBudget,
+  onContext,
 }: {
   entry: EvaluatorEntry;
   request: BuildRequest;
@@ -49,6 +51,7 @@ export default function GoalSettings({
   onChange: (request: BuildRequest) => void;
   onObjective: (metric: AvailableMetric) => void;
   onBudget: (budget: number) => void;
+  onContext: (context: Context) => void;
 }) {
   const context = entry.contexts.find((c) => c.id === request.context.id);
   return (
@@ -56,6 +59,77 @@ export default function GoalSettings({
       <h2 id="po-goal-title">
         <span className="po-step">3</span> Goal
       </h2>
+      {entry.sequence && (
+        <fieldset className="po-group">
+          <legend>Evaluation context</legend>
+          <label className="po-field">
+            Model
+            <select
+              aria-label="Evaluation model"
+              value={request.context.id}
+              onChange={(e) => {
+                if (e.target.value === 'initial-check-v1')
+                  onContext(entry.defaults().context);
+                else
+                  onContext({
+                    id: 'event-sequence-v1',
+                    modelRevision: entry.sequence!.model.revision,
+                    scenarioId: entry.sequence!.scenarios[0]!.id,
+                    evasionAllowed: request.context.evasionAllowed,
+                  });
+              }}
+            >
+              <option value="initial-check-v1">
+                Initial eligible check (existing v1)
+              </option>
+              <option value="event-sequence-v1">
+                Explicit event sequence v1 · experimental
+              </option>
+            </select>
+          </label>
+          {request.context.id === 'event-sequence-v1' && (
+            <>
+              <label className="po-field">
+                Supplied sequence
+                <select
+                  aria-label="Supplied sequence"
+                  value={request.context.scenarioId}
+                  onChange={(e) => {
+                    if (request.context.id === 'event-sequence-v1')
+                      onContext({
+                        ...request.context,
+                        scenarioId: e.target.value,
+                      });
+                  }}
+                >
+                  {entry.sequence.scenarios.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="po-warning">
+                Experimental event model. Enemy survival and incoming damage are
+                supplied assumptions; damage and survival are unavailable.
+              </p>
+              <label className="po-check">
+                <input
+                  type="checkbox"
+                  checked={request.context.evasionAllowed}
+                  onChange={(e) =>
+                    onContext({
+                      ...request.context,
+                      evasionAllowed: e.target.checked,
+                    })
+                  }
+                />
+                Incoming attacks are evadable in this sequence
+              </label>
+            </>
+          )}
+        </fieldset>
+      )}
       <fieldset className="po-group po-objectives">
         <legend>Objective</legend>
         {GROUPS.map((group) => {
@@ -102,6 +176,40 @@ export default function GoalSettings({
             </div>
           );
         })}
+        {capabilities.objectives.some((o) => o.group === 'event-sequence') && (
+          <div className="po-objective-group">
+            <p className="po-group-title">
+              Supplied event sequence <StatusBadge status="experimental" />
+            </p>
+            {capabilities.objectives
+              .filter((o) => o.group === 'event-sequence')
+              .map((o) => (
+                <label
+                  key={o.metric}
+                  className="po-objective"
+                  data-status={o.status}
+                >
+                  <input
+                    type="radio"
+                    name="objective"
+                    value={o.metric}
+                    checked={objectiveChosen && request.objective === o.metric}
+                    disabled={o.status === 'unavailable'}
+                    onChange={() => onObjective(o.metric)}
+                  />
+                  <span>
+                    <span className="po-objective-name">{o.label}</span>
+                    <span className="po-objective-summary">{o.summary}</span>
+                    {o.gates.length > 0 && (
+                      <span className="po-objective-reason">
+                        {o.gates.map((g) => g.message).join(' ')}
+                      </span>
+                    )}
+                  </span>
+                </label>
+              ))}
+          </div>
+        )}
         {capabilities.gaps.length > 0 && (
           <div className="po-objective-group po-gaps">
             <p className="po-group-title">
@@ -179,23 +287,29 @@ export default function GoalSettings({
             objective alone decides the recommendation.
           </p>
           <div className="po-check-grid">
-            {entry.objectives.map((m) => (
-              <label key={m} className="po-check">
-                <input
-                  type="checkbox"
-                  checked={request.frontierMetrics.includes(m)}
-                  onChange={(e) =>
-                    onChange({
-                      ...request,
-                      frontierMetrics: e.target.checked
-                        ? [...request.frontierMetrics, m]
-                        : request.frontierMetrics.filter((k) => k !== m),
-                    })
-                  }
-                />
-                {METRIC_LABELS[m]}
-              </label>
-            ))}
+            {capabilities.objectives
+              .map((o) => o.metric)
+              .map((m) => (
+                <label key={m} className="po-check">
+                  <input
+                    type="checkbox"
+                    checked={request.frontierMetrics.includes(m)}
+                    disabled={
+                      capabilities.objectives.find((o) => o.metric === m)
+                        ?.status === 'unavailable'
+                    }
+                    onChange={(e) =>
+                      onChange({
+                        ...request,
+                        frontierMetrics: e.target.checked
+                          ? [...request.frontierMetrics, m]
+                          : request.frontierMetrics.filter((k) => k !== m),
+                      })
+                    }
+                  />
+                  {METRIC_LABELS[m]}
+                </label>
+              ))}
           </div>
         </fieldset>
         <div className="po-grid-2">

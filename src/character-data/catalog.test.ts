@@ -1,4 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import {
+  UI_GOKU_CARD_ID,
+  UI_GOKU_STATE_ID,
+} from '../data/real/character-build/ui-goku-kit';
 import { BASE_STATE_ID } from '../data/real/catalog-states/1003211-base';
 import {
   GOHAN_CARD_ID,
@@ -36,17 +40,17 @@ import { fixtureFact, fixtureSnapshot } from './catalog.fixtures';
 import { validateCatalog } from './validation';
 
 describe('normalized import contract (fixtures are fictional, not game verification)', () => {
-  it('admits two cards with three exact states and invents no missing fields', () => {
+  it('admits three reviewed identities with four exact states and invents no missing fields', () => {
     expect(validateCatalog(catalogSnapshot).ok).toBe(true);
     expect(catalogCounts(catalogSnapshot)).toEqual({
-      cards: 2,
+      cards: 3,
       startingForms: 0,
       awakenedForms: 0,
       transformedForms: 0,
-      unclassifiedForms: 2,
-      states: 3,
+      unclassifiedForms: 3,
+      states: 4,
       baseStates: 1,
-      ezaStates: 2,
+      ezaStates: 3,
       sezaStates: 0,
       unknownStates: 0,
       excluded: 0,
@@ -142,9 +146,9 @@ describe('normalized import contract (fixtures are fictional, not game verificat
       changes: [],
       cardChanges: [],
       sourceChanges: [],
-      addedCards: [GOHAN_CARD_ID],
+      addedCards: [GOHAN_CARD_ID, UI_GOKU_CARD_ID],
       removedCards: [],
-      addedStates: [BASE_STATE_ID, GOHAN_STATE_ID],
+      addedStates: [BASE_STATE_ID, GOHAN_STATE_ID, UI_GOKU_STATE_ID],
       removedStates: [],
     });
   });

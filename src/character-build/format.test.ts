@@ -15,6 +15,7 @@ describe('metric and delta presentation (hand-written expected strings)', () => 
     expect(formatMetric(metric(0.05, 'probability'))).toBe('5.0%');
     expect(formatMetric(metric(13911, 'stat'))).toBe('13,911');
     expect(formatMetric(metric(null, 'damage'))).toBe('Unavailable');
+    expect(formatMetric(metric(0.5, 'ratio'))).toBe('50.0%');
   });
   it('labels probability differences as percentage points plus relative change', () => {
     // 5% → 7%: +2 percentage points, which is +40% relative to 5%.

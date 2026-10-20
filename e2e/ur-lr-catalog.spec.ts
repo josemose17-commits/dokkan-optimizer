@@ -74,7 +74,7 @@ test('full source is paginated and carries attribution, license and explicit exc
   await page.goto('?workbench=catalog');
   await expect(page.locator('.catalog-result')).toHaveCount(50);
   await expect(page.locator('.catalog-result-count')).toContainText(
-    '794 matching card forms',
+    '795 matching card forms',
   );
   await page.getByRole('button', { name: 'Show 50 more' }).click();
   await expect(page.locator('.catalog-result')).toHaveCount(100);

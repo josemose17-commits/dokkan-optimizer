@@ -11,7 +11,7 @@ import { inspectCondition } from '../character-definitions/evaluation';
 export default function CharacterAnalysis({ kit }: { kit: ReviewedKit }) {
   const [focus, setFocus] = useState<GuidanceFocus>('buildup');
   const [evasion, setEvasion] = useState(true);
-  const context = guidanceContext(kit.stateId);
+  const context = kit.context ?? guidanceContext(kit.stateId);
   const result = kitGuidance(kit, context, focus, evasion);
   const effects = kitEffects(kit);
   const reasons = (rows: KitReason[]) => (
@@ -77,42 +77,55 @@ export default function CharacterAnalysis({ kit }: { kit: ReviewedKit }) {
         Method: {result.method}. No numerical winning allocation is claimed.
       </p>
       <p className="po-muted">
-        Context: untransformed, before attacking on battle turn 3, second
-        appearance; early buildup with a qualifying Super. Entry-turn protection
-        is not assumed active. Attack counters and incoming damage are
-        unspecified.
+        Context:{' '}
+        {kit.contextDescription ??
+          'Untransformed, before attacking on battle turn 3, second appearance; early buildup with a qualifying Super. Entry-turn protection is not assumed active. Attack counters and incoming damage are unspecified.'}
       </p>
       {reasons(result.why)}
       <h3>Equip effect priorities</h3>
       {reasons(result.equipment)}
-      <details>
-        <summary>Advanced priority override</summary>
-        <label className="po-field">
-          Priority
-          <select
-            aria-label="Priority"
-            value={focus}
-            onChange={(e) => setFocus(e.target.value as GuidanceFocus)}
-          >
-            <option value="buildup">Lasting defensive buildup (default)</option>
-            <option value="opening-protection">
-              Protection before the first Super
-            </option>
-          </select>
-        </label>
+      {kit.policy === 'guard-buildup-v1' && (
+        <details>
+          <summary>Advanced priority override</summary>
+          <label className="po-field">
+            Priority
+            <select
+              aria-label="Priority"
+              value={focus}
+              onChange={(e) => setFocus(e.target.value as GuidanceFocus)}
+            >
+              <option value="buildup">
+                Lasting defensive buildup (default)
+              </option>
+              <option value="opening-protection">
+                Protection before the first Super
+              </option>
+            </select>
+          </label>
+          <label className="po-check">
+            <input
+              type="checkbox"
+              checked={evasion}
+              onChange={(e) => setEvasion(e.target.checked)}
+            />
+            Incoming attacks are evadable
+          </label>
+          <p>
+            The override changes build priorities, not the inferred kit design.
+            No enemy damage threshold is assumed.
+          </p>
+        </details>
+      )}
+      {kit.policy !== 'guard-buildup-v1' && (
         <label className="po-check">
           <input
             type="checkbox"
             checked={evasion}
             onChange={(e) => setEvasion(e.target.checked)}
           />
-          Incoming attacks are evadable
+          Incoming attacks are evadable for this guidance
         </label>
-        <p>
-          The override changes build priorities, not the inferred kit design. No
-          enemy damage threshold is assumed.
-        </p>
-      </details>
+      )}
       <details>
         <summary>Conflicts and conditions</summary>
         {reasons([...result.assignment.conditions, ...result.conflicts])}

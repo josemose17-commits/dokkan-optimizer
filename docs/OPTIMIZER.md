@@ -44,3 +44,7 @@ Keys: `dokkan.character-builds.v1`, `dokkan.character-library.v1`, `dokkan.chara
 One external requirement: an approved Dokkan Info text export/sample with schema, source revision and terms permitting caching, public repository/Pages data distribution and an update cadence. None has been supplied. Do not re-audit the same blocked provider, request API credentials, contact anyone or purchase access. Individual source-documented facts and local user imports are separate from a bulk integration. No provider adapter is connected.
 
 See [README reproduction](../README.md), [evidence ledger](character-build/EVIDENCE.md), [catalog contract](CATALOG.md), [maintenance](CHARACTER_DEFINITIONS.md), and [actual validation results](VALIDATION.md).
+
+## Opt-in event mechanics
+
+The existing workspace now offers a separate versioned event context for the documented Goku state. `execution.ts` selects the implementation consistently for capabilities, baseline/candidates and explanations; old initial-check requests remain unchanged. The event engine uses the existing Ability/Effect/Condition vocabulary, explicit branch-local history and objective gates. Real UI Goku/Gohan mechanics inspection stays inside the same kit-first workspace and does not confer a potential/equipment mapping. See [contracts, mechanics, supported contexts and remaining evidence](CHARACTER_MECHANICS.md).

@@ -375,7 +375,7 @@ test('unsaved navigation can be canceled and a copied catalog state is detached'
     .click();
   // Saving a user copy never adds to the bundled historical/reference catalog.
   await expect(page.locator('.catalog-result-count')).toHaveText(
-    'Showing 50 of 794 matching card forms · 1,109 matching states',
+    'Showing 50 of 795 matching card forms · 1,110 matching states',
   );
 });
 
