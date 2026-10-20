@@ -30,7 +30,7 @@ export function recommendationGates(
   const resolved = resolveProgression(entry, progressions);
   if (!resolved.ok) return [{ code: 'mapping', message: resolved.reason }];
   const gates: RecommendationGate[] = [
-    ...objectiveGates(entry, request.objective),
+    ...objectiveGates(entry, request.objective, request),
   ];
   if (
     scope === 'full-potential' &&

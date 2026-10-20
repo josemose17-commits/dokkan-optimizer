@@ -5,7 +5,7 @@ import type { Metric, ProbabilityStep } from './domain';
 export function formatMetric(metric: Metric): string {
   return metric.value === null
     ? 'Unavailable'
-    : metric.unit === 'probability'
+    : metric.unit === 'probability' || metric.unit === 'ratio'
       ? `${(metric.value * 100).toFixed(1)}%`
       : metric.value.toLocaleString('en-US');
 }
@@ -17,7 +17,7 @@ export function formatDelta(value: number | null, baseline: Metric): string {
   // Relative change is undefined against a zero baseline; say so explicitly.
   const relative = (digits: number) =>
     `${sign}${Math.abs((value / baseline.value!) * 100).toFixed(digits)}%`;
-  if (baseline.unit === 'probability')
+  if (baseline.unit === 'probability' || baseline.unit === 'ratio')
     return `${sign}${Math.abs(value * 100).toFixed(1)} pp (${
       baseline.value === 0 ? 'rel. n/a: 0% baseline' : `${relative(1)} rel.`
     })`;

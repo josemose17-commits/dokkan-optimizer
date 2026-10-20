@@ -1,5 +1,64 @@
 /* Dokkan Potential Optimizer: one workspace (inputs left, result right) on
    wide screens and a single top-to-bottom flow on phones. */
+.po-sequence-trace {
+  min-width: 0;
+  margin: 16px 0;
+}
+.po-mechanics {
+  margin: 18px 0;
+}
+.po-mechanics > summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.po-mechanics[open] > summary {
+  margin-bottom: 16px;
+}
+.po-mechanics > .po-field,
+.po-mechanics > .po-check {
+  margin: 12px 0;
+}
+.po-mechanic-gates {
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.po-mechanic-gates > li {
+  margin: 8px 0;
+}
+.po-mechanic-answer {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid #4c776b;
+  border-radius: 8px;
+}
+.po-sequence-trace .po-field {
+  margin: 12px 0;
+}
+.po-sequence-scroll {
+  overflow: auto;
+  max-height: 440px;
+  border: 1px solid #34445a;
+  border-radius: 8px;
+}
+.po-sequence-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.po-sequence-scroll th,
+.po-sequence-scroll td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px;
+  border-bottom: 1px solid #34445a;
+  min-width: 82px;
+}
+.po-sequence-scroll th {
+  position: sticky;
+  top: 0;
+  background: #172439;
+}
 .po-page {
   max-width: 1240px;
   margin: 0 auto;

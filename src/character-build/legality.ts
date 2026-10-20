@@ -10,6 +10,9 @@ import {
   type Restriction,
   type Slot,
 } from './domain';
+import { evaluatorFor, objectivesFor } from './execution';
+import { scenarioErrors, sequenceModelErrors } from './mechanics/support';
+import { allEffects } from './mechanics/domain';
 import { CUSTOM_PROFILE_ID, ROUTES, customPotentialErrors } from './allocation';
 
 const integer = (n: number) => Number.isSafeInteger(n) && n >= 0;
@@ -169,6 +172,44 @@ export function entryErrors(entry: EvaluatorEntry): string[] {
   )
     errors.push(`Evaluator ${entry.id} declares no valid contexts.`);
   errors.push(...(entry.evaluator.entryErrors?.(entry) ?? []));
+  if (entry.sequence) {
+    const { model: events, scenarios, evaluator, objectives } = entry.sequence;
+    if (evaluator.version !== String(events.schemaVersion))
+      errors.push('The event context must pin its evaluator schema/version.');
+    if (
+      events.stateId !== entry.stateId ||
+      events.cardId !== entry.catalogCardId ||
+      events.dataRevision !== model.revision
+    )
+      errors.push('Event model must bind the exact card/state/data revision.');
+    if (
+      !scenarios.length ||
+      new Set(scenarios.map((s) => s.id)).size !== scenarios.length ||
+      !objectives.length ||
+      new Set(objectives).size !== objectives.length ||
+      !objectives.every(
+        (m) => AVAILABLE_METRICS.includes(m) && evaluator.objectiveModels[m],
+      )
+    )
+      errors.push('Event scenarios/objectives are missing or ambiguous.');
+    if (
+      allEffects(events).some(
+        (effect) =>
+          effect.source.status !== 'source-documented' ||
+          !events.evidence.some((e) => e.reference === effect.source.reference),
+      )
+    )
+      errors.push(
+        'Registered event effects require field-level dated source references.',
+      );
+    errors.push(...sequenceModelErrors(events));
+    for (const scenario of scenarios) {
+      errors.push(...scenarioErrors(scenario));
+      if (scenario.initial.state !== entry.stateId)
+        errors.push('Event scenario names another state.');
+    }
+    errors.push(...(evaluator.entryErrors?.(entry) ?? []));
+  }
   return errors;
 }
 
@@ -204,7 +245,7 @@ export function requestErrors(
   if (request.customPotential) {
     // User-entered totals replace the documented profile; board requirements
     // are not checked, so the evaluator must accept such input explicitly.
-    if (!entry.evaluator.customPotential)
+    if (!evaluatorFor(entry, request)?.customPotential)
       errors.push('This evaluator cannot use your own potential values.');
     if (request.progression.profileId !== CUSTOM_PROFILE_ID)
       errors.push('Your own potential values need the custom progression.');
@@ -273,7 +314,23 @@ export function requestErrors(
   }
   const context = request.context;
   const definition = entry.contexts.find((c) => c.id === context.id);
-  if (
+  if (context.id === 'event-sequence-v1') {
+    if (
+      !sameSet(Object.keys(context), [
+        'id',
+        'modelRevision',
+        'scenarioId',
+        'evasionAllowed',
+      ]) ||
+      !entry.sequence ||
+      context.modelRevision !== entry.sequence.model.revision ||
+      !entry.sequence.scenarios.some((s) => s.id === context.scenarioId) ||
+      typeof context.evasionAllowed !== 'boolean'
+    )
+      errors.push(
+        'Unsupported event context: exact model revision and reviewed scenario are required.',
+      );
+  } else if (
     !sameSet(Object.keys(context), [
       'id',
       'battleTurn',
@@ -282,6 +339,7 @@ export function requestErrors(
       'externalEffects',
       'evasionAllowed',
     ]) ||
+    context.id !== 'initial-check-v1' ||
     !definition ||
     context.battleTurn !== 1 ||
     context.appearance !== 1 ||
@@ -300,12 +358,14 @@ export function requestErrors(
     errors.push('Unknown equipment mode.');
   // Only objectives this entry offers; a metric unsupported here is never
   // ranked even if another evaluator supports it.
-  if (!entry.objectives.includes(request.objective))
+  if (!objectivesFor(entry, request).includes(request.objective))
     errors.push('Unsupported objective.');
   if (
     !request.frontierMetrics.length ||
     new Set(request.frontierMetrics).size !== request.frontierMetrics.length ||
-    !request.frontierMetrics.every((m) => entry.objectives.includes(m))
+    !request.frontierMetrics.every((m) =>
+      objectivesFor(entry, request).includes(m),
+    )
   )
     errors.push('Select distinct supported frontier metrics.');
   if (

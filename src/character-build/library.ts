@@ -131,14 +131,16 @@ export function parseBuildRequest(v: unknown): BuildRequest | null {
     !object(c.equips) ||
     !exactKeys(c.equips, ['bronze', 'silver', 'gold']) ||
     !object(x) ||
-    !exactKeys(x, [
-      'id',
-      'battleTurn',
-      'appearance',
-      'initialAttack',
-      'externalEffects',
-      'evasionAllowed',
-    ]) ||
+    !(x.id === 'event-sequence-v1'
+      ? exactKeys(x, ['id', 'modelRevision', 'scenarioId', 'evasionAllowed'])
+      : exactKeys(x, [
+          'id',
+          'battleTurn',
+          'appearance',
+          'initialAttack',
+          'externalEffects',
+          'evasionAllowed',
+        ])) ||
     !text(v.cardStateId) ||
     !int(v.level) ||
     !int(v.superAttackLevel) ||
@@ -159,10 +161,12 @@ export function parseBuildRequest(v: unknown): BuildRequest | null {
     !slot(equips.silver) ||
     !slot(equips.gold) ||
     !text(x.id) ||
-    !int(x.battleTurn) ||
-    !int(x.appearance) ||
-    !text(x.initialAttack) ||
-    !text(x.externalEffects) ||
+    !(x.id === 'event-sequence-v1'
+      ? text(x.modelRevision) && text(x.scenarioId)
+      : int(x.battleTurn) &&
+        int(x.appearance) &&
+        text(x.initialAttack) &&
+        text(x.externalEffects)) ||
     typeof x.evasionAllowed !== 'boolean'
   )
     return null;
@@ -187,14 +191,22 @@ export function parseBuildRequest(v: unknown): BuildRequest | null {
     } as BuildRequest['current'],
     inventory,
     mode: v.mode,
-    context: {
-      id: x.id,
-      battleTurn: x.battleTurn,
-      appearance: x.appearance,
-      initialAttack: x.initialAttack,
-      externalEffects: x.externalEffects,
-      evasionAllowed: x.evasionAllowed,
-    } as BuildRequest['context'],
+    context:
+      x.id === 'event-sequence-v1'
+        ? {
+            id: x.id,
+            modelRevision: x.modelRevision,
+            scenarioId: x.scenarioId,
+            evasionAllowed: x.evasionAllowed,
+          }
+        : ({
+            id: x.id,
+            battleTurn: x.battleTurn,
+            appearance: x.appearance,
+            initialAttack: x.initialAttack,
+            externalEffects: x.externalEffects,
+            evasionAllowed: x.evasionAllowed,
+          } as BuildRequest['context']),
     objective: v.objective,
     frontierMetrics: [...v.frontierMetrics],
     maxCandidates: v.maxCandidates,
@@ -260,6 +272,15 @@ export function buildStatus(
     return {
       kind: 'stale',
       reason: `Saved for evaluator ${build.evaluatorVersion}; this state now uses ${entry.id}. Retained but not loadable; results could differ.`,
+    };
+  if (
+    build.request.context.id === 'event-sequence-v1' &&
+    build.request.context.modelRevision !== entry.sequence?.model.revision
+  )
+    return {
+      kind: 'stale',
+      reason:
+        'The saved event-model revision is no longer available. The original settings are retained; no newer model is substituted.',
     };
   const errors = requestErrors(build.request, entry);
   return errors.length

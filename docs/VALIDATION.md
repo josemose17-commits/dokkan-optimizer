@@ -1,5 +1,28 @@
 # Validation
 
+## Character event mechanics — 2026-10-20
+
+Branch: `feature/character-build-mechanics`; base `b9f4fd34725d6b27ce718d6dfeb4f7bf1484ecea`. Work modifies the actual application; no separate HTML prototype or replacement project is included. Node **24.19.0**, the lockfile and `/dokkan-optimizer/` base are preserved.
+
+Final commands actually executed:
+
+| Command                               | Result                                                                                                             |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `npm test`                            | **466/466 passed**, 18 test files                                                                                  |
+| `npm run typecheck`                   | Passed                                                                                                             |
+| `npm run build`                       | Passed; existing large-bundle warning remains non-fatal                                                            |
+| `npm run test:e2e -- --reporter=json` | **94/94 passed**, desktop and mobile, 0 skipped/flaky/unexpected; tested production assets at `/dokkan-optimizer/` |
+| `npm run format:check`                | Passed                                                                                                             |
+| `git diff --cached --check`           | Passed                                                                                                             |
+
+The first `npm run test:e2e` attempt built successfully but could not launch because Chromium was absent. The standard `npx playwright install chromium` completed. The next browser run identified ambiguous new selectors and missing explicit table-header scopes; those were corrected. The focused new flows passed **12/12**, followed by the final full **94/94** run above. No browser failure is being counted as a pass.
+
+Independent new arithmetic/integration coverage includes native and dependent attacks, once-per-turn attempts, critical/evasion overlap, guarantees, all-type properties without a damage multiplier, 12/18-Ki and initial/additional timing, completed counters, permanent/temporary raises, grouping/caps, turn/appearance expiration, lethal branches, updated HP conditions, probability normalization, execution budgets, transitive/cyclic dependencies, exact-state/revision binding, scenario-fingerprint exclusions, joint test-only node/equipment enumeration, inventory and slot restrictions, baseline/ties, enumeration/dominance cancellation, unknown tradeoff metrics as null, selected-alternative trace accuracy, and old/new save compatibility.
+
+Actual browser coverage includes model/context selection, count results, event tables, later appearances, returning to v1, named event saves, preservation of old working storage, bounded real native previews, Gohan gates, invalidation of an in-flight result, all retained catalog/maintenance/storage flows and mobile horizontal-fit checks. Browser fixtures fail on uncaught errors, failed requests and requests outside the local Pages prefix.
+
+No complete real allocation template, new attainable-allocation winner, verified damage/survival objective, provider integration or independent game confirmation is claimed. Historical source projection and license/pins are preserved; only one individually reviewed exact-state identity is added. See [mechanics contracts and coverage](CHARACTER_MECHANICS.md), [evidence](character-build/EVIDENCE.md) and [access notes](character-build/DATA_ACCESS.md). No merge or deployment was performed.
+
 ## Historical UR/LR catalog — 2026-10-19
 
 Base: main `a2bdd314abdd45d37eb66f297aa420ce2c79212c` (user-merged PR #13). Feature: `codex/ur-lr-catalog`. This is a working factual catalog import, not new allocation/evaluation support.

@@ -1,3 +1,9 @@
+import type {
+  Scenario,
+  SequenceModel,
+  SequenceResult,
+} from './mechanics/domain';
+import { SEQUENCE_METRICS } from './mechanics/domain';
 export const SLOTS = ['bronze', 'silver', 'gold'] as const;
 export type Slot = (typeof SLOTS)[number];
 export const SKILLS = ['additional', 'critical', 'evasion'] as const;
@@ -131,7 +137,7 @@ export interface Build {
   equips: Record<Slot, string | null>;
 }
 
-export interface Context {
+export interface InitialCheckContext {
   id: 'initial-check-v1';
   battleTurn: 1;
   appearance: 1;
@@ -139,14 +145,27 @@ export interface Context {
   externalEffects: 'none';
   evasionAllowed: boolean;
 }
+// Optional new context, with an exact model revision and a bounded reviewed
+// scenario. Old initial-check saves retain their original exact shape.
+export interface SequenceContext {
+  id: 'event-sequence-v1';
+  modelRevision: string;
+  scenarioId: string;
+  evasionAllowed: boolean;
+}
+export type Context = InitialCheckContext | SequenceContext;
 
-export const AVAILABLE_METRICS = [
+export const INITIAL_METRICS = [
   'attack',
   'defense',
   'hp',
   'additionalSuper',
   'critical',
   'evasion',
+] as const;
+export const AVAILABLE_METRICS = [
+  ...INITIAL_METRICS,
+  ...SEQUENCE_METRICS,
 ] as const;
 export type AvailableMetric = (typeof AVAILABLE_METRICS)[number];
 export type MetricKey =
@@ -167,6 +186,13 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
   evasion: 'Evasion chance',
   damage: 'Damage',
   battleDefense: 'Battle DEF',
+  expectedAttacks: 'Expected attacks in sequence',
+  expectedSupers: 'Expected Supers in sequence',
+  criticalAttacks: 'Expected critical attacks',
+  evadedAttacks: 'Expected evaded attacks',
+  effectiveAttacks: 'Attacks with all-type effectiveness',
+  attackRaise: 'Modelled ATK raise',
+  defenseRaise: 'Modelled DEF raise',
 };
 // Every currently offered objective is better when higher. Ranking and
 // dominance read this map instead of assuming a direction.
@@ -181,10 +207,17 @@ export const METRIC_DIRECTION: Record<MetricKey, Direction> = {
   evasion: 'higher',
   damage: 'higher',
   battleDefense: 'higher',
+  expectedAttacks: 'higher',
+  expectedSupers: 'higher',
+  criticalAttacks: 'higher',
+  evadedAttacks: 'higher',
+  effectiveAttacks: 'higher',
+  attackRaise: 'higher',
+  defenseRaise: 'higher',
 };
 export interface Metric {
   value: number | null;
-  unit: 'stat' | 'probability' | 'damage';
+  unit: 'stat' | 'probability' | 'damage' | 'count' | 'ratio';
   evidenceIds: string[];
   reason: string;
 }
@@ -237,6 +270,13 @@ export interface CalculationTrace {
   stats: Contribution<Partial<Stats>>[];
   skills: Contribution<Partial<Skills>>[];
   probabilities: ProbabilityStep[];
+  sequence?: {
+    modelId: string;
+    modelRevision: string;
+    scenario: string;
+    assumptions: string[];
+    result: SequenceResult;
+  };
 }
 
 export interface Evaluation {
@@ -298,7 +338,7 @@ export interface ContextDefinition {
 // unresolved. Unavailable objectives are not offered at all.
 export type ModelStatus = 'supported' | 'experimental';
 export interface ObjectiveModel {
-  group: 'card-stats' | 'skill-chances';
+  group: 'card-stats' | 'skill-chances' | 'event-sequence';
   status: ModelStatus;
   // One short sentence: what the objective measures.
   summary: string;
@@ -350,11 +390,21 @@ export interface EvaluatorEntry {
   // Working-settings key; the original Goku entry keeps its v1 key.
   storageKey: string;
   defaults(): BuildRequest;
+  // Separately versioned opt-in implementation. It never replaces the v1
+  // default, revises an old save, or admits an unattested potential board.
+  sequence?: {
+    model: SequenceModel;
+    scenarios: Scenario[];
+    objectives: AvailableMetric[];
+    evaluator: EvaluatorImplementation;
+    recommendationSupport: NonNullable<EvaluatorEntry['recommendationSupport']>;
+  };
   recommendationSupport?: Partial<
     Record<
       AvailableMetric,
       {
-        scope: 'card-stat-only' | 'initial-check-model';
+        scope:
+          'card-stat-only' | 'initial-check-model' | 'event-sequence-model';
         evidenceIds: string[];
         blockers: string[];
         excludes: string[];

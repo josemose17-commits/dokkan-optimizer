@@ -36,6 +36,8 @@ export interface ReviewedKit {
   // Each effect must retain its own source, including unresolved wording.
   notes: string[];
   buildGaps: string[];
+  context?: SnapshotContext;
+  contextDescription?: string;
 }
 export type KitEffect = Effect & {
   abilityId: string;

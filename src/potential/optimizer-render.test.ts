@@ -42,6 +42,7 @@ function goals(entry: EvaluatorEntry, objectiveChosen = false) {
       onChange: noop,
       onObjective: noop,
       onBudget: noop,
+      onContext: noop,
     }),
   );
 }

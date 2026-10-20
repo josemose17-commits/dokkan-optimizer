@@ -54,3 +54,7 @@ These are reviewed policy examples, not independent confirmations or hand-worked
 `kit.ts` binds reviewed kits to exact catalog states. `assignment.ts` reasons about slot and rotation separately; `policy.ts` generates effect-linked advice and conflicts. These pure modules reuse maintenance conditions and do not import UI, data files, storage or network. `gohan-kit.ts` contains the factual interpretation and policy admission; `CharacterAnalysis` displays the returned reasons, not a separately authored winner.
 
 Required for numerical continuation: complete attainable set and prerequisites bound to one named progression, compatible equipment records, and objective-specific check/event rules. The graph remains a feature gate; missing node facts do not erase confirmed card identity or prevent qualitative advice. Broader catalog acquisition remains an unrelated approved-export dependency.
+
+## Event-mechanics continuation, 2026-10-20
+
+The formerly paper-only UI Goku example now has a separate exact-state production record, selected structured effects and bounded native-only previews. Its reviewed policy says an active native evasion guarantee cannot be improved by more Evasion; it does not prescribe the remaining allocation. Its custom entry context is distinct from Gohan’s second-appearance buildup context. The original test-only subset remains a policy regression case. The Gohan policy is unchanged and is still qualitative. See [actual executable event contexts and gates](CHARACTER_MECHANICS.md).
