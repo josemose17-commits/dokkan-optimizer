@@ -518,36 +518,49 @@ export function requiredEffects(
       ['additional-attack', 'additional-super'].includes(e.family),
     ))
       ids.add(effect.id);
-  // Incoming outcomes can terminate a branch or activate event-dependent
-  // effects. Evasion and revival cannot disappear merely because their direct
-  // coverage list names another objective.
+  // Zero-damage hits still change hit/evade counters and can activate effects.
+  // Until counter dependencies are inferred, include native evasion for every
+  // incoming sequence. Explicit scenario exclusions remain authoritative.
+  const hasIncoming = scenario.actions.some((a) => a.kind === 'incoming');
   const incomingChangesBranch = scenario.actions.some(
     (a) => a.kind === 'incoming' && a.damageOnHit !== 0,
   );
+  if (hasIncoming || metrics.includes('evadedAttacks'))
+    for (const effect of effects.filter((e) => e.family === 'evasion')) {
+      const coverage = model.coverage.find((c) => c.effectId === effect.id);
+      if (!coverage || !excludedFor(coverage, scenario)) ids.add(effect.id);
+    }
   if (incomingChangesBranch)
-    for (const effect of effects.filter((e) =>
-      ['evasion', 'revival'].includes(e.family),
-    )) {
+    for (const effect of effects.filter((e) => e.family === 'revival')) {
       const coverage = model.coverage.find((c) => c.effectId === effect.id);
       if (!coverage || !excludedFor(coverage, scenario)) ids.add(effect.id);
     }
   if (metrics.includes('criticalAttacks'))
     for (const effect of effects.filter((e) => e.family === 'critical'))
       ids.add(effect.id);
-  if (metrics.includes('evadedAttacks'))
-    for (const effect of effects.filter((e) => e.family === 'evasion')) {
-      const coverage = model.coverage.find((c) => c.effectId === effect.id);
-      if (!coverage || !excludedFor(coverage, scenario)) ids.add(effect.id);
-    }
   let changed = true;
   while (changed) {
     changed = false;
-    for (const effect of effects.filter((e) => ids.has(e.id)))
+    for (const effect of effects.filter((e) => ids.has(e.id))) {
       for (const dependency of effect.dependencies)
         if (!dependency.startsWith('event:') && !ids.has(dependency)) {
           ids.add(dependency);
           changed = true;
         }
+      // Event dependencies also have providers. A count objective depending
+      // on a critical must not run with native critical effects omitted.
+      if (effect.dependencies.includes('event:critical'))
+        for (const provider of effects.filter((e) => e.family === 'critical')) {
+          const coverage = model.coverage.find((c) => c.effectId === provider.id);
+          if (
+            (!coverage || !excludedFor(coverage, scenario)) &&
+            !ids.has(provider.id)
+          ) {
+            ids.add(provider.id);
+            changed = true;
+          }
+        }
+    }
   }
   return ids;
 }
@@ -623,13 +636,11 @@ export function sequenceObjectiveGates(
       'A critical-dependent effect needs the unresolved critical overlap convention.',
     );
   if (
-    scenario.actions.some(
-      (a) => a.kind === 'incoming' && a.damageOnHit !== 0,
-    ) &&
+    scenario.actions.some((a) => a.kind === 'incoming' && a.evadable) &&
     rules.evasion === 'unknown'
   )
     gates.push(
-      'A potentially lethal incoming outcome depends on unresolved evasion overlap.',
+      'Incoming hit/evade events depend on unresolved evasion overlap, even when supplied damage is zero.',
     );
   return [...new Set(gates)];
 }
