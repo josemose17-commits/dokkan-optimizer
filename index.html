@@ -55,7 +55,7 @@ button.small{padding:4px 10px;font-size:13px;margin:0}
 .warn ul{margin:0;padding-left:18px}
 .out{font-size:14px;margin:10px 0 0}
 .scroll{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums;min-width:900px}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums;min-width:940px}
 th,td{text-align:right;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{font-weight:600;color:var(--muted);white-space:nowrap}
 th:nth-child(-n+5),td:nth-child(-n+5){text-align:left}
@@ -72,13 +72,13 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 <body>
 <main>
 <h1>Dokkan build finder</h1>
-<p class="sub">Describe the character, its forms and the orbs you can use. The tool tries every orb combination in the three slots and every way to place your Hidden Potential levels, then ranks the builds by expected damage per turn plus the team HP that Evasion and Type DEF save.</p>
+<p class="sub">Describe the character, its forms and the orbs you can use. The tool tries every orb combination in the three slots and every way to place your Hidden Potential levels. It ranks builds by how much they widen the team’s margin in a fight: more damage ends it sooner, and dodges, Type DEF and healing make the team’s HP last longer.</p>
 
 <div class="warn" id="legacy" hidden>
   <p style="margin:0 0 6px">Inputs from the previous version of this tool were found in this browser. That version assumed every two-skill orb gives +5 to each skill and that bronze orbs carry skills. Real orbs are closer to: bronze = stats only (up to ATK +800), one-skill orbs up to 7, two-skill silver orbs 4 + 4.</p>
   <button type="button" id="legNew">Load them, update orbs to the new defaults</button>
   <button type="button" id="legOld" class="ghost">Load them with their old orb numbers</button>
-  <button type="button" id="legNo" class="ghost">Start fresh</button>
+  <button type="button" id="legNo" class="ghost">Don’t import them</button>
   <p class="hint">Your old data stays in the browser either way. Nothing is deleted.</p>
 </div>
 
@@ -103,9 +103,9 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 <label class="chk"><input type="checkbox" data-k="q.kisphere"> Scales per Ki Sphere, or changes Ki Spheres</label>
 <label class="chk"><input type="checkbox" data-k="q.startpos"> Has effects that depend on its slot at the start of the turn</label>
 <label class="chk"><input type="checkbox" data-k="q.hitdep"> Counters, or gains something when it receives an attack</label>
-<label class="chk"><input type="checkbox" data-k="q.heal"> Healing from Ki Spheres matters for it</label>
+<label class="chk"><input type="checkbox" data-k="q.dodgedep"> Gains something when it evades</label>
 </fieldset>
-<button id="apply" type="button">Suggest slot and priorities</button>
+<button id="apply" type="button">Suggest slot and damage share</button>
 <p class="out" id="slotOut"></p>
 </div>
 
@@ -117,8 +117,12 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 <label class="row t">Uncertain interaction (blank if none)<input data-k="unsure" type="text" maxlength="300"></label>
 <label class="row t">Rarity<select data-k="rarity"><option value="LR">LR (Ki up to 24, 18 Ki Super)</option><option value="UR">UR (Ki up to 12)</option></select></label>
 <label class="row t">Intended slot<select data-k="slot"><option value="">Flexible</option><option value="1">Slot 1</option><option value="2">Slot 2</option><option value="3">Slot 3</option><option value="23">Slot 2 or 3</option></select></label>
-<label class="chk"><input type="checkbox" data-k="typeOn"> I’ll mostly use it against a Type it beats</label>
-<p class="hint">AGL beats STR, STR beats PHY, PHY beats INT, INT beats TEQ, TEQ beats AGL.</p>
+<label class="row t">Type matchup it will mostly face<select data-k="match">
+<option value="n1">Neutral, same class</option>
+<option value="n2">Neutral, Super vs Extreme</option>
+<option value="b1">A Type it beats, same class</option>
+<option value="b2">A Type it beats, Super vs Extreme</option></select></label>
+<p class="hint">AGL beats STR, STR beats PHY, PHY beats INT, INT beats TEQ, TEQ beats AGL. Same class means Super vs Super or Extreme vs Extreme. Its normal hits deal 1×, 1.15×, 1.25× or 1.5× in that order. Against a Type it beats it also takes about half damage.</p>
 <label class="row">Card ATK, with board stat nodes<input data-k="cardAtk" type="number" min="1" max="200000" step="100"></label>
 <p class="hint">Only used to size flat ATK on orbs: +800 on a 20,000 ATK card is +4%.</p>
 <label class="row">Enemy DEF, as % of its Super’s normal hit<input data-k="enemyDef" type="number" min="0" max="95" step="1"></label>
@@ -134,12 +138,20 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 
 <div class="card">
 <h2>4. Getting hit</h2>
-<label class="row">Attacks it receives per turn<input data-k="hits" type="number" min="0" max="20" step="0.1" id="hitsIn"></label>
+<label class="row">Enemy attacks per turn on the whole team<input data-k="hitsTotal" type="number" min="0" max="30" step="1"></label>
+<label class="row">Attacks it receives per turn<input data-k="hits" type="number" min="0" max="30" step="0.1" id="hitsIn"></label>
 <p class="hint" id="hitsHint"></p>
-<label class="row t">How hard does it get hit?<select data-k="hitSize"><option value="auto">Guess from its damage reduction and guard</option><option value="light">Barely (about 5% of team HP per hit)</option><option value="medium">Moderately (about 12%)</option><option value="heavy">Heavily (about 25%)</option><option value="huge">Very heavily (about 40%)</option></select></label>
+<label class="row t">Its hits, compared with a teammate’s<select data-k="hitSize">
+<option value="auto">Guess from its matchup, damage reduction and guard</option>
+<option value="0.25">Much smaller (a quarter)</option>
+<option value="0.5">Smaller (half)</option>
+<option value="1">About the same</option>
+<option value="1.5">Bigger (1.5×)</option>
+<option value="2">Much bigger (2×)</option></select></label>
 <label class="row">Damage reduction (%)<input data-k="dr" type="number" min="0" max="100" step="1" class="autoOnly"></label>
 <label class="chk"><input type="checkbox" data-k="guard" class="autoOnly"> Guards all attacks</label>
-<p class="hint">The team shares one HP bar, so a dodge saves the most on units that take big hits. Evasion and Type DEF are valued by the team HP they save in this slot.</p>
+<p class="hint" id="shareHint"></p>
+<p class="hint">The team shares one HP bar, so a dodge saves the most on a unit that takes many big hits. The teammate it’s compared with has no damage reduction or guard and a neutral matchup. Count the enemy’s attack icons to fill in the numbers.</p>
 </div>
 
 <div class="card">
@@ -154,7 +166,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 
 <fieldset><legend>Orb slots</legend>
 <div id="orbRows"></div>
-<p class="hint">Bronze needs UR, silver needs Super Attack level 10, gold needs two Hidden Potential routes. On Dokkaninfo’s lists bronze orbs are stats only, one-skill orbs go up to 7 and two-skill silver orbs are 4 + 4.</p>
+<p class="hint">Bronze needs UR, silver needs Super Attack level 10, gold needs two Hidden Potential routes. On Dokkaninfo’s lists bronze orbs are stats only, one-skill orbs go up to 7 and two-skill silver orbs are 4 + 4. Some bronze and silver orbs only fit one Type, so list exact orbs if that matters.</p>
 </fieldset>
 <label class="row t">Exact orbs you own, one per line (optional; replaces the slot levels above)<textarea data-k="inv" rows="4" maxlength="4000" placeholder="bronze atk 800&#10;silver crit 7&#10;gold crit+additional 4 atk 900"></textarea></label>
 <p class="hint">ATK on listed orbs always counts.</p>
@@ -162,37 +174,42 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 </div>
 
 <div class="card">
-<h2>6. Priorities</h2>
-<label class="row">1% of team HP saved per turn is worth this much % damage<input data-k="survW" type="number" min="0" max="50" step="0.5"></label>
-<label class="row">Recovery Boost: score for 15 levels<input data-k="recW" type="number" min="0" max="100" step="1"></label>
-<p class="hint">Damage is scored as % more damage per turn. The first box sets how Evasion and Type DEF trade against it. Recovery’s per-level value isn’t verified, so you set it.</p>
+<h2>6. Its part in the team</h2>
+<label class="row">Its share of the team’s damage on its turns (%)<input data-k="dmgShare" type="number" min="0" max="100" step="1"></label>
+<p class="hint">About 33% if the three units on the field hit equally hard. A main damage dealer might be 45–60%, a support 10–20%.</p>
+<label class="row">At 15 levels, Recovery Boost makes up this % of the team’s HP loss per turn<input data-k="recOff" type="number" min="0" max="100" step="1"></label>
+<p class="hint">Recovery Boost heals more when it picks up Ki Spheres of its own Type. Its per-level amount isn’t verified, so estimate it; it’s scaled in proportion to its level (30 levels count double). Leave 0 to ignore Recovery.</p>
 </div>
 
 <details class="card">
 <summary>Game values used</summary>
-<p class="hint">Checked against datamined values: Additional +2% per level (a separate check per eligible attack, 50% chance it is a Super), Crit +2%, Evasion +1%, Super Attack Boost +0.05 and Type ATK +0.05 per level. Crit = (1.5 + Type ATK) × 1.25 against a Type it beats, otherwise 1.875.</p>
-<p class="hint">Not checked (from the Fandom wiki). Change them if you find better values:</p>
-<label class="row">Type DEF per level<input data-k="typeDefLv" type="number" min="0" max="0.1" step="0.001"></label>
-<label class="row">Damage taken from a Type it beats<input data-k="incoming" type="number" min="0" max="2" step="0.01"></label>
+<ul class="note">
+<li>Per level: Additional +2% (a separate check per eligible attack; half of them are Supers), Crit +2%, Evasion +1%, Super Attack Boost +0.05, Type ATK +0.05, Type DEF −0.01 (gamerch, DokkanStats).</li>
+<li>Normal hits: neutral 1×, neutral Super vs Extreme 1.15×, a Type it beats 1.25× (same class) or 1.5× (Super vs Extreme), plus Type ATK (kamigame).</li>
+<li>Crits ignore enemy DEF and hit as super effective: 1.5 × 1.25 = 1.875, or (1.5 + Type ATK) × 1.25 against a Type it beats.</li>
+<li>Damage taken from a Type it beats: type multiplier 0.9 (same class) or 1.0 (Super vs Extreme), minus Type DEF, then halved by the natural guard. Guarding gives the same treatment without Type DEF. Neutral Super vs Extreme: 1.15× (DokkanStats, kamigame).</li>
+<li>Not verified: the 15-level cap per skill and which skill the star node gives each Type, so you set both.</li>
+</ul>
 </details>
 </section>
 
-<section aria-live="polite" aria-label="Results">
+<section aria-label="Results">
 <div class="card">
 <h2>Best build <span class="hint" id="status" role="status"></span></h2>
 <div class="warn" id="warn" hidden></div>
 <div class="best" id="best"></div>
 <div class="kpi" id="kpi"></div>
-<p class="out" id="bestOrbs"></p>
+<p class="out" id="bestOrbs" aria-live="polite"></p>
 </div>
 <div class="card">
 <h2>Top builds</h2>
 <div class="scroll"><table id="tbl"></table></div>
 <ul class="note">
-<li>Damage is expected damage per turn compared with no Hidden Potential skills and no orbs, averaged over forms by their share of turns.</li>
+<li>Score: a fight is treated as a race between the team’s damage and its HP. Team margin = (1 + damage share × damage gain) ÷ (1 − cut in team HP loss) − 1. So 1% more team damage is worth the same as 1% less team HP lost per turn.</li>
+<li>Damage is expected damage per turn compared with no Hidden Potential skills and no orbs, averaged over forms by their share of turns. Team HP loss counts the hits this unit takes against everything the team takes.</li>
 <li>Main Super: card Ki multiplier at the Ki you set, blended between the 12 Ki and 24 Ki multipliers, with the 18 Ki Super from 18 Ki. Extra Supers from the kit and Hidden Potential additionals use the 12 Ki Super and the 12 Ki multiplier, as on DokkanStats. Super Attack Boost and stacked ATK add to the Super multiplier.</li>
-<li>Counters and on-hit stacks: a dodged hit avoids its damage but loses that hit’s value, set per form.</li>
-<li>Not modelled: HP, ATK and DEF stat nodes beyond the card ATK you enter, which exact skills each board route offers, leader skills, links (only the slot advice uses them), Super vs Extreme bonus, ATK that keeps stacking within the turn, healing amounts.</li>
+<li>Counters, on-hit stacks and on-evade gains are set per form as a share of its own attacks’ damage, so they grow with its damage. A dodge avoids the hit’s damage and swaps what a received hit is worth for what a dodge is worth.</li>
+<li>Not modelled: HP, ATK and DEF stat nodes beyond the card ATK you enter, which exact skills each board route offers, leader skills, links (only the slot advice uses them), ATK that keeps stacking within the turn, enemy DEF on incoming hits.</li>
 </ul>
 </div>
 <div class="card">
@@ -212,23 +229,28 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 // Pure calculation code: no DOM access, so tests can load it on its own.
 const SK=["Additional","Crit","Evasion","SA Boost","Recovery","Type ATK","Type DEF"];
 const TIERS=["Bronze","Silver","Gold"];
-const GAME={add:.02,crit:.02,eva:.01,sa:.05,typeAtk:.05,typeAdv:1.5,critX:1.25,addSuper:.5};
-const SLOT_HITS={"1":2,"2":1.5,"3":1.5,"23":1.5,"":5/3};
-const HIT_SIZE={light:5,medium:12,heavy:25,huge:40};
+// Per-level values and multipliers; sources are listed in the README.
+const GAME={add:.02,crit:.02,eva:.01,sa:.05,typeAtk:.05,typeDef:.01,critX:1.25,effective:1.5,guard:.5,addSuper:.5};
+// n = neutral, b = a Type it beats; cross = Super vs Extreme.
+const MATCH={n1:{beats:false,cross:false},n2:{beats:false,cross:true},b1:{beats:true,cross:false},b2:{beats:true,cross:true}};
+// Rough share of the enemy's attacks each slot receives.
+const SLOT_SHARE={"1":.4,"2":.3,"3":.3,"23":.3,"":1/3};
+const HIT_REL={"0.25":.25,"0.5":.5,"1":1,"1.5":1.5,"2":2};
 const MAX_FORMS=4;
 
 function num(x,d,lo,hi){const v=typeof x==="number"?x:parseFloat(x);return Number.isFinite(v)?Math.min(hi,Math.max(lo,v)):d}
-function defForm(name){return{name,share:100,ki:24,k12:1.5,k24:2,sa12:4.25,sa18:5.4,stack:0,xs:1,xn:0,dist:"",nc:0,ncUp:100,nd:0,hitVal:0}}
+const blank=x=>x===""||x===null||x===undefined;
+function defForm(name){return{name,share:100,ki:24,k12:1.5,k24:2,sa12:4.25,sa18:5.4,stack:0,xs:1,xn:0,dist:"",nc:0,ncUp:100,nd:0,hitVal:0,dodgeVal:0}}
 function defaults(){return{
-  v:1,name:"",role:"",req:"",unsure:"",
-  rarity:"LR",slot:"",typeOn:false,cardAtk:20000,enemyDef:0,
+  v:2,name:"",role:"",req:"",unsure:"",
+  rarity:"LR",slot:"",match:"n1",cardAtk:20000,enemyDef:0,
   forms:[defForm("Base form")],
-  hits:"",hitSize:"auto",dr:0,guard:false,
+  hitsTotal:5,hits:"",hitSize:"auto",dr:0,guard:false,
   pool:30,cap:15,kmax:7,starSkill:"",starLv:0,board:Array(7).fill(true),
   orbs:[{use:true,one:0,two:0,atk:0,stat:800},{use:true,one:7,two:4,atk:0,stat:0},{use:true,one:7,two:4,atk:0,stat:0}],
   orbOk:Array(7).fill(true),inv:"",
-  survW:2,recW:0,typeDefLv:.01,incoming:.95,
-  q:{named:"",protect:"n",payoff:"n",job:"dmg",links:false,kisphere:false,startpos:false,hitdep:false,heal:false}
+  dmgShare:33,recOff:0,
+  q:{named:"",protect:"n",payoff:"n",job:"dmg",links:false,kisphere:false,startpos:false,hitdep:false,dodgedep:false}
 }}
 // Fill a loaded object into the defaults shape; unknown keys are dropped, wrong types fall back.
 function merge(d,o){
@@ -247,13 +269,27 @@ function merge(d,o){
   if(typeof d==="boolean")return typeof o==="boolean"?o:d;
   return d;
 }
+// Version 1 stored a Type checkbox and absolute hit sizes (% of team HP, where
+// 25% was a hit on a unit without damage reduction or guard).
+function upgrade(o){
+  if(!o||typeof o!=="object"||o.v!==1)return o;
+  const s=Object.assign({},o);
+  s.match=o.typeOn===true?"b1":"n1";
+  const sizes={light:"0.25",medium:"0.5",heavy:"1",huge:"1.5"};
+  if(sizes[o.hitSize])s.hitSize=sizes[o.hitSize];
+  return s;
+}
 function normalizeState(o){
+  o=upgrade(o);
   const s=merge(defaults(),o);
+  s.v=2;
+  if(!MATCH[s.match])s.match="n1";
+  if(s.hitSize!=="auto"&&HIT_REL[s.hitSize]===undefined)s.hitSize="auto";
   const forms=Array.isArray(o&&o.forms)?o.forms.slice(0,MAX_FORMS):[];
   s.forms=forms.length?forms.map((f,i)=>merge(defForm("Form "+(i+1)),f)):[defForm("Base form")];
   return s;
 }
-// Map the previous version's saved inputs ("hipo3") onto this version.
+// Map the first version's saved inputs ("hipo3") onto this version.
 function fromLegacy(o,newOrbs){
   const s=defaults();if(!o||typeof o!=="object")return s;
   const str=k=>typeof o[k]==="string"?o[k]:"",has=k=>o[k]!==undefined&&o[k]!=="";
@@ -303,14 +339,29 @@ function parseInv(t){
   return{list,bad};
 }
 
+// Normal hits: 1, 1.15 (Super vs Extreme), or against a Type it beats 1.25 (same
+// class) / 1.5 (Super vs Extreme) plus Type ATK. Crits hit as super effective.
+function hitMult(mt,t){return mt.beats?(mt.cross?1.5:1.25)+GAME.typeAtk*t:(mt.cross?1.15:1)}
+function critMult(mt,t){return(GAME.effective+(mt.beats?GAME.typeAtk*t:0))*GAME.critX}
+// Damage taken before damage reduction, relative to a neutral same-class hit.
+// A Type it beats, or guarding, uses the advantaged type multiplier (0.9 same
+// class, 1.0 Super vs Extreme) and the 0.5 guard; Type DEF only helps against a
+// Type it beats.
+function takenMult(mt,guard,td){
+  const adv=mt.cross?1:.9;
+  if(mt.beats)return Math.max(0,adv-GAME.typeDef*td)*GAME.guard;
+  return guard?adv*GAME.guard:(mt.cross?1.15:1);
+}
 function model(st){
-  const lr=st.rarity!=="UR",typeOn=!!st.typeOn;
-  const hAuto=SLOT_HITS[st.slot]!==undefined?SLOT_HITS[st.slot]:SLOT_HITS[""];
-  const h=st.hits===""||st.hits===null||st.hits===undefined?hAuto:num(st.hits,hAuto,0,20);
-  const dr=num(st.dr,0,0,100);
-  const size=st.hitSize==="auto"?25*(1-dr/100)*(st.guard?.5:1):(HIT_SIZE[st.hitSize]!==undefined?HIT_SIZE[st.hitSize]:12);
-  const M={lr,typeOn,h,hAuto,size,inc:num(st.incoming,.95,0,2),tdl:num(st.typeDefLv,.01,0,.1),
-    survW:num(st.survW,0,0,50),recW:num(st.recW,0,0,100),cardAtk:num(st.cardAtk,20000,1,200000),forms:[],warn:[]};
+  const lr=st.rarity!=="UR",mt=MATCH[st.match]||MATCH.n1,guard=!!st.guard;
+  const total=num(st.hitsTotal,5,0,30),slotShare=SLOT_SHARE[st.slot]!==undefined?SLOT_SHARE[st.slot]:SLOT_SHARE[""];
+  const hAuto=total*slotShare,h=blank(st.hits)?hAuto:num(st.hits,hAuto,0,30);
+  // Relative to a teammate with no damage reduction or guard in a neutral matchup.
+  const sizeAuto=(1-num(st.dr,0,0,100)/100)*takenMult(mt,guard,0)/(mt.cross?1.15:1);
+  const size=st.hitSize==="auto"?sizeAuto:(HIT_REL[st.hitSize]!==undefined?HIT_REL[st.hitSize]:1);
+  const M={lr,mt,guard,total,h,hAuto,rest:Math.max(0,total-h),size,sizeAuto,td0:takenMult(mt,guard,0),
+    s0:num(st.dmgShare,33,0,100)/100,rec:num(st.recOff,0,0,100)/100,cardAtk:num(st.cardAtk,20000,1,200000),forms:[],warn:[]};
+  if(h>total)M.warn.push(`It receives more attacks (${+h.toFixed(2)}) than the enemy makes on the whole team (${total}), so its teammates are counted as taking none.`);
   const shares=st.forms.map(f=>num(f.share,0,0,100)),ss=shares.reduce((a,b)=>a+b,0);
   if(!ss&&st.forms.length>1)M.warn.push("Every form has a 0% share of turns, so they are weighted equally.");
   st.forms.forEach((f,i)=>{
@@ -321,48 +372,59 @@ function model(st){
     const m={name,w:ss?shares[i]/ss:1/st.forms.length,ki,k12,Km:lr?k12+(k24-k12)*(ki-12)/12:k12,
       sa12,SAm:lr&&ki>=18?sa18:sa12,xs,xn,dist:pd||autoDist(1+xs+xn),
       nc:num(f.nc,0,0,100)/100*num(f.ncUp,100,0,100)/100,nd:num(f.nd,0,0,100)/100,
-      st:num(f.stack,0,0,10000)/100,hv:num(f.hitVal,0,0,1000)/100,DEF:0,addT:null};
+      st:num(f.stack,0,0,10000)/100,hv:num(f.hitVal,0,0,1000)/100,dv:num(f.dodgeVal,0,0,1000)/100,DEF:0,addT:null};
     m.addT=Float64Array.from({length:51},(_,L)=>addChance(m.dist,L));
-    m.DEF=num(st.enemyDef,0,0,95)/100*m.Km*(m.SAm+m.st)*(typeOn?GAME.typeAdv:1);
+    m.DEF=num(st.enemyDef,0,0,95)/100*m.Km*(m.SAm+m.st)*hitMult(mt,0);
     m.D0=attack(m,M,0,0,0,0,1);
     if(!(m.D0>0)){M.warn.push(`${name} deals no damage with these inputs, so its share is ignored.`);m.w=0;m.D0=1}
-    m.base=m.D0*(1+h*(1-m.nd)*m.hv);
+    m.Q0=onHitFactor(m,M,m.nd);
+    m.own0=h*size*(1-m.nd);m.team0=m.own0+M.rest;
     M.forms.push(m);
   });
   const wt=M.forms.reduce((a,m)=>a+m.w,0);if(wt>0)M.forms.forEach(m=>m.w/=wt);
-  M.hp0=M.forms.reduce((a,m)=>a+m.w*h*size*(1-m.nd)*tdm(M,0),0);
-  const hv=M.forms.some(m=>m.hv>0&&m.w>0),canHit=h>0&&M.forms.some(m=>m.nd<1);
-  M.rel=[true,true,canHit&&((M.survW>0&&size>0)||hv),true,M.recW>0,typeOn,typeOn&&canHit&&M.survW>0&&size>0&&M.tdl>0];
+  M.inShare=M.forms.reduce((a,m)=>a+(m.team0>0?m.w*m.own0/m.team0:0),0);
+  const dmg=M.s0>0,onHit=M.forms.some(m=>m.w&&(m.hv>0||m.dv>0)),dodgeable=h>0&&M.forms.some(m=>m.w&&m.nd<1);
+  M.rel=[dmg,dmg,dodgeable&&(size>0||(dmg&&onHit)),dmg,M.rec>0,dmg&&mt.beats,mt.beats&&dodgeable&&size>0];
+  if(!M.rel.some(Boolean))M.warn.push("Nothing can change the score: its damage share is 0, it takes no hits and Recovery is 0.");
   return M;
 }
 // Expected damage of one turn's attacks for one form (units: card ATK in battle = 1).
 function attack(m,M,a,c,s,t,u){
   const cr=1-(1-m.nc)*(1-Math.min(1,GAME.crit*c)),ad=m.addT[a<50?a:50],D=m.DEF;
-  const TM=M.typeOn?GAME.typeAdv+GAME.typeAtk*t:1,CM=(M.typeOn?TM:GAME.typeAdv)*GAME.critX,sb=GAME.sa*s;
+  const TM=hitMult(M.mt,t),CM=critMult(M.mt,t),sb=GAME.sa*s;
   const vm=u*m.Km*(m.SAm+sb+m.st),vs=u*m.k12*(m.sa12+sb+m.st),vn=u*m.k12*(1+m.st);
   const em=cr*vm*CM+(1-cr)*Math.max(0,vm*TM-D),es=cr*vs*CM+(1-cr)*Math.max(0,vs*TM-D),en=cr*vn*CM+(1-cr)*Math.max(0,vn*TM-D);
   return em+m.xs*es+m.xn*en+ad*(GAME.addSuper*es+(1-GAME.addSuper)*en);
 }
 function dodgeOf(m,e){return 1-(1-m.nd)*(1-Math.min(1,GAME.eva*e))}
-function tdm(M,dl){return M.typeOn?Math.max(0,M.inc-M.tdl*dl):1}
-// The score splits into an attack block (Additional, Crit, SA Boost, Type ATK)
-// and a defence block (Evasion, Type DEF, Recovery); score = f1 + f2 - 100.
-function f1(M,a,c,s,t,u){let v=0;for(const m of M.forms)if(m.w)v+=m.w*100*attack(m,M,a,c,s,t,u)/m.base;return v}
-function f2(M,e,dl,r,u){
-  let v=0,hp=0;
-  for(const m of M.forms){if(!m.w)continue;const un=1-dodgeOf(m,e);v+=m.w*100*M.h*un*m.hv*m.D0*u/m.base;hp+=m.w*M.h*M.size*un*tdm(M,dl)}
-  return v+M.survW*(M.hp0-hp)+M.recW*r/15;
-}
-function evalBuild(M,tot,u){
-  let dmg=0,hp=0,crit=0,sup=0,dodge=0;const per=[];
+// Counters, on-hit stacks and on-evade gains, as a multiple of its own attacks'
+// damage: 1 + hits × (share not dodged × value per hit + share dodged × value
+// per dodge). They grow with its damage, like the ATK they come from.
+function onHitFactor(m,M,dg){return 1+M.h*((1-dg)*m.hv+dg*m.dv)}
+// Defence block (Evasion, Type DEF, Recovery): each form's on-hit factor against
+// its baseline, and the cut in the team's HP loss per turn.
+function f2(M,e,td,r){
+  let x=0;const rho=[],rt=M.td0>0?takenMult(M.mt,M.guard,td)/M.td0:1;
   for(const m of M.forms){
-    const at=attack(m,M,tot[0],tot[1],tot[3],tot[5],u),dg=dodgeOf(m,tot[2]),cnt=M.h*(1-dg)*m.hv*m.D0*u;
-    const g=100*((at+cnt)/m.base-1),cr=1-(1-m.nc)*(1-Math.min(1,GAME.crit*tot[1])),sp=GAME.addSuper*m.addT[Math.min(tot[0],50)];
-    dmg+=m.w*g;hp+=m.w*M.h*M.size*(1-dg)*tdm(M,tot[6]);crit+=m.w*cr;sup+=m.w*sp;dodge+=m.w*dg;
-    per.push({name:m.name,w:m.w,gain:g,crit:100*cr,sup:100*sp,dodge:100*dg});
+    const dg=dodgeOf(m,e);rho.push(m.w?onHitFactor(m,M,dg)/m.Q0:0);
+    if(m.w&&m.team0>0)x+=m.w*(m.own0-M.h*M.size*(1-dg)*rt)/m.team0;
   }
-  const saved=M.hp0-hp;
-  return{dmg,saved,crit:100*crit,sup:100*sup,dodge:100*dodge,score:dmg+M.survW*saved+M.recW*tot[4]/15,per};
+  return{rho,x:Math.min(.95,x+M.rec*r/15)};
+}
+// Team margin in %: damage gain g counts by its share of team damage; x is the
+// cut in team HP loss, which makes the team last 1/(1 - x) times as long.
+function margin(M,g,x){return 100*((1+M.s0*g)/(1-x)-1)}
+// Damage gain = attack ratio × on-hit factor ratio − 1, averaged over forms.
+function evalBuild(M,tot,u){
+  const d=f2(M,tot[2],tot[6],tot[4]);
+  let g=-1,crit=0,sup=0,dodge=0;const per=[];
+  M.forms.forEach((m,i)=>{
+    const a=attack(m,M,tot[0],tot[1],tot[3],tot[5],u)/m.D0,dg=dodgeOf(m,tot[2]);
+    const cr=1-(1-m.nc)*(1-Math.min(1,GAME.crit*tot[1])),sp=GAME.addSuper*m.addT[Math.min(tot[0],50)];
+    g+=m.w*a*d.rho[i];crit+=m.w*cr;sup+=m.w*sp;dodge+=m.w*dg;
+    per.push({name:m.name,w:m.w,gain:100*(a*d.rho[i]-1),crit:100*cr,sup:100*sp,dodge:100*dg});
+  });
+  return{dmg:100*g,cut:100*d.x,score:margin(M,g,d.x),crit:100*crit,sup:100*sup,dodge:100*dodge,per};
 }
 function orbOptions(st,M,s,inv){
   const z=()=>Array(7).fill(0),o=[{n:"Empty",d:z(),atk:0}],O=st.orbs[s]||{};
@@ -378,65 +440,181 @@ function orbOptions(st,M,s,inv){
   }
   return o;
 }
-// Best value for every (levels spent, skills used) pair over up to four skills,
-// then prefix maxima so each cell holds the best using at most that many
-// levels and skills. arg holds the winning split packed in base 64.
-function block(n,cap,pool,val){
-  const K=n+1,best=new Float64Array((pool+1)*K).fill(-Infinity),arg=new Int32Array((pool+1)*K),m=[0,1,2,3].map(j=>j<n?Math.min(cap,pool):0);
-  let count=0;
-  for(let a=0;a<=m[0];a++){const ka=a>0?1:0;
-    for(let b=0;b<=Math.min(m[1],pool-a);b++){const kb=ka+(b>0?1:0);
-      for(let c=0;c<=Math.min(m[2],pool-a-b);c++){const kc=kb+(c>0?1:0),mx=Math.min(m[3],pool-a-b-c);
-        for(let d=0;d<=mx;d++){
-          count++;const v=val(a,b,c,d),i=(a+b+c+d)*K+kc+(d>0?1:0);
-          if(v>best[i]+1e-9){best[i]=v;arg[i]=((a*64+b)*64+c)*64+d}
-        }}}}
+// Every split of up to `pool` levels over up to four skills (each at most `cap`);
+// cb gets the levels, their sum and how many skills are used.
+function enumSplits(n,cap,pool,cb){
+  const m=[0,1,2,3].map(j=>j<n?Math.min(cap,pool):0);let count=0;
+  for(let a=0;a<=m[0];a++)for(let b=0;b<=Math.min(m[1],pool-a);b++)for(let c=0;c<=Math.min(m[2],pool-a-b);c++){
+    const mx=Math.min(m[3],pool-a-b-c),k=(a>0?1:0)+(b>0?1:0)+(c>0?1:0);
+    for(let d=0;d<=mx;d++){count++;cb(a,b,c,d,a+b+c+d,k+(d>0?1:0))}
+  }
+  return count;
+}
+// Turn per-cell bests into "at most this many levels and skills" bests.
+function prefixMax(best,arg,pool,K){
   for(let b=0;b<=pool;b++)for(let k=0;k<K;k++){
     const i=b*K+k;
-    if(b>0&&best[i-K]>best[i]+1e-9){best[i]=best[i-K];arg[i]=arg[i-K]}
-    if(k>0&&best[i-1]>best[i]+1e-9){best[i]=best[i-1];arg[i]=arg[i-1]}
+    if(b>0&&best[i-K]>best[i]+1e-12){best[i]=best[i-K];arg[i]=arg[i-K]}
+    if(k>0&&best[i-1]>best[i]+1e-12){best[i]=best[i-1];arg[i]=arg[i-1]}
   }
+}
+const pack=(a,b,c,d)=>((a*64+b)*64+c)*64+d,unpack=c=>[c>>18&63,c>>12&63,c>>6&63,c&63];
+// Best value for every (levels spent, skills used) pair; arg holds the split.
+function block(n,cap,pool,val){
+  const K=n+1,best=new Float64Array((pool+1)*K).fill(-Infinity),arg=new Int32Array((pool+1)*K);
+  const count=enumSplits(n,cap,pool,(a,b,c,d,s,k)=>{const v=val(a,b,c,d),i=s*K+k;if(v>best[i]+1e-12){best[i]=v;arg[i]=pack(a,b,c,d)}});
+  prefixMax(best,arg,pool,K);
   return{best,arg,K,count};
 }
-const unpack=c=>[c>>18&63,c>>12&63,c>>6&63,c&63];
+// When forms are weighted differently for different Evasion totals, keep per
+// cell only the splits no other split beats in every form; any weighting's best
+// is among them.
+const atLeast=(p,q)=>{for(let i=0;i<p.length;i++)if(p[i]<q[i]-1e-12)return false;return true};
+function paretoBlock(n,cap,pool,vec){
+  const K=n+1,cells=Array.from({length:(pool+1)*K},()=>[]);
+  const count=enumSplits(n,cap,pool,(a,b,c,d,s,k)=>{
+    const v=vec(a,b,c,d),list=cells[s*K+k];
+    for(let j=0;j<list.length;j++)if(atLeast(list[j].v,v))return;
+    let w=0;for(let j=0;j<list.length;j++)if(!atLeast(v,list[j].v))list[w++]=list[j];
+    list.length=w;list.push({v:Float64Array.from(v),code:pack(a,b,c,d)});
+  });
+  return{cells,K,count};
+}
+function fromPareto(P,coef,pool){
+  const best=new Float64Array(P.cells.length).fill(-Infinity),arg=new Int32Array(P.cells.length);
+  P.cells.forEach((list,i)=>{for(const e of list){let v=0;for(let f=0;f<coef.length;f++)v+=coef[f]*e.v[f];if(v>best[i]+1e-12){best[i]=v;arg[i]=e.code}}});
+  prefixMax(best,arg,pool,P.K);
+  return{best,arg,K:P.K};
+}
+// The margin is not a plain sum of the two blocks, so every defence split is
+// tried. For a given defence split the margin only rises with the attack
+// block's weighted damage ratio, so the best attack split for the levels left
+// over is the right partner, which keeps the search exact. The form weights
+// depend on the defence split (through Evasion) only when forms differ in dodge
+// or on-hit values.
 function search(st,topN){
   topN=topN||8;
   const M=model(st),pool=Math.round(num(st.pool,30,0,120)),cap=Math.round(num(st.cap,15,1,30)),kmax=Math.round(num(st.kmax,7,1,7));
   const star=Array(7).fill(0),si=st.starSkill===""?-1:Math.round(num(st.starSkill,-1,-1,6));
   if(si>=0)star[si]=Math.round(num(st.starLv,0,0,30));
   const inv=parseInv(st.inv),opts=[0,1,2].map(s=>orbOptions(st,M,s,inv));
-  const B1=[0,1,3,5],B2=[2,6,4];
-  const P1=B1.filter(i=>M.rel[i]&&st.board[i]),P2=B2.filter(i=>M.rel[i]&&st.board[i]);
-  const capE=Math.min(cap,pool),cache=new Map(),rows=[],seen=new Set();
+  const B1=[0,1,3,5],P1=B1.filter(i=>M.rel[i]&&st.board[i]),P2=[2,6,4].filter(i=>M.rel[i]&&st.board[i]);
+  const capE=Math.min(cap,pool),cache1=new Map(),cacheP=new Map(),cache2=new Map(),rows=[],seen=new Set(),F=M.forms;
+  const wi=F.map((m,i)=>i).filter(i=>F[i].w>0),W=wi.map(i=>F[i]);
+  const uniform=W.every(m=>!m.hv&&!m.dv)||W.every(m=>m.nd===W[0].nd&&m.hv===W[0].hv&&m.dv===W[0].dv);
   let allocs=0;
-  // f1 depends only on final Additional/Crit/SA/Type ATK levels and the ATK factor,
-  // so it is memoised by those totals; many orb setups reuse the same values.
   const hi=Array(7).fill(0);
   for(let i=0;i<7;i++)hi[i]=star[i]+opts.reduce((a,o)=>a+Math.max(...o.map(x=>x.d[i])),0)+(st.board[i]?capE:0);
+  // Each form's attack ratio depends only on the final Additional, Crit, SA Boost
+  // and Type ATK levels and the ATK factor. Without enemy DEF it is exactly a
+  // crit/type factor (Crit, Type ATK) times a Super factor (Additional, SA
+  // Boost), so two small tables replace most of the work; otherwise it is
+  // memoised by those totals.
+  const jx=[0,1,3,5].map(i=>P1.indexOf(i)),pick=(j,x0,x1,x2,x3)=>j===0?x0:j===1?x1:j===2?x2:j===3?x3:0;
+  const nA=hi[0]+1,nT=hi[5]+1,mu=[],nu=new Map();
+  const factored=W.every(m=>m.DEF===0);
+  if(factored)F.forEach((m,f)=>{
+    mu[f]=new Float64Array((hi[1]+1)*nT);
+    for(let c=0;c<=hi[1];c++){const cr=1-(1-m.nc)*(1-Math.min(1,GAME.crit*c));for(let t=0;t<nT;t++)mu[f][c*nT+t]=cr*critMult(M.mt,t)+(1-cr)*hitMult(M.mt,t)}
+  });
+  const nuFor=u=>{
+    let a=nu.get(u);if(a)return a;
+    a=F.map(m=>{
+      const T=new Float64Array(nA*(hi[3]+1));
+      for(let A=0;A<nA;A++)for(let S=0;S<=hi[3];S++){
+        const sb=GAME.sa*S,vs=m.k12*(m.sa12+sb+m.st),vn=m.k12*(1+m.st),ad=m.addT[A<50?A:50];
+        T[A*(hi[3]+1)+S]=u*(m.Km*(m.SAm+sb+m.st)+m.xs*vs+m.xn*vn+ad*(GAME.addSuper*vs+(1-GAME.addSuper)*vn))/m.D0;
+      }
+      return T;
+    });
+    nu.set(u,a);return a;
+  };
   const dims=B1.map(i=>M.rel[i]?hi[i]+1:1),stride=[0,0,0,0],size=dims.reduce((a,b)=>a*b,1),memo=new Map();
   for(let j=3,sd=1;j>=0;j--){stride[j]=dims[j]>1?sd:0;sd*=dims[j]}
-  const table=(B,P,l,u,which)=>{
-    const key=which+B.map(i=>l[i]).join(",")+"|"+u;
-    if(cache.has(key))return cache.get(key);
-    const t=l.slice(),n=P.length,tot=(x0,x1,x2,x3)=>{const x=[x0,x1,x2,x3];for(let j=0;j<n;j++)t[P[j]]=l[P[j]]+x[j];return t};
-    let val;
-    if(which==="d"){
-      const memo2=new Map();
-      val=(x0,x1,x2,x3)=>{const q=tot(x0,x1,x2,x3),k=(q[2]*128+q[6])*128+q[4];let v=memo2.get(k);if(v===undefined){v=f2(M,q[2],q[6],q[4],u);memo2.set(k,v)}return v};
-    }
-    else if(size>4e6)val=(x0,x1,x2,x3)=>{const q=tot(x0,x1,x2,x3);return f1(M,q[0],q[1],q[3],q[5],u)};
-    else{
-      let arr=memo.get(u);if(!arr){arr=new Float64Array(size).fill(NaN);memo.set(u,arr)}
-      let base=0;for(let j=0;j<4;j++)base+=stride[j]*l[B1[j]];
-      const sp=[0,1,2,3].map(j=>j<n?stride[B1.indexOf(P[j])]:0),s0=sp[0],s1=sp[1],s2=sp[2],s3=sp[3];
-      val=(x0,x1,x2,x3)=>{
-        const idx=base+x0*s0+x1*s1+x2*s2+x3*s3;let v=arr[idx];
-        if(v!==v){const q=tot(x0,x1,x2,x3);v=arr[idx]=f1(M,q[0],q[1],q[3],q[5],u)}
-        return v;
+  const lookup=(l,u)=>{
+    if(factored){
+      const N=nuFor(u),nS=hi[3]+1;
+      return(f,x0,x1,x2,x3)=>{
+        const a=l[0]+pick(jx[0],x0,x1,x2,x3),c=l[1]+pick(jx[1],x0,x1,x2,x3),s=l[3]+pick(jx[2],x0,x1,x2,x3),t=l[5]+pick(jx[3],x0,x1,x2,x3);
+        return mu[f][c*nT+(t<nT?t:nT-1)]*N[f][a*nS+s];
       };
     }
-    const T=block(n,capE,pool,val);
-    allocs+=T.count;cache.set(key,T);return T;
+    const t=l.slice(),n=P1.length,ratio=(f,x0,x1,x2,x3)=>{const x=[x0,x1,x2,x3];for(let j=0;j<n;j++)t[P1[j]]=l[P1[j]]+x[j];return attack(F[f],M,t[0],t[1],t[3],t[5],u)/F[f].D0};
+    if(size>4e6)return ratio;
+    let arrs=memo.get(u);if(!arrs){arrs=F.map(()=>new Float64Array(size).fill(NaN));memo.set(u,arrs)}
+    let base=0;for(let j=0;j<4;j++)base+=stride[j]*l[B1[j]];
+    const sp=[0,1,2,3].map(j=>j<n?stride[B1.indexOf(P1[j])]:0),s0=sp[0],s1=sp[1],s2=sp[2],s3=sp[3];
+    return(f,x0,x1,x2,x3)=>{const idx=base+x0*s0+x1*s1+x2*s2+x3*s3;let a=arrs[f][idx];if(a!==a)a=arrs[f][idx]=ratio(f,x0,x1,x2,x3);return a};
+  };
+  const lkey=(l,u)=>B1.map(i=>l[i]).join(",")+"|"+u;
+  // One form without enemy DEF: its value is (crit/type factor) × (Super factor),
+  // both non-negative, so the best split of b levels pairs the best Crit/Type ATK
+  // split of q levels with the best Additional/SA Boost split of b - q.
+  const splitsCount=enumSplits(P1.length,capE,pool,()=>{});
+  const productTable=(l,u)=>{
+    const f=wi[0],N=nuFor(u)[f],MU=mu[f],nS=hi[3]+1,mx=i=>P1.includes(i)?capE:0;
+    const pair=(m1,m2,val)=>{
+      const B=new Float64Array((pool+1)*3).fill(-Infinity),A=new Int32Array((pool+1)*3);
+      for(let x=0;x<=Math.min(m1,pool);x++)for(let y=0;y<=Math.min(m2,pool-x);y++){
+        const i=(x+y)*3+(x>0?1:0)+(y>0?1:0),v=val(x,y);if(v>B[i]+1e-12){B[i]=v;A[i]=x*64+y}
+      }
+      return{B,A};
+    };
+    const CT=pair(mx(1),mx(5),(c,t)=>{const T=l[5]+t;return MU[(l[1]+c)*nT+(T<nT?T:nT-1)]});
+    const AS=pair(mx(0),mx(3),(a,s)=>N[(l[0]+a)*nS+l[3]+s]);
+    const K=P1.length+1,best=new Float64Array((pool+1)*K).fill(-Infinity),arg=new Int32Array((pool+1)*K);
+    for(let q=0;q<=pool;q++)for(let kq=0;kq<3;kq++){
+      const v1=CT.B[q*3+kq];if(v1===-Infinity)continue;
+      for(let r=0;r<=pool-q;r++)for(let kr=0;kr<3&&kq+kr<K;kr++){
+        const v2=AS.B[r*3+kr];if(v2===-Infinity)continue;
+        const i=(q+r)*K+kq+kr,v=F[f].w*v1*v2;
+        if(v>best[i]+1e-12){
+          best[i]=v;
+          const ct=CT.A[q*3+kq],as=AS.A[r*3+kr],x=[0,0,0,0];
+          [[0,as>>6],[1,ct>>6],[3,as&63],[5,ct&63]].forEach(([sk,q2])=>{const j=P1.indexOf(sk);if(j>=0)x[j]=q2});
+          arg[i]=pack(x[0],x[1],x[2],x[3]);
+        }
+      }
+    }
+    prefixMax(best,arg,pool,K);
+    return{best,arg,K,count:splitsCount};
+  };
+  const uniformTable=(l,u)=>{
+    const key=lkey(l,u);if(cache1.has(key))return cache1.get(key);
+    if(factored&&wi.length===1){const T=productTable(l,u);allocs+=T.count;cache1.set(key,T);return T}
+    const at=lookup(l,u);
+    const T=block(P1.length,capE,pool,(x0,x1,x2,x3)=>{let v=0;for(const i of wi)v+=F[i].w*at(i,x0,x1,x2,x3);return v});
+    allocs+=T.count;cache1.set(key,T);return T;
+  };
+  // Per orb setup: the splits worth keeping, and one weighted table per Evasion total.
+  const weightedTables=(l,u)=>{
+    const key=lkey(l,u);if(cacheP.has(key))return cacheP.get(key);
+    const at=lookup(l,u),v=new Float64Array(wi.length);
+    const P=paretoBlock(P1.length,capE,pool,(x0,x1,x2,x3)=>{for(let j=0;j<wi.length;j++)v[j]=at(wi[j],x0,x1,x2,x3);return v});
+    allocs+=P.count;
+    const byE=new Map(),get=e=>{let T=byE.get(e.e);if(!T){T=fromPareto(P,wi.map(i=>F[i].w*e.rho[i]),pool);byE.set(e.e,T)}return T};
+    cacheP.set(key,get);return get;
+  };
+  const defenceSplits=l=>{
+    const key=[l[2],l[6],l[4]].join(",");
+    if(cache2.has(key))return cache2.get(key);
+    const n=P2.length,list=[],t=l.slice();
+    allocs+=enumSplits(n,capE,pool,(a,b,c,d,s,k)=>{
+      const xs=[a,b,c];for(let j=0;j<n;j++)t[P2[j]]=l[P2[j]]+xs[j];
+      const r=f2(M,t[2],t[6],t[4]);
+      list.push({b:s,k,rho:r.rho,x:r.x,e:t[2],code:pack(a,b,c,0)});
+    });
+    // Within each (levels, skills) cell drop splits another split matches or
+    // beats on both the HP cut and every form's on-hit factor; they can't win.
+    const cells=new Map();
+    for(const e of list){
+      const id=e.b*8+e.k;let c=cells.get(id);if(!c)cells.set(id,c=[]);
+      if(c.some(o=>o.x>=e.x-1e-12&&atLeast(o.rho,e.rho)))continue;
+      for(let j=c.length-1;j>=0;j--)if(e.x>=c[j].x-1e-12&&atLeast(e.rho,c[j].rho))c.splice(j,1);
+      c.push(e);
+    }
+    const kept=[].concat(...cells.values());
+    cache2.set(key,kept);return kept;
   };
   const combos=[];
   for(const b of opts[0])for(const s of opts[1])for(const g of opts[2]){
@@ -446,23 +624,27 @@ function search(st,topN){
   }
   // Skip setups another setup beats outright: at least the same level in every
   // skill that matters and at least the same ATK, better in one. Evasion can
-  // cost score on counter units, so there it must match exactly.
-  const evaFree=!M.forms.some(m=>m.w&&m.hv>0),R=[0,1,2,3,4,5,6].filter(i=>M.rel[i]);
+  // cost score when a received hit is worth more than a dodge (counter units),
+  // so there it must match exactly.
+  const evaFree=!W.some(m=>m.hv>m.dv)||!M.rel[0],R=[0,1,2,3,4,5,6].filter(i=>M.rel[i]);
   const beats=(p,q)=>{
     if(p.atk<q.atk)return false;let more=p.atk>q.atk;
     for(const i of R){if(p.l[i]<q.l[i]||(i===2&&!evaFree&&p.l[i]!==q.l[i]))return false;if(p.l[i]>q.l[i])more=true}
     return more;
   };
   const keep=combos.filter(q=>!combos.some(p=>p!==q&&beats(p,q))),skipped=combos.length-keep.length;
+  const iRef=wi.length?wi[0]:0;
   for(const {b,s,g,l,atk} of keep){
-    const u=(M.cardAtk+atk)/M.cardAtk,T1=table(B1,P1,l,u,"a"),T2=table(B2,P2,l,u,"d");
-    let bv=-Infinity,bi=0,bj=0;
-    for(let b1=0;b1<=pool;b1++)for(let k1=0;k1<T1.K&&k1<=kmax;k1++){
-      const i1=b1*T1.K+k1,i2=(pool-b1)*T2.K+Math.min(T2.K-1,kmax-k1),v=T1.best[i1]+T2.best[i2];
-      if(v>bv+1e-9){bv=v;bi=i1;bj=i2}
+    const u=(M.cardAtk+atk)/M.cardAtk,D=defenceSplits(l),Tu=uniform?uniformTable(l,u):null,Tw=uniform?null:weightedTables(l,u);
+    let bv=-Infinity,bi=0,be=D[0],bT=Tu;
+    for(const e of D){
+      if(e.k>kmax)continue;
+      const T1=uniform?Tu:Tw(e);
+      const i1=(pool-e.b)*T1.K+Math.min(T1.K-1,kmax-e.k),v=margin(M,(uniform?e.rho[iRef]*T1.best[i1]:T1.best[i1])-1,e.x);
+      if(v>bv+1e-9){bv=v;bi=i1;be=e;bT=T1}
     }
-    const x=Array(7).fill(0);
-    const x1=unpack(T1.arg[bi]),x2=unpack(T2.arg[bj]);P1.forEach((i,j)=>x[i]=x1[j]);P2.forEach((i,j)=>x[i]=x2[j]);
+    const x=Array(7).fill(0),x1=unpack(bT.arg[bi]),x2=unpack(be.code);
+    P1.forEach((i,j)=>x[i]=x1[j]);P2.forEach((i,j)=>x[i]=x2[j]);
     const tot=l.map((q,i)=>q+x[i]),ev=evalBuild(M,tot,u),orbs=l.map((q,i)=>q-star[i]);
     rows.push(Object.assign({n:[b.n,s.n,g.n],l:orbs,star,x,tot,atk},ev));
   }
@@ -470,21 +652,35 @@ function search(st,topN){
   const best=rows[0],tie=best?rows.filter(r=>Math.abs(r.score-best.score)<=1e-6*Math.max(1,Math.abs(best.score))).length:0;
   return{M,top:rows.slice(0,topN),combos:rows.length,skipped,allocs,ties:tie,inv,pool,kmax,P:[...P1,...P2]};
 }
-function adviseSlot(q){
-  const c=[];let slot="",why="";
-  if(q.protect==="y")c.push(["1","its protection has to be up before it attacks, and in slot 1 the boss can attack before and after its Super"]);
-  if(q.kisphere)c.push(["1","it scales per Ki Sphere or changes Ki Spheres, and slot 1 picks its Ki Spheres first"]);
-  if(q.links)c.push(["2","it relies on links, and slot 2 is next to both other units"]);
-  if(q.payoff==="y")c.push(["23","its payoff comes after it has stacked Supers or hits"]);
-  if(q.named){slot=q.named;why="the kit names that position"}
-  else if(c.length){slot=c[0][0];why=c[0][1]}
-  const other=c.filter(x=>x[0]!==slot&&!(slot==="23"&&(x[0]==="2"||x[0]==="3"))&&!(x[0]==="23"&&(slot==="2"||slot==="3")));
+// Slot advice: each answer adds points to the slots it favours; the weights
+// are judgment calls and are shown with the result.
+const SLOT_RULES=[
+  [q=>q.protect==="y",[[1,3]],"its protection has to be up before it attacks, and slot 1 can be hit before it acts","protection first"],
+  [q=>q.kisphere,[[1,2]],"it scales per Ki Sphere or changes them, and slot 1 picks Ki Spheres first","Ki Spheres"],
+  [q=>q.links,[[2,2]],"it relies on links, and slot 2 is next to both other units","links"],
+  [q=>q.payoff==="y",[[2,1.5],[3,1.5]],"its payoff comes after it has stacked Supers or hits","stacking payoff"],
+  [q=>(q.hitdep||q.dodgedep)&&q.payoff!=="y",[[1,1]],"it gains when it’s attacked or evades, and slot 1 receives the most attacks","gains when hit or evading"],
+  [(q,M)=>M&&M.size<=.5,[[1,1]],"it takes small hits, so it can soak slot 1’s extra attacks","small hits"],
+  [(q,M)=>M&&M.size>=1.5,[[1,-1]],"it takes big hits, and slot 1 receives the most attacks","big hits"]
+];
+function adviseSlot(q,M){
+  const pts={1:0,2:0,3:0},why={1:[],2:[],3:[]},tags={1:[],2:[],3:[]};
+  SLOT_RULES.forEach(([test,adds,text,tag])=>{if(test(q,M))adds.forEach(([s,p])=>{pts[s]+=p;why[s].push(text);tags[s].push(`${tag} ${p>0?"+":"−"}${Math.abs(p)}`)})});
+  const top=Math.max(pts[1],pts[2],pts[3]),lead=[1,2,3].filter(s=>pts[s]===top),fired=[1,2,3].some(s=>why[s].length);
+  let slot="",reason=fired?"the answers pull in different directions and cancel out":"nothing in the answers ties it to a position",close=false;
+  if(q.named){slot=q.named;reason="the kit names that position"}
+  else if(top>0){
+    slot=lead.length===2&&lead[0]===2&&lead[1]===3?"23":String(lead[0]);
+    close=lead.length>1&&slot!=="23";
+    reason=why[lead[0]].filter((x,i)=>!tags[lead[0]][i].includes("−")).join("; ");
+  }
   const label=x=>x===""?"Flexible":x==="23"?"Slot 2 or 3":"Slot "+x;
   const notes=[];
-  if(other.length)notes.push("Also pulling another way: "+other.map(x=>`${label(x[0])}, because ${x[1]}`).join("; ")+".");
+  if(close)notes.push(`${lead.map(s=>"Slot "+s).join(" and ")} tie, so this is a close call.`);
   if(q.startpos)notes.push("A unit you put 2nd starts its next turn 3rd. So for an effect that needs slot 3 at the start of the turn, play it 2nd the turn before.");
   if(q.links&&slot!=="2")notes.push("It relies on links, so put link partners next to it.");
-  return{slot,label:label(slot),why:why||"nothing in the answers ties it to a position",notes};
+  const breakdown=[1,2,3].map(s=>`slot ${s} ${pts[s]<0?"−"+-pts[s]:pts[s]}${tags[s].length?` (${tags[s].join(", ")})`:""}`).join("; ");
+  return{slot,label:label(slot),why:reason,pts,notes,breakdown};
 }
 </script>
 
@@ -492,7 +688,7 @@ function adviseSlot(q){
 const $=id=>document.getElementById(id);
 const KEY="dokkanBuildFinder.v1",OLD="hipo3";
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const pct=(x,d=1)=>(Math.abs(x)<.05&&d===1?0:x).toFixed(d)+"%",sg=x=>(x>=0?"+":"")+pct(x);
+const pct=(x,d=1)=>(Math.abs(x)<.05&&d===1?0:x).toFixed(d)+"%",sg=x=>(x>=0?"+":"")+pct(x),short=x=>+x.toFixed(2);
 let state=defaults(),store={v:1,current:null,saved:{},legacy:null},storeOk=true,legacyRaw=null,timer=0;
 
 // ---------- storage ----------
@@ -541,7 +737,8 @@ function formHTML(f,i){
   ${F("ncUp","Share of attacks the native crit covers (%)",'min="0" max="100" step="5"')}
   ${F("nd","Native dodge chance (%)",'min="0" max="100" step="1"')}
   ${F("hitVal","Each hit it receives is worth (% of its turn damage)",'min="0" max="1000" step="5"')}
-  <p class="hint">For counters or stacks gained when hit: a dodge loses this value but still avoids the damage. 0 if receiving hits does nothing for it.</p></div>`;
+  ${F("dodgeVal","Each dodge it makes is worth (% of its turn damage)",'min="0" max="1000" step="5"')}
+  <p class="hint">As a share of its own attacks’ damage that turn: counters or stacks gained when hit, and ATK, Ki or counters gained when it evades. A dodge swaps the first value for the second and still avoids the damage. Leave both at 0 if neither applies.</p></div>`;
 }
 function renderForms(){
   $("forms").innerHTML=state.forms.map(formHTML).join("");
@@ -553,7 +750,7 @@ function bind(root){
     const v=getPath(state,e.dataset.k);
     if(e.type==="checkbox")e.checked=!!v;else e.value=v===undefined||v===null?"":v;
     if(e.dataset.bound)return;e.dataset.bound=1;
-    const on=()=>{setPath(state,e.dataset.k,e.type==="checkbox"?e.checked:e.value);if(e.dataset.k==="rarity")syncUI();schedule()};
+    const on=()=>{setPath(state,e.dataset.k,e.type==="checkbox"?e.checked:e.value);syncUI();schedule()};
     e.addEventListener("input",on);e.addEventListener("change",on);
   });
 }
@@ -561,8 +758,6 @@ function syncUI(){
   document.body.dataset.rarity=state.rarity==="UR"?"UR":"LR";
   const auto=state.hitSize==="auto";
   document.querySelectorAll(".autoOnly").forEach(e=>e.disabled=!auto);
-  const typ=!!state.typeOn;
-  document.querySelectorAll('[data-k="typeDefLv"],[data-k="incoming"]').forEach(e=>e.disabled=!typ);
   const custom=!!String(state.inv||"").trim();
   document.querySelectorAll("#orbRows input:not([type=checkbox]),#orbOkBox input").forEach(e=>e.disabled=custom);
 }
@@ -581,11 +776,12 @@ function buildStatic(){
     <label>Stats-only orb ATK<input data-k="orbs.${s}.stat" type="number" min="0" max="5000" step="50"></label></div></div>`).join("");
 }
 function schedule(){
-  job++;clearTimeout(timer);timer=setTimeout(()=>{syncUI();run()},150);
+  job++;clearTimeout(timer);timer=setTimeout(run,150);
 }
 
 // ---------- results ----------
 const ls=a=>a.map((x,i)=>x?`${SK[i]} ${x}`:"").filter(Boolean).join(", ")||"none";
+const slotName=s=>s===""?"Flexible":s==="23"?"Slot 2 or 3":"Slot "+s;
 // The search runs in a worker so typing never freezes the page; each new run
 // cancels the previous one so stale results are never shown.
 let worker=null,job=0,busy=false,slowTimer=0;
@@ -609,46 +805,47 @@ function run(){
 }
 function render(r){
   const b=r.top[0],M=r.M;
-  $("hitsHint").textContent=state.hits===""||state.hits===null?`Blank, so the tool guesses ${M.hAuto.toFixed(2).replace(/\.?0+$/,"")} from the intended slot. Enter your own count if you know it.`:"Clear the box to use the guess from the intended slot.";
-  $("hitsIn").placeholder=M.hAuto.toFixed(2).replace(/\.?0+$/,"");
+  $("hitsIn").placeholder=short(M.hAuto);
+  $("hitsHint").textContent=blank(state.hits)?`Blank, so the tool guesses ${short(M.hAuto)}: about 40% of the enemy’s attacks land in slot 1 and 30% in slot 2 or 3. Enter your own count if you know it.`:"Clear the box to use the guess from the intended slot.";
+  $("shareHint").textContent=`Its hits are about ${short(M.size)}× a teammate’s, so it takes about ${Math.round(M.inShare*100)}% of the team’s incoming damage.`;
   const w=M.warn.slice();
   if(state.unsure)w.unshift("Hold off spending until you’ve confirmed: "+state.unsure+".");
   if(r.inv.bad)w.push(`${r.inv.bad} orb line(s) weren’t understood and were ignored. Use a form like “silver crit+additional 4” or “gold crit 7 atk 900”.`);
   if(String(state.inv||"").trim()&&!r.inv.list.length)w.push("None of the listed orbs were understood, so every slot is empty.");
   if(state.q.hitdep&&!M.forms.some(m=>m.hv>0))w.push("You ticked that it counters or reacts to hits, but every form says a received hit is worth 0%. Fill that in per form, otherwise Evasion is only credited for the damage it avoids.");
+  if(state.q.dodgedep&&!M.forms.some(m=>m.dv>0))w.push("You ticked that it gains something when it evades, but every form says a dodge is worth 0%. Fill that in per form, otherwise Evasion is only credited for the damage it avoids.");
   if(b){const left=r.pool-b.x.reduce((a,c)=>a+c,0);if(left>0)w.push(`${left} Potential level(s) were left unspent, because the skills that still add value are at their cap, off your board, or past your skill limit.`)}
   $("warn").hidden=!w.length;$("warn").innerHTML=w.length?"<ul>"+w.map(x=>`<li>${esc(x)}</li>`).join("")+"</ul>":"";
   if(!b){$("best").innerHTML="";return}
   $("best").innerHTML=b.tot.map((t,i)=>`<div class="${t?"on":""}"><b>${t}</b><span>${SK[i]}<br>${b.x[i]} Potential + ${b.l[i]} orbs${b.star[i]?` + ${b.star[i]} star`:""}</span></div>`).join("");
-  $("kpi").innerHTML=`<div><b>${sg(b.dmg)}</b><span>damage per turn</span></div><div><b>${pct(b.saved)}</b><span>team HP saved per turn</span></div><div><b>${pct(b.crit)}</b><span>crit chance</span></div><div><b>${pct(b.sup)}</b><span>extra Super chance</span></div><div><b>${pct(b.dodge)}</b><span>dodge chance</span></div>`;
+  $("kpi").innerHTML=`<div><b>${sg(b.score)}</b><span>team margin (score)</span></div><div><b>${sg(b.dmg)}</b><span>its damage per turn</span></div><div><b>${b.cut>0?"−":""}${pct(b.cut)}</b><span>team HP lost per turn</span></div><div><b>${pct(b.crit)}</b><span>crit chance</span></div><div><b>${pct(b.sup)}</b><span>extra Super chance</span></div><div><b>${pct(b.dodge)}</b><span>dodge chance</span></div>`;
   const second=r.top[1];let tail="";
   if(r.ties>1)tail=` ${r.ties} orb choices tie for the top score, so they are equivalent.`;
-  else if(second){const d=b.score-second.score;tail=` Lead over the runner-up: ${d.toFixed(2)} points${d<1?", a close call":""}.`}
+  else if(second){const d=b.score-second.score;tail=` Lead over the runner-up: ${d.toFixed(2)} points of margin${d<.5?", a close call":""}.`}
   $("bestOrbs").textContent=`Bronze: ${b.n[0]}. Silver: ${b.n[1]}. Gold: ${b.n[2]}. Searched ${r.combos.toLocaleString()} orb setups${r.skipped?` (${r.skipped.toLocaleString()} more skipped because another setup has at least the same levels and ATK)`:""} and ${r.allocs.toLocaleString()} Potential splits.`+tail;
-  let h="<tr><th>Bronze</th><th>Silver</th><th>Gold</th><th>Potential levels</th><th>Final levels</th><th>Crit</th><th>Extra Super</th><th>Dodge</th><th>Damage</th><th>HP saved</th><th>Score</th></tr>";
-  r.top.forEach((x,i)=>{h+=`<tr class="${i?"":"top"}"><td>${esc(x.n[0])}</td><td>${esc(x.n[1])}</td><td>${esc(x.n[2])}</td><td>${ls(x.x)}</td><td>${ls(x.tot)}</td><td>${pct(x.crit)}</td><td>${pct(x.sup)}</td><td>${pct(x.dodge)}</td><td>${sg(x.dmg)}</td><td>${pct(x.saved)}</td><td>${x.score.toFixed(1)}</td></tr>`});
+  let h="<tr><th>Bronze</th><th>Silver</th><th>Gold</th><th>Potential levels</th><th>Final levels</th><th>Crit</th><th>Extra Super</th><th>Dodge</th><th>Damage</th><th>Team HP loss</th><th>Margin</th></tr>";
+  r.top.forEach((x,i)=>{h+=`<tr class="${i?"":"top"}"><td>${esc(x.n[0])}</td><td>${esc(x.n[1])}</td><td>${esc(x.n[2])}</td><td>${ls(x.x)}</td><td>${ls(x.tot)}</td><td>${pct(x.crit)}</td><td>${pct(x.sup)}</td><td>${pct(x.dodge)}</td><td>${sg(x.dmg)}</td><td>${x.cut>0?"−":""}${pct(x.cut)}</td><td>${sg(x.score)}</td></tr>`});
   $("tbl").innerHTML=h;
-  const adv=adviseSlot(state.q);
-  const slotTxt=state.slot===""?"Flexible":state.slot==="23"?"Slot 2 or 3":"Slot "+state.slot;
-  $("slotAdvice").textContent=`Intended slot: ${slotTxt}. From your answers: ${adv.label}, because ${adv.why}. ${adv.notes.map(n=>n+" ").join("")}It takes about ${M.h.toFixed(2).replace(/\.?0+$/,"")} attacks per turn at about ${M.size.toFixed(1)}% of team HP each.`;
-  const L=(k,x)=>k+": "+(x||"")+"\n";
-  $("review").textContent=L("Exact character/state",state.name)+L("Rarity",state.rarity)+L("Intended slot",slotTxt)+L("Primary role",state.role)+
-    L("Important activation requirement",state.req)+L("Against a Type it beats",state.typeOn?"yes":"no")+"\n"+
-    M.forms.map(m=>`${m.name} (${Math.round(m.w*100)}% of turns): Super ×${m.SAm} at ${m.ki} Ki (Ki ×${+m.Km.toFixed(3)}), extra Supers ${m.xs}, extra normals ${m.xn}, native crit ${+(m.nc*100).toFixed(1)}%, native dodge ${+(m.nd*100).toFixed(1)}%${m.st?`, stacked ATK ${+(m.st*100).toFixed(0)}%`:""}${m.hv?`, received hit worth ${+(m.hv*100).toFixed(0)}%`:""}`).join("\n")+"\n\n"+
+  const adv=adviseSlot(state.q,M);
+  $("slotAdvice").textContent=`Intended slot: ${slotName(state.slot)}. Suggested: ${adv.label}, because ${adv.why}. Points: ${adv.breakdown}. ${adv.notes.map(n=>n+" ").join("")}In the intended slot it receives about ${short(M.h)} of the enemy’s ${short(M.total)} attacks per turn.`;
+  const L=(k,x)=>k+": "+(x||"")+"\n",matchTxt={n1:"neutral, same class",n2:"neutral, Super vs Extreme",b1:"a Type it beats, same class",b2:"a Type it beats, Super vs Extreme"}[state.match];
+  $("review").textContent=L("Exact character/state",state.name)+L("Rarity",state.rarity)+L("Intended slot",slotName(state.slot))+L("Primary role",state.role)+
+    L("Important activation requirement",state.req)+L("Type matchup",matchTxt)+
+    `Share of team damage: ${short(M.s0*100)}%. Takes about ${Math.round(M.inShare*100)}% of the team’s incoming damage (${short(M.h)} of ${short(M.total)} attacks, hits ${short(M.size)}× a teammate’s)\n\n`+
+    M.forms.map(m=>`${m.name} (${Math.round(m.w*100)}% of turns): Super ×${m.SAm} at ${m.ki} Ki (Ki ×${+m.Km.toFixed(3)}), extra Supers ${m.xs}, extra normals ${m.xn}, native crit ${+(m.nc*100).toFixed(1)}%, native dodge ${+(m.nd*100).toFixed(1)}%${m.st?`, stacked ATK ${+(m.st*100).toFixed(0)}%`:""}${m.hv?`, received hit worth ${+(m.hv*100).toFixed(0)}%`:""}${m.dv?`, dodge worth ${+(m.dv*100).toFixed(0)}%`:""}`).join("\n")+"\n\n"+
     `Bronze orb: ${b.n[0]}\nSilver orb: ${b.n[1]}\nGold orb: ${b.n[2]}\nPotential levels: ${ls(b.x)}\nFinal levels: ${ls(b.tot)}\n`+
-    `Damage ${sg(b.dmg)} per turn, team HP saved ${pct(b.saved)} per turn\nCrit ${pct(b.crit)}, extra Super ${pct(b.sup)}, dodge ${pct(b.dodge)}\n`+
+    `Team margin ${sg(b.score)}: its damage ${sg(b.dmg)} per turn, team HP lost per turn ${b.cut>0?"−":""}${pct(b.cut)}\nCrit ${pct(b.crit)}, extra Super ${pct(b.sup)}, dodge ${pct(b.dodge)}\n`+
     (b.per.length>1?b.per.map(p=>`  ${p.name}: damage ${sg(p.gain)}, crit ${pct(p.crit)}, dodge ${pct(p.dodge)}`).join("\n")+"\n":"")+"\n"+L("Uncertain interaction",state.unsure);
 }
 
 // ---------- events ----------
 $("apply").addEventListener("click",()=>{
-  const q=state.q,adv=adviseSlot(q);
+  const q=state.q,adv=adviseSlot(q,model(state));
   state.slot=adv.slot;
-  state.survW={dmg:1,stack:2,sup:3,util:3}[q.job]||2;
-  state.recW=q.heal?20:0;
+  state.dmgShare={dmg:45,stack:35,sup:15,util:20}[q.job]||33;
   if(!state.role)state.role={dmg:"Damage",stack:"Stacks buffs over turns",sup:"Support or team buffs",util:"Utility (stun, seal, debuffs)"}[q.job];
   bind(document);syncUI();
-  $("slotOut").textContent=`Suggested: ${adv.label}, because ${adv.why}. ${adv.notes.map(n=>n+" ").join("")}That is a reading of the kit, not an official label. Survival worth was set to ${state.survW} for this job${q.heal?" and Recovery to 20":""}. You can edit both.${q.hitdep?" Fill in “Each hit it receives is worth” for each form.":""}`;
+  $("slotOut").textContent=`Suggested: ${adv.label}, because ${adv.why}. ${adv.notes.map(n=>n+" ").join("")}That is a reading of the kit, not an official label. Its share of team damage was set to ${state.dmgShare}% for this job; you can edit it.${q.hitdep?" Fill in “Each hit it receives is worth” for each form.":""}${q.dodgedep?" Fill in “Each dodge it makes is worth” for each form.":""}`;
   run();
 });
 $("addForm").addEventListener("click",()=>{if(state.forms.length>=MAX_FORMS)return;const f=defForm("Form "+(state.forms.length+1));f.share=0;state.forms.push(f);renderForms();syncUI();run()});
