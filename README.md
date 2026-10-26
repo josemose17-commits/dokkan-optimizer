@@ -4,16 +4,26 @@ A single-page tool that picks Hidden Potential levels and skill orbs for one Dok
 
 It tries every orb setup in the bronze, silver and gold slots and every way to place your Potential levels. It ranks the builds by how much they widen the team's margin in a fight.
 
+## What you enter
+
+Everything comes from the card, its DokkanStats page, or the fight:
+
+1. **The card:** rarity, class and Type, damage reduction and guard from its passive.
+2. **The kit, per form:** the 12 and 18 Ki Super multipliers and the Ki multipliers in %, "raises ATK by X% for the battle" stacks, guaranteed and chance-based additional Supers and attacks, crit and evasion chances, and counters or ATK gained when it's hit or evades.
+3. **The fight:** the enemy's class and Type (the matchup is worked out from them), its slot, how many attacks the enemy makes, and how much of the team's damage it deals.
+4. **Orbs and Hidden Potential:** the orbs you own, or orb levels to try, and your board limits.
+5. **Which slot?:** questions about the kit for the slot advice.
+
 ## How builds are scored
 
 A fight is treated as a race between the team's damage and its HP:
 
 **team margin = (1 + damage share × damage gain) ÷ (1 − cut in team HP loss) − 1**
 
-- **Damage gain:** this unit's expected damage per turn against no Hidden Potential skills and no orbs, averaged over its forms by share of turns. It counts by the unit's share of the team's damage on its turns (about 33% if all three hit equally; the "Main job" answer suggests 45% for damage dealers and 15% for supports).
+- **Damage gain:** this unit's expected damage per turn against no Hidden Potential skills and no orbs, averaged over its forms by share of turns. It counts by the unit's share of the team's damage on its turns: little (15%), an even share (33%), a lot (45%) or most of it (60%).
 - **Cut in team HP loss:** the team shares one HP bar, so a dodge counts by the share of the team's incoming damage this unit takes. That share is the enemy attacks it receives in its slot (about 40% in slot 1, 30% in slots 2 and 3 unless you enter a count) times how big its hits are next to a teammate's (from its damage reduction, guard and Type matchup, or picked). Type DEF and Recovery also cut the loss.
 - 1% more team damage is worth the same as 1% less team HP lost per turn. So Evasion wins on fragile units that deal little damage, and loses on tanks and main damage dealers.
-- Counters, on-hit stacks and on-evade gains are entered per form as a share of the unit's own attacks' damage, so they grow with its damage. A dodge avoids the hit, swapping what a received hit is worth for what a dodge is worth.
+- Counters are worth ATK × the counter multiplier × the Type multiplier; "ATK +X%" when hit or evading adds X% to its own attacks. Both grow with its damage. A dodge avoids the hit, swapping what a received hit is worth for what a dodge is worth.
 
 The search is exact. Damage skills (Additional, Crit, SA Boost, Type ATK) and defence skills (Evasion, Type DEF, Recovery) form two blocks. For every defence split, the margin only rises with the damage block, so the best damage split for the remaining levels is the right partner. The tests compare the result with a brute force over every orb setup and every Potential split.
 
@@ -23,9 +33,9 @@ The search is exact. Damage skills (Additional, Crit, SA Boost, Type ATK) and de
 |---|---|---|
 | Per level | Additional +2% (one check per eligible attack, half Supers), Crit +2%, Evasion +1%, SA Boost +0.05, Type ATK +0.05 | gamerch, checked in review |
 | Type DEF | −0.01 per level on the type multiplier, only against a Type it beats | [DokkanStats: damage received](https://dokkanstats.com/en/guides/how-to-compute-damage-received-v68kfr/) (via search summary), matches kamigame's Lv15 example (0.45 → 0.375) |
-| Normal hits | neutral 1×, neutral Super vs Extreme 1.15×, a Type it beats 1.25× (same class) or 1.5× (Super vs Extreme), plus Type ATK | [kamigame type table](https://kamigame.jp/%E3%83%89%E3%83%83%E3%82%AB%E3%83%B3%E3%83%90%E3%83%88%E3%83%AB/page/268783369976870200.html) |
+| Normal hits | neutral 1×, neutral Super vs Extreme 1.15×, a Type it beats 1.25× (same class) or 1.5× (Super vs Extreme) plus Type ATK, a Type that beats it 0.9× or 1.0× | [kamigame type table](https://kamigame.jp/%E3%83%89%E3%83%83%E3%82%AB%E3%83%B3%E3%83%90%E3%83%88%E3%83%AB/page/268783369976870200.html) |
 | Crits | ignore enemy DEF, hit as super effective: 1.5 × 1.25 = 1.875, or (1.5 + Type ATK) × 1.25 against a Type it beats | gamerch, kamigame |
-| Damage taken | from a Type it beats: 0.9 (same class) or 1.0 (Super vs Extreme), then the 0.5 natural guard; guarding gets the same without Type DEF; neutral Super vs Extreme 1.15 | DokkanStats, kamigame |
+| Damage taken | from a Type it beats: 0.9 (same class) or 1.0 (Super vs Extreme), then the 0.5 natural guard; guarding gets the same without Type DEF; from a Type that beats it 1.25 or 1.5; neutral Super vs Extreme 1.15 | DokkanStats, kamigame |
 | Ki | blended between the card's 12 Ki and 24 Ki multipliers; 18 Ki Super from 18 Ki; additionals use the 12 Ki Super and multiplier | DokkanStats ATK guide |
 | Orbs | bronze stats only (ATK +800), one-skill orbs up to 7, two-skill silver orbs 4 + 4 | Dokkaninfo |
 
@@ -47,6 +57,6 @@ The tests check hand-worked values for each formula and compare the search with 
 
 ## Saved data
 
-Inputs are stored in the browser under `dokkanBuildFinder.v1`. Characters saved by the earlier version of this page are converted when loaded. Inputs saved by the first version (`hipo3`) are offered once for import and are never deleted.
+Inputs are stored in the browser under `dokkanBuildFinder.v1`. Characters saved by earlier versions of this page are converted when loaded. Inputs saved by the first version (`hipo3`) are offered once for import and are never deleted.
 
 The previous React app in this repository is preserved in git history (last commit `34e4d5b`).
