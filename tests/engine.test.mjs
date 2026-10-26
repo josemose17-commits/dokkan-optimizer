@@ -9,11 +9,36 @@ const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const src = html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1];
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(src + ";this.E={MATCH,defaults,defForm,normalizeState,fromLegacy,parseInv,takenMult,model,evalBuild,orbOptions,search,adviseSlot};", ctx);
+vm.runInContext(src + ";this.E={MATCH,defaults,defForm,normalizeState,fromLegacy,parseInv,takenMult,kitForm,matchCode,describeMatch,model,evalBuild,orbOptions,search,adviseSlot};", ctx);
 const E = ctx.E;
 // Arrays made inside the vm context have another realm's prototype.
 const plain = (x) => JSON.parse(JSON.stringify(x));
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg}: ${a} vs ${b}`);
+
+// The card's kit in engine terms: multipliers as 1.5 / 4.25, expected extra
+// attacks (1.5 = one guaranteed plus a 50% chance), chances and values in %.
+function kit(o) {
+  const k = {}, split = (x, g, p) => { k[g] = Math.floor(x); k[p] = Math.round((x - Math.floor(x)) * 100); };
+  for (const [key, v] of Object.entries(o)) {
+    if (["k12", "k24", "sa12", "sa18"].includes(key)) k[key] = Math.round(v * 10000) / 100;
+    else if (key === "xs") split(v, "addSup", "addSupPct");
+    else if (key === "xn") split(v, "addNorm", "addNormPct");
+    else if (key === "nc") k.crit = v;
+    else if (key === "nd") k.eva = v;
+    else if (key === "stack") { k.stackPer = v; k.stackN = 1; }
+    else if (key === "hitVal") k.atkHit = v;
+    else if (key === "dodgeVal") k.atkDodge = v;
+    else k[key] = v;
+  }
+  return k;
+}
+// Matchups as a Super TEQ card against an enemy (TEQ beats AGL, INT beats TEQ).
+const MATCHUPS = {
+  n1: { enemyClass: "", enemyType: "" }, n2: { enemyClass: "Extreme", enemyType: "" },
+  b1: { enemyClass: "", enemyType: "AGL" }, b2: { enemyClass: "Extreme", enemyType: "AGL" },
+  w1: { enemyClass: "", enemyType: "INT" }, w2: { enemyClass: "Extreme", enemyType: "INT" },
+};
+const setMatch = (st, m) => Object.assign(st, { unitClass: "Super", unitType: "TEQ" }, MATCHUPS[m]);
 
 // One LR form: 24 Ki multiplier 2, 18 Ki Super x5, 12 Ki Super x4, 12 Ki multiplier 1.5,
 // so the main Super is a 10 hit and kit extras use 1.5 x 4 = 6 (Super) or 1.5 (normal).
@@ -21,9 +46,11 @@ const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-9, `${msg}: ${a} vs $
 function base(extra = {}) {
   const st = E.defaults();
   Object.assign(st, { hitsTotal: 5, hits: 2, hitSize: "1", dmgShare: 40 });
-  Object.assign(st.forms[0], { ki: 24, k12: 1.5, k24: 2, sa12: 4, sa18: 5, xs: 0, xn: 0, nc: 0, nd: 0 });
-  Object.assign(st.forms[0], extra.form || {});
+  Object.assign(st.forms[0], kit({ ki: 24, k12: 1.5, k24: 2, sa12: 4, sa18: 5, xs: 0, xn: 0, nc: 0, nd: 0 }));
+  Object.assign(st.forms[0], kit(extra.form || {}));
   delete extra.form;
+  if (extra.match) setMatch(st, extra.match);
+  delete extra.match;
   return Object.assign(st, extra);
 }
 const lv = (o) => [o.A || 0, o.C || 0, o.E || 0, o.S || 0, o.R || 0, o.T || 0, o.D || 0];
@@ -157,28 +184,31 @@ test("orb list parsing", () => {
 // every Potential split, with Evasion both able and unable to lower the score.
 const bruteCases = {
   "counter unit, Super vs Extreme": (st) => {
-    Object.assign(st, { match: "b2", recOff: 10, dmgShare: 40, hits: 2, hitSize: "auto", dr: 20, enemyDef: 20 });
-    st.forms[0].hitVal = 20;
-    st.forms[0].dodgeVal = 5;
+    setMatch(st, "b2");
+    Object.assign(st, { recOff: 10, dmgShare: 45, hits: 2, hitSize: "auto", dr: 20, enemyDef: 20 });
+    Object.assign(st.forms[0], { atkHit: 20, atkDodge: 5, ctrHit: 150 });
   },
   "evade-reward unit, same class": (st) => {
-    Object.assign(st, { match: "b1", dmgShare: 25, hitSize: "1.5" });
-    st.forms[0].dodgeVal = 30;
+    setMatch(st, "b1");
+    Object.assign(st, { dmgShare: 15, hitSize: "1.5" });
+    st.forms[0].ctrDodge = 200;
   },
   "neutral, two-skill limit": (st) => {
-    Object.assign(st, { kmax: 2, dmgShare: 30, hitSize: "2", recOff: 15 });
+    setMatch(st, "w2");
+    Object.assign(st, { kmax: 2, dmgShare: 33, hitSize: "2", recOff: 15 });
   },
   "one form, counters": (st) => {
-    Object.assign(st, { match: "b1", dmgShare: 35, hits: 2.5, hitSize: "1.5" });
-    st.forms = [Object.assign(st.forms[0], { hitVal: 40, dodgeVal: 10 })];
+    setMatch(st, "b1");
+    Object.assign(st, { dmgShare: 33, hits: 2.5, hitSize: "1.5" });
+    st.forms = [Object.assign(st.forms[0], kit({ hitVal: 40, dodgeVal: 10, xs: 1.5, xn: 0.5 }), { critOn: "super", crit: 30 })];
   },
 };
 for (const [name, patch] of Object.entries(bruteCases)) {
   test(`search matches a brute force over every orb setup and Potential split (${name})`, () => {
     const st = E.defaults();
     Object.assign(st, { pool: 7, cap: 4, kmax: 3, starSkill: "3", starLv: 1 });
-    st.forms = [Object.assign(E.defForm("A"), { share: 60, xs: 0.5, xn: 1, nc: 20, nd: 10, stack: 30 }),
-                Object.assign(E.defForm("B"), { share: 40, ki: 19, xs: 1, nd: 30 })];
+    st.forms = [Object.assign(E.defForm("A"), kit({ share: 60, xs: 0.5, xn: 1, nc: 20, nd: 10, stack: 30 })),
+                Object.assign(E.defForm("B"), kit({ share: 40, ki: 19, xs: 1, nd: 30 }))];
     st.inv = "bronze atk 800\nbronze dodge 2\nsilver crit+additional 4\nsilver evasion 5\ngold type atk 3 atk 500\ngold crit 4\ngold type def+recovery 3";
     patch(st);
     const r = E.search(st);
@@ -205,32 +235,81 @@ for (const [name, patch] of Object.entries(bruteCases)) {
 }
 
 test("saved inputs from earlier versions carry over", () => {
-  const old = { name: "TEQ LR", slot: "Slot 2", nc: "40", ncUp: "50", n: "3", s0: "2", d0: "2", s1: "5", d1: "5", s2: "5", d2: "5", dual: true, u0: true, o4: false, inv: "silver crit 5", hitdep: true };
+  const old = { name: "TEQ LR", slot: "Slot 2", nc: "40", ncUp: "50", n: "3", s0: "2", d0: "2", s1: "5", d1: "5", s2: "5", d2: "5", dual: true, u0: true, o4: false, inv: "silver crit 5" };
   const keep = E.fromLegacy(old, false);
   assert.equal(keep.name, "TEQ LR");
   assert.equal(keep.slot, "2");
-  assert.equal(keep.forms[0].nc, 40);
-  assert.equal(keep.forms[0].xs, 2);
+  assert.equal(keep.forms[0].crit, 20, "40% crit on half the attacks");
+  assert.equal(keep.forms[0].addSup, 2);
   assert.deepEqual(plain([keep.orbs[1].one, keep.orbs[1].two, keep.orbs[0].one, keep.orbs[0].stat]), [5, 5, 2, 0]);
   assert.equal(keep.orbOk[4], false);
-  assert.equal(keep.q.hitdep, true);
   const fresh = E.fromLegacy(old, true);
   assert.deepEqual(plain([fresh.orbs[1].one, fresh.orbs[1].two, fresh.orbs[0].stat]), [7, 4, 800]);
-  // Version 1 of this page: a Type checkbox and absolute hit sizes.
+  // Version 1: a Type checkbox and absolute hit sizes.
   const v1 = E.normalizeState({ v: 1, typeOn: true, hitSize: "heavy", survW: 2, hits: "3", forms: [{ k12: 1.6 }] });
-  assert.equal(v1.v, 2);
-  assert.equal(v1.match, "b1");
+  assert.equal(v1.v, 3);
+  assert.equal(E.matchCode(v1), "b1");
   assert.equal(v1.hitSize, "1");
   assert.equal(v1.hits, "3");
-  assert.equal(v1.forms[0].k12, 1.6);
+  assert.equal(v1.forms[0].k12, 160);
   assert.equal("survW" in v1, false);
   assert.equal(E.normalizeState({ v: 1, hitSize: "light" }).hitSize, "0.25");
-  assert.equal(E.normalizeState({ v: 2, match: "bogus", hitSize: "9" }).match, "n1");
+  // Version 2: matchup menu, free damage share, engine-style form numbers.
+  const v2 = E.normalizeState({ v: 2, match: "b2", dmgShare: 40, q: { job: "sup", links: true }, forms: [
+    { name: "Base", share: 100, ki: 20, k12: 1.5, k24: 2, sa12: 4.25, sa18: 5.4, stack: 30, xs: 1.5, xn: 0.7, nc: 40, ncUp: 50, nd: 10, hitVal: 20, dodgeVal: 5 }] });
+  assert.equal(E.matchCode(v2), "b2");
+  assert.equal(v2.dmgShare, 45, "nearest share option");
+  assert.equal(v2.q.links, true);
+  assert.equal("job" in v2.q, false);
+  assert.deepEqual(plain(v2.forms[0]), { name: "Base", share: 100, sa12: 425, sa18: 540, ki: 20, k12: 150, k24: 200, stackPer: 30, stackN: 1,
+    addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 70, crit: 20, critOn: "all", eva: 10, ctrHit: 0, atkHit: 20, ctrDodge: 0, atkDodge: 5, dist: "" });
+  assert.equal(E.normalizeState({ v: 3, unitType: "bogus", enemyType: "bogus", dmgShare: 50 }).unitType, "AGL");
+});
+
+test("the matchup comes from the card's and the enemy's class and Type", () => {
+  const code = (o) => E.matchCode(Object.assign(E.defaults(), o));
+  assert.equal(code({ unitClass: "Super", unitType: "TEQ", enemyType: "AGL" }), "b1", "TEQ beats AGL");
+  assert.equal(code({ unitClass: "Super", unitType: "TEQ", enemyClass: "Extreme", enemyType: "AGL" }), "b2");
+  assert.equal(code({ unitClass: "Extreme", unitType: "TEQ", enemyClass: "Extreme", enemyType: "INT" }), "w1", "INT beats TEQ");
+  assert.equal(code({ unitClass: "Super", unitType: "STR", enemyType: "STR" }), "n1", "same Type is neutral");
+  assert.equal(code({ unitClass: "Super", unitType: "STR", enemyClass: "Extreme", enemyType: "" }), "n2", "mixed Types");
+  assert.match(E.describeMatch(Object.assign(E.defaults(), { unitType: "TEQ", enemyType: "AGL" })), /It beats this Type: its normal hits deal 1.25×.*takes 0.45×/);
+});
+
+test("a Type that beats it: 0.9 / 1.0 hits, 1.25 / 1.5 taken, crits and guard still work", () => {
+  // Normal 10 x 0.9 = 9; crit 30% at 1.875.
+  near(build(base({ match: "w1" }), { C: 15 }).dmg, ((0.3 * 1.875 + 0.7 * 0.9) / 0.9 - 1) * 100, "same class");
+  const t = (m, guard) => E.takenMult(E.MATCH[m], guard, 0);
+  near(t("w1", false), 1.25, "taken, same class");
+  near(t("w2", false), 1.5, "taken, Super vs Extreme");
+  near(t("w1", true), 0.45, "guard ignores the disadvantage");
+});
+
+test("the kit's lines turn into attacks, crits and on-hit values", () => {
+  // One guaranteed additional Super and a 50% chance of another: 1.5 extra Supers,
+  // 2 or 3 attacks before the Hidden Potential additional.
+  let k = E.kitForm(Object.assign(E.defForm("A"), { addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 20 }), true);
+  near(k.xs, 1.5, "extra Supers");
+  near(k.xn, 0.2, "extra normal attacks");
+  assert.deepEqual(plain(k.dist.map((x) => x[0])), [2, 3, 4]);
+  near(k.dist[0][1], 0.5 * 0.8, "two attacks");
+  near(k.dist[2][1], 0.5 * 0.2, "four attacks");
+  // 60% crit on Supers only: 2.5 Supers of 3 attacks.
+  k = E.kitForm(Object.assign(E.defForm("A"), { addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 50, crit: 60, critOn: "super" }), true);
+  near(k.nc, 0.6 * 2.5 / 3, "Supers-only crit");
+  // "Raises ATK by 20% for the battle" after 3 Supers.
+  near(E.kitForm(Object.assign(E.defForm("A"), { stackPer: 20, stackN: 3 }), true).st, 0.6, "stacked ATK");
+  // A 300% counter on a 10 turn, neutral: each hit received is worth 30% of the turn.
+  const M = E.model(base({ form: { ctrHit: 300, atkHit: 10 } }));
+  near(M.forms[0].hv, 0.3 + 0.1, "counter plus ATK per hit");
+  // Against a Type it beats the counter also gets 1.25x, and so does the turn.
+  near(E.model(base({ match: "b1", form: { ctrDodge: 300 } })).forms[0].dv, 0.3, "counter on evade");
 });
 
 test("slot advice weighs the answers", () => {
   const q = (o) => Object.assign(E.defaults().q, o);
   const a = (o, M) => E.adviseSlot(q(o), M);
+  const hit = (size, hv, dv) => ({ size, forms: [{ w: 1, hv, dv }] });
   assert.equal(a({ links: true }).slot, "2");
   assert.equal(a({ protect: "y", links: true }).slot, "1");
   let r = a({ kisphere: true, links: true, startpos: true });
@@ -240,14 +319,14 @@ test("slot advice weighs the answers", () => {
   assert.match(r.notes.join(" "), /starts its next turn 3rd/);
   assert.equal(a({ payoff: "y" }).slot, "23");
   assert.equal(a({ named: "3", protect: "y" }).slot, "3");
-  assert.equal(a({ hitdep: true }).slot, "1");
-  assert.equal(a({ payoff: "y", hitdep: true }).slot, "23");
-  assert.equal(a({}, { size: 0.3 }).slot, "1");
-  r = a({ links: true }, { size: 2 });
+  assert.equal(a({}, hit(1, 0.3, 0)).slot, "1", "counters favour slot 1");
+  assert.equal(a({ payoff: "y" }, hit(1, 0.3, 0)).slot, "23");
+  assert.equal(a({}, hit(0.3, 0, 0)).slot, "1");
+  r = a({ links: true }, hit(2, 0, 0));
   assert.deepEqual(plain([r.pts[1], r.pts[2]]), [-1, 2]);
   assert.equal(r.breakdown, "slot 1 −1 (big hits −1); slot 2 2 (links +2); slot 3 0");
   assert.equal(a({}).slot, "");
-  r = a({ dodgedep: true }, { size: 1.5 });
+  r = a({}, hit(1.5, 0, 0.2));
   assert.equal(r.slot, "");
   assert.match(r.why, /cancel out/);
 });
@@ -256,21 +335,21 @@ test("slot advice weighs the answers", () => {
 // are directions the picks must move in, not exact builds.
 const ARCH = {
   nuker: (s) => { Object.assign(s, { dmgShare: 45, slot: "2" }); },
-  support: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 15, slot: "1", hitSize: "1.5" }); Object.assign(s.forms[0], { sa12: 3.5, xs: 0 }); },
-  tank: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 15, slot: "1", dr: 60, guard: true }); Object.assign(s.forms[0], { sa12: 3.5, xs: 0 }); },
-  counter: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 25, slot: "1", hitSize: "1.5" }); Object.assign(s.forms[0], { xs: 0, hitVal: 60 }); },
-  counterNone: (s) => { ARCH.counter(s); s.forms[0].hitVal = 0; },
-  evader: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 33, slot: "1" }); Object.assign(s.forms[0], { nd: 20, xs: 0.5, dodgeVal: 50 }); },
-  evaderNone: (s) => { ARCH.evader(s); s.forms[0].dodgeVal = 0; },
-  nativeDodge: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 33, slot: "1" }); Object.assign(s.forms[0], { nd: 30, xs: 0.5, dodgeVal: 30 }); },
-  nativeDodgeNone: (s) => { ARCH.nativeDodge(s); s.forms[0].nd = 0; },
-  highCrit: (s) => { ARCH.nuker(s); s.forms[0].nc = 70; },
-  stacker: (s) => { ARCH.nuker(s); Object.assign(s.forms[0], { stack: 200, xs: 1.5 }); },
-  typeAdv: (s) => { ARCH.nuker(s); s.match = "b1"; },
+  support: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 15, slot: "1", hitSize: "1.5" }); Object.assign(s.forms[0], kit({ sa12: 3.5, xs: 0 })); },
+  tank: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 15, slot: "1", dr: 60, guard: true }); Object.assign(s.forms[0], kit({ sa12: 3.5, xs: 0 })); },
+  counter: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 25, slot: "1", hitSize: "1.5" }); Object.assign(s.forms[0], kit({ xs: 0, hitVal: 60 })); },
+  counterNone: (s) => { ARCH.counter(s); s.forms[0].atkHit = 0; },
+  evader: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 33, slot: "1" }); Object.assign(s.forms[0], kit({ nd: 20, xs: 0.5, dodgeVal: 50 })); },
+  evaderNone: (s) => { ARCH.evader(s); s.forms[0].atkDodge = 0; },
+  nativeDodge: (s) => { Object.assign(s, { rarity: "UR", dmgShare: 33, slot: "1" }); Object.assign(s.forms[0], kit({ nd: 30, xs: 0.5, dodgeVal: 30 })); },
+  nativeDodgeNone: (s) => { ARCH.nativeDodge(s); s.forms[0].eva = 0; },
+  highCrit: (s) => { ARCH.nuker(s); s.forms[0].crit = 70; },
+  stacker: (s) => { ARCH.nuker(s); Object.assign(s.forms[0], kit({ stack: 200, xs: 1.5 })); },
+  typeAdv: (s) => { ARCH.nuker(s); setMatch(s, "b1"); },
   transform: (s) => {
     ARCH.nuker(s);
-    s.forms = [Object.assign({}, s.forms[0], { name: "Base", share: 40, sa12: 3.5, sa18: 4.5, k12: 1.4, xs: 0.5 }),
-               Object.assign({}, s.forms[0], { name: "Transformed", share: 60, xs: 2, nc: 30 })];
+    s.forms = [Object.assign({}, s.forms[0], kit({ name: "Base", share: 40, sa12: 3.5, sa18: 4.5, k12: 1.4, xs: 0.5 })),
+               Object.assign({}, s.forms[0], kit({ name: "Transformed", share: 60, xs: 2, nc: 30 }))];
   },
   defWall: (s) => { ARCH.nuker(s); s.enemyDef = 60; },
 };
