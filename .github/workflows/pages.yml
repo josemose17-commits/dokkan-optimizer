@@ -1,20 +1,15 @@
 name: Validate and deploy GitHub Pages
 
-# Pull requests into any branch are validated (stacked PRs included); they
-# never deploy. Only main is published.
+# Pull requests are validated and never deploy. Only main is published.
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
 
-# Pull requests and build steps do not receive deployment permissions.
 permissions:
   contents: read
 
-# One run per ref at a time. Superseded pull-request runs are cancelled.
-# Runs on main are queued, never cancelled mid-deployment; the deploy job
-# below additionally refuses to publish a revision that is no longer main.
 concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -24,46 +19,29 @@ jobs:
     # Name kept stable so existing required-check settings keep matching.
     name: Test and build (Node 24)
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
-      - name: Set up required Node.js version
+      - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
-          cache: npm
 
-      - name: Install locked dependencies
-        run: npm ci
+      - name: Run calculation tests
+        run: node --test
 
-      - name: Check formatting
-        run: npm run format:check
+      - name: Collect the page
+        run: mkdir _site && cp index.html _site/
 
-      - name: Run unit tests
-        run: npm test
-
-      # npm run build also runs the project's strict TypeScript check
-      # (including the browser-test sources).
-      - name: Type check and build production assets
-        run: npm run build
-
-      - name: Install Chromium for browser tests
-        run: npx playwright install --with-deps chromium
-
-      # Serves the dist/ built above under /dokkan-optimizer/: the browser
-      # tests exercise exactly the files that are uploaded next.
-      - name: Run browser tests against this build
-        run: npx playwright test
-
-      - name: Upload dist for GitHub Pages
+      - name: Upload page for GitHub Pages
         if: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
         with:
-          path: dist
+          path: _site
 
   deploy:
     name: Deploy main to GitHub Pages
@@ -78,14 +56,11 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    # Serialize only deployments; do not cancel an active publication.
     concurrency:
       group: github-pages
       cancel-in-progress: false
     steps:
-      # A newer main commit has its own run queued behind this one. Publishing
-      # this older artifact could overwrite a newer deployment, or outlive a
-      # newer run that failed validation, so only the current head deploys.
+      # Only the current head of main deploys, so an older run can't overwrite a newer one.
       - name: Confirm this revision is still the head of main
         id: head
         env:
@@ -104,7 +79,7 @@ jobs:
         if: ${{ steps.head.outputs.deploy == 'true' }}
         uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
-      - name: Deploy built artifact
+      - name: Deploy page
         id: deployment
         if: ${{ steps.head.outputs.deploy == 'true' }}
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

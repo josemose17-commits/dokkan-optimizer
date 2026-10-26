@@ -1,99 +1,52 @@
-# Dokkan Potential Optimizer
+# Dokkan build finder
 
-**Character kit → intended slot and role → potential emphasis → equip priorities → explanation.** One primary workspace, with factual browsing, saved builds and maintenance kept secondary.
+A single-page tool that picks Hidden Potential levels and skill orbs for one Dokkan Battle character. Open `index.html` in a browser. It has no build step or dependencies, and it works offline apart from the web font.
 
-The searchable catalog now includes a **historical UR/LR factual import**, alongside reviewed kit guidance, explicit versioned event mechanics and the preserved limited Goku comparison. It is not a complete current roster or full potential-allocation optimizer.
+It tries every orb setup in the bronze, silver and gold slots and every way to place your Potential levels. It ranks the builds by how much they widen the team's margin in a fight.
 
-- **Catalog:** 792 source identities (679 UR, 113 LR) from MNprojects/DokkanAPI’s published January 2023 JSON, plus 3 separately reviewed identities. Combined: **795 catalog identities / 1,110 recorded states**. Source aliases are not guessed into the reviewed IDs; matching names may appear separately.
-- **Hidden Potential details:** source-reported base/max/free-dupe/rainbow stat columns are visible with field references. The export does not establish every duplicate percentage, intermediate profile, choice node or route. These remain unknown, not interpolated. No new character receives numerical optimization support from inclusion in the catalog.
-- **Evidence and reuse:** factual projection only, under the published repository AGPL-3.0 notice; credit MNprojects/Michael Nash and upstream Wiki contributors. No artwork or copied skill descriptions. See the [dataset notice and license](src/data/real/mnprojects/NOTICE.md), [provenance/reconciliation manifest](src/data/real/mnprojects/manifest.json), and [catalog/update guide](docs/CATALOG.md).
+## How builds are scored
 
-Existing supported features remain:
+A fight is treated as a race between the team's damage and its HP:
 
-- **TEQ UR EZA Gohan (Teen), “Power Beyond the Extremes”, untransformed, Lv140 / SA15.** Intended slot 1, main rotation, defensive buildup; Additional-led priorities from guard before attacking and lasting Super DEF effects. This is a documented design judgment, not a numerical damage/survival optimum. An opening-protection override explains the different tradeoff. Region and numeric EZA step are unestablished, not guessed.
-- **Cannot recommend exact levels or items yet:** no complete attainable allocation set is bound to this state/progression, compatible items are not admitted, and attack-chain/guard-trigger interactions remain unresolved. No baseline improvement is claimed for Gohan. There are **0 complete real board templates** and **0 new exact allocation winners**.
-- **Existing Goku comparison retained:** AGL UR EZA Super Saiyan 3 Goku, Global English, step 7, Lv140 / SA15. One fixed 55% no-duplicate profile (AA5), or entered current totals whose board requirements are not checked, combined with 3 bronze and 3 unresolved silver records. Card stat objectives and experimental initial-check probabilities remain separate from damage/survival. This is a limited progression-profile/equipment comparison.
-- **Versioned event mechanics:** native/dependent attacks, native critical/evasion, all-type-effectiveness properties, 12/18-Ki and initial/additional Super filters, timed/permanent ATK/DEF effect factors, branch-local conditions, buildup, expiration and terminal branches. These are declared model implementations, not verified damage/survival mechanics. [Exact coverage and limits](docs/CHARACTER_MECHANICS.md).
-- **AGL LR EZA Ultra Instinct Goku, Lv150 / SA25:** exact-state kit guidance plus native-only entry-evasion and Super-count previews (one initial Super plus a 77% native opportunity gives 1.77 expected Supers). Unknown additional-Super variant, repeated critical overlap, later evasion and revival semantics remain gated; no board/equipment recommendation is admitted.
-- **Optimization coverage:** 1 exact state with its original evaluator plus an opt-in event evaluator, 2 reviewed kit-guidance states, 0 complete real allocation templates. Historical imports have partial details and no evaluator. No verified-only equipment mode exists; unresolved silver items remain labeled. Test fixtures do not ship as characters.
+**team margin = (1 + damage share × damage gain) ÷ (1 − cut in team HP loss) − 1**
 
-The synthetic team demo and duplicate source-example screen have been retired. Old URLs return intentionally to the workspace. Old browser storage is **not deleted or migrated**. Git history preserves the demo.
+- **Damage gain:** this unit's expected damage per turn against no Hidden Potential skills and no orbs, averaged over its forms by share of turns. It counts by the unit's share of the team's damage on its turns (about 33% if all three hit equally; the "Main job" answer suggests 45% for damage dealers and 15% for supports).
+- **Cut in team HP loss:** the team shares one HP bar, so a dodge counts by the share of the team's incoming damage this unit takes. That share is the enemy attacks it receives in its slot (about 40% in slot 1, 30% in slots 2 and 3 unless you enter a count) times how big its hits are next to a teammate's (from its damage reduction, guard and Type matchup, or picked). Type DEF and Recovery also cut the loss.
+- 1% more team damage is worth the same as 1% less team HP lost per turn. So Evasion wins on fragile units that deal little damage, and loses on tanks and main damage dealers.
+- Counters, on-hit stacks and on-evade gains are entered per form as a share of the unit's own attacks' damage, so they grow with its damage. A dodge avoids the hit, swapping what a received hit is worth for what a dodge is worth.
 
-See the [reviewed policy and evidence boundary](docs/KIT_GUIDANCE.md), [workspace architecture](docs/OPTIMIZER.md), and [field-level evidence](docs/character-build/EVIDENCE.md). Source documentation, agreement between websites, and passing mathematical/policy tests are distinct; **no independent in-game confirmation is recorded**.
+The search is exact. Damage skills (Additional, Crit, SA Boost, Type ATK) and defence skills (Evasion, Type DEF, Recovery) form two blocks. For every defence split, the margin only rises with the damage block, so the best damage split for the remaining levels is the right partner. The tests compare the result with a brute force over every orb setup and every Potential split.
 
-## Setup and checks
+## Game values
 
-Use **Node.js 24+** and npm:
+| Value | Used | Source |
+|---|---|---|
+| Per level | Additional +2% (one check per eligible attack, half Supers), Crit +2%, Evasion +1%, SA Boost +0.05, Type ATK +0.05 | gamerch, checked in review |
+| Type DEF | −0.01 per level on the type multiplier, only against a Type it beats | [DokkanStats: damage received](https://dokkanstats.com/en/guides/how-to-compute-damage-received-v68kfr/) (via search summary), matches kamigame's Lv15 example (0.45 → 0.375) |
+| Normal hits | neutral 1×, neutral Super vs Extreme 1.15×, a Type it beats 1.25× (same class) or 1.5× (Super vs Extreme), plus Type ATK | [kamigame type table](https://kamigame.jp/%E3%83%89%E3%83%83%E3%82%AB%E3%83%B3%E3%83%90%E3%83%88%E3%83%AB/page/268783369976870200.html) |
+| Crits | ignore enemy DEF, hit as super effective: 1.5 × 1.25 = 1.875, or (1.5 + Type ATK) × 1.25 against a Type it beats | gamerch, kamigame |
+| Damage taken | from a Type it beats: 0.9 (same class) or 1.0 (Super vs Extreme), then the 0.5 natural guard; guarding gets the same without Type DEF; neutral Super vs Extreme 1.15 | DokkanStats, kamigame |
+| Ki | blended between the card's 12 Ki and 24 Ki multipliers; 18 Ki Super from 18 Ki; additionals use the 12 Ki Super and multiplier | DokkanStats ATK guide |
+| Orbs | bronze stats only (ATK +800), one-skill orbs up to 7, two-skill silver orbs 4 + 4 | Dokkaninfo |
+
+**Corrected in this version:** damage taken from a Type it beats was 0.95 (unsourced); it's 0.9 or 1.0 plus the natural guard. Hits on a Type it beats were 1.5× in every class; same-class hits are 1.25×.
+
+**Not verified:** the 15-level cap per skill, which skill each Type's star node gives, the slot shares of enemy attacks (40/30/30), and the rotation note ("a unit put 2nd starts its next turn 3rd"). Recovery Boost's per-level healing isn't known, so you estimate its effect.
+
+## Slot advice
+
+Each answer adds points to the slots it favours: protection before attacking +3 to slot 1, per-Ki-Sphere kits +2 to slot 1, links +2 to slot 2, stacking payoffs +1.5 to slots 2 and 3, counter or evade gains +1 to slot 1, small hits +1 to slot 1, big hits −1 to slot 1. A position named by the kit always wins. The points are shown with the advice so you can weigh them yourself.
+
+## Checks
 
 ```sh
-npm ci
-npm run dev -- --host 127.0.0.1
+node --test
 ```
 
-Open `http://127.0.0.1:5173/dokkan-optimizer/`.
+The tests check hand-worked values for each formula and compare the search with a brute force. They also run ten example characters (fragile support, tank, counter unit, evade-reward unit, high native crit, stacker, Type advantage, transforming unit, high enemy DEF and a plain nuker) and check that the picks move the right way.
 
-```sh
-npm test
-npm run typecheck
-npm run build
-npm run preview -- --host 127.0.0.1
-npm run test:e2e   # builds, serves dist/ and runs the Playwright suite (CI runs it before any deployment)
-```
+## Saved data
 
-Production preview: `http://127.0.0.1:4173/dokkan-optimizer/`. The browser suite needs Chromium for `@playwright/test` 1.56.1 (`npx playwright install chromium` once; containers with a preinstalled build can set `PLAYWRIGHT_BROWSERS_PATH`). It runs desktop (1366×900) and mobile (390×844) projects and fails on page errors, failed requests or requests outside `/dokkan-optimizer/`. The project uses React, TypeScript, Vite and Vitest. No backend, telemetry, game-account connection, runtime scraper or external asset requests are needed.
+Inputs are stored in the browser under `dokkanBuildFinder.v1`. Characters saved by the earlier version of this page are converted when loaded. Inputs saved by the first version (`hipo3`) are offered once for import and are never deleted.
 
-## Reproduce kit guidance
-
-1. Open `/dokkan-optimizer/` and choose **Gohan (Teen) · … · Kit guidance**.
-2. Read **Designed for**: slot 1, main rotation, defender; supporting effects are expandable.
-3. Read **Preferred potential emphasis** and **Equip effect priorities**. No arbitrary AA/Critical/Evasion totals or item recommendations are supplied.
-4. Open **Advanced priority override**, choose protection before the first Super, and inspect why Additional cannot improve the earlier window. Disable evasion to see the explicit context constraint.
-5. Open **Missing exact-build evidence** or **Kit facts, sources and support limits** for the field-level boundary.
-
-Default scope: untransformed early buildup, before attacking on battle turn 3 / second appearance, with a qualifying Super; no incoming damage or attack counter is assumed. The entry-turn reduction is recorded but not applied to that context. No transformation, attack-chain, battle DEF, damage, survival, cost or affordability calculation is offered.
-
-## Explicit event contexts
-
-Choose the documented SS3 Goku state, then **Goal → Evaluation model → Explicit event sequence v1**. Select a supplied one/two-appearance sequence and a count objective before Optimize. The same baseline, eligibility, inventory, ties, cancellation and incomplete-search handling apply. Open **Event timing and branches** for activation, completed counters, effect factors and model assumptions. Old initial-check settings remain the default.
-
-Choose the exact Ultra Instinct Goku EZA state and open **Character event mechanics** for the bounded native-only contexts. Their potential/equipment inputs are explicitly excluded; they are not build recommendations. Gohan’s event record shows which selected effects have implementations and why numerical objectives remain blocked. No paused provider or separate prototype is used.
-
-## Retained Goku comparisons and saves
-
-Choose the Goku quick pick. Its heading says **Limited progression-profile / equipment comparison**. Choose an objective before **Optimize**. From empty equipment, Critical chance under catalog mode has four ties at 4% in the experimental model (baseline 0%). Card HP has four ties at 15,827 (baseline 15,327), not a defensive-build recommendation. One documented allocation × 16 equipment combinations is not full potential optimization.
-
-**Saved builds · save, load or export** opens the compact library. Existing working settings are read, never autosaved over; named saves are explicit. Older source-example exports load in this same workspace, including optional entered totals. Unknown/stale revisions remain identifiable and cannot be silently substituted. Imports are bounded, validated and previewed; conflicting writes from another tab are refused. Unreadable copies remain downloadable. Resetting working inputs does not delete saves.
-
-Storage contracts remain `dokkan.character-builds.v1` (Goku working copy), `dokkan.character-library.v1` (named builds), and `dokkan.character-definitions.v1` (maintenance). Obsolete `dokkan-team-lab.collection.v1` is ignored and retained. No personal data is committed or sent to a service.
-
-**Search characters and inspect details** integrates the existing search, exact-state details, stat layers, completeness, references and session-only normalized import. **Menu** holds maintenance/import and sources. Descriptive records do not acquire executable support by being imported. Raw stats, potential additions, flat equips and unknown battle stats remain separate.
-
-## Browse the UR/LR catalog
-
-1. Open **Search characters and inspect details** (`/dokkan-optimizer/?workbench=catalog`). Search by name/ID, type, rarity, category or awakening state. Results are paginated in groups of 50.
-2. Search `Broly Cheelai`, filter **LR / PHY / Joined Forces**, and select the base state. Inspect raw stats, separate historical stat columns, unknown potential percentages, field references and unavailable optimization support.
-3. Search `mnprojects:card:11168` and select **EZA**. Unknown level/SA/raw-stat scope stays unavailable; no SEZA state is invented. Reviewed Goku/Gohan quick picks retain their original IDs and behavior.
-
-The import reconciles **796 rows**: **793 accepted**, **3 excluded** (two conflicting-ID rows and one Zeni material). One duplicate identity shares two reported tables. **125 embedded forms** lack complete mappings and are reported without counting them as additional characters. Imported states: **792 base + 314 EZA = 1,106**, with no SEZA. Combined states: **793 base + 317 EZA = 1,110**. These are catalog entries, not a count of unique current-game cards, fully completed records or all awakening forms.
-
-The source’s EZA descriptions establish a revision exists, not its exact level/step or stat scope. Source-reported total columns never become raw stats, potential additions or battle stats by inference. Copied effects with missing icons/footnotes are omitted. Source documentation is not independent in-game confirmation. The production bundle includes a license download and visible attribution; it makes no API call.
-
-## Data and remaining gates
-
-The pinned MNprojects JSON supplies the historical catalog through a separate build-time adapter. No live service, subscription or account is required. Updates require a reviewed new pin, reconciliation and saved-ID compatibility checks; see [catalog commands](docs/CATALOG.md).
-
-A fresh Dokkan Info bulk acquisition remains paused. The precise external requirement is a **provider-approved text export with schema/revision and terms for build-time caching, public GitHub/Pages distribution and updates**. No approved sample has been supplied. No provider was contacted, no credentials/purchase requested and no Dokkan Info bulk extraction, artwork or calculator implementation copied.
-
-Individual Gohan facts are manually paraphrased from public readable references; no dataset license or bulk permission is implied. Direct host HTML/robots requests returned 403, so no raw-page hash is claimed or access control bypassed. All independent-confirmation fields are null. See [access notes](docs/character-build/DATA_ACCESS.md).
-
-Future work: establish one complete attainable set/card mapping and progression prerequisites, admit compatible equipment with resolved restrictions, and verify any attack/check/event rules needed for numerical objectives. A current comprehensive roster still requires a fresh permitted export; it is independent of allocation-engine work. Collection-wide equip allocation, resource optimization and full battle simulation remain deferred.
-
-## GitHub Pages
-
-Vite retains `base: '/dokkan-optimizer/'`. Navigation uses prefix-preserving query parameters for workbenches and exact catalog states, so no SPA fallback/404 rewrite is required. Check the catalog and both workbenches, assets, saved settings and mobile layouts at the production prefix.
-
-The single [workflow](.github/workflows/pages.yml) validates every PR and every `main` push in one job: lockfile install, format check, unit tests, type check and production build, then the Playwright suite against that same `dist/`. Only that tested `dist/` can be uploaded, and the deploy job needs the validation job. Before publishing, the deploy job checks that its revision is still the head of `main`, so an older artifact is never published over a newer commit. Deployment is limited to pushes to `main` and manual runs of `main`, through the `github-pages` environment. Only the deploy job gets `pages: write` / `id-token: write`. See [deployment](docs/DEPLOYMENT.md) for the ordering rules. Feature PRs do not merge or deploy.
-
-**Manual repository settings:** [Settings → Pages](https://github.com/josemose17-commits/dokkan-optimizer/settings/pages) → **Build and deployment → Source → GitHub Actions**. The workflow gates _publication_; blocking a failing PR from being _merged_ needs a branch rule (owner action): require the **Test and build (Node 24)** check on `main`. If repository policies restrict Actions or the deployment environment, allow the checked-in official actions and deployment from `main`. No new secret or setting is introduced by the character feature.
-
-After an authorized merge, main's workflow may publish to `https://josemose17-commits.github.io/dokkan-optimizer/`. Check the actual deployment job/environment before claiming the site is live. A passing PR build does not establish deployment.
+The previous React app in this repository is preserved in git history (last commit `34e4d5b`).
