@@ -75,7 +75,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 <body>
 <main>
 <h1>Dokkan build finder</h1>
-<p class="sub">Describe the character, its forms and the orbs you can use. The tool tries every orb combination in the three slots and every way to place your Hidden Potential levels. It ranks builds by how much they widen the team’s margin in a fight: more damage ends it sooner, and dodges, Type DEF and healing make the team’s HP last longer.</p>
+<p class="sub">Enter the kit for one battle situation, then choose the orbs you can use. This is a manual scenario comparison; it does not automatically read or simulate the whole kit. The tool tries every orb combination in the three slots and every way to place your Hidden Potential levels. It ranks builds by how much they widen the team’s margin in a fight: more damage ends it sooner, and dodges, Type DEF and healing make the team’s HP last longer.</p>
 
 <div class="warn" id="legacy" hidden>
   <p style="margin:0 0 6px">Inputs from the previous version of this tool were found in this browser. That version assumed every two-skill orb gives +5 to each skill and that bronze orbs carry skills. Real orbs are closer to: bronze = stats only (up to ATK +800), one-skill orbs up to 7, two-skill silver orbs 4 + 4.</p>
@@ -109,10 +109,30 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 </div>
 
 <div class="card">
-<h2>2. The kit</h2>
-<p class="hint">Copy the numbers from the card’s DokkanStats page: the Super Attack multipliers, the Ki multipliers and the passive’s percentages. Leave a line at 0 if the kit doesn’t have it.</p>
+<h2>2. Character kit</h2>
+<p class="hint">First keep the full kit here as a reference. Then enter the supported effects below. Text is saved for your review; it is not automatically converted into numbers. Unknown is different from 0: use 0 only when an effect is absent or inactive.</p>
+<details><summary>Full kit reference and source</summary>
+<label class="row t">Source / exact card ID and awakening state<input data-k="kitSource" type="text" maxlength="500" placeholder="Dokkan Info URL, card ID, EZA / Super EZA"></label>
+<label class="row t">Leader skill<textarea data-k="kitLeader" rows="2" maxlength="5000"></textarea></label>
+<label class="row t">Super / Ultra Super Attack effects<textarea data-k="kitSuper" rows="3" maxlength="5000"></textarea></label>
+<label class="row t">Passive skill, including entrance and conditions<textarea data-k="kitPassive" rows="5" maxlength="12000"></textarea></label>
+<label class="row t">Active skill, standby, finish and transformation conditions<textarea data-k="kitActive" rows="3" maxlength="8000"></textarea></label>
+<label class="row t">Links, categories and other kit details<textarea data-k="kitOther" rows="2" maxlength="5000"></textarea></label>
+</details>
+<details><summary>Where does each kit effect go?</summary>
+<p><b>Extra attacks, crit and dodge:</b> enter the active values under the matching heading in each battle state below. Keep kit effects separate from Hidden Potential and orbs.</p>
+<p><b>Guard and damage reduction:</b> enter them in “The card”. Use separate saved scenarios if these change, since they apply to every form here.</p>
+<p><b>Super Attack ATK stacking:</b> enter the verified per-Super increase and the number of stacks already active. Temporary raises and DEF stacks are not simulated automatically.</p>
+<p><b>ATK &amp; DEF +X%, per-sphere boosts, support, leader skills and links:</b> there is no direct passive-stat calculation. Do not put these in the Super multiplier or Ki multiplier fields. Their outcome can only be approximated through team damage share and incoming hit size.</p>
+<p><b>HP / turn / ally / Ki conditions:</b> choose one situation and enter only effects active in it. Compare another saved scenario when the condition changes.</p>
+<p><b>Active attacks, standby / finish damage, domains, taunts, revive, nullification and enemy dodge cancellation:</b> keep these in the reference and list them as gaps below. They are not simulated. A form is a weighted steady state, not a turn-by-turn transformation.</p>
+</details>
+<label class="row t">Battle situation being compared<input data-k="kitSituation" type="text" maxlength="500" placeholder="e.g. Turn 5, slot 2, 6 Ki Spheres, entrance expired"></label>
+<label class="row t">Kit review<select data-k="kitReview"><option value="unreviewed">Still checking the kit / unsure where an effect goes</option><option value="supported">All relevant effects entered for this situation</option><option value="gaps">Relevant effects are missing or only approximated</option></select></label>
+<label class="row t">Missing effects or assumptions<textarea data-k="kitGaps" rows="2" maxlength="3000" placeholder="e.g. DEF gained after each Super; guard only above an HP threshold"></textarea></label>
+<p class="hint">Starting multipliers are examples, not verified character data. Check them for your exact card. The review below includes your kit notes and assumptions.</p>
 <div id="forms"></div>
-<button id="addForm" type="button" class="ghost">Add a transformation or other form</button>
+<button id="addForm" type="button" class="ghost">Add a transformation or battle state</button>
 </div>
 
 <div class="card">
@@ -198,7 +218,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 
 <section aria-label="Results">
 <div class="card">
-<h2>Best build <span class="hint" id="status" role="status"></span></h2>
+<h2>Best build for entered scenario <span class="hint" id="status" role="status"></span></h2>
 <div class="warn" id="warn" hidden></div>
 <div class="best" id="best"></div>
 <div class="kpi" id="kpi"></div>
@@ -249,9 +269,10 @@ function num(x,d,lo,hi){const v=typeof x==="number"?x:parseFloat(x);return Numbe
 const blank=x=>x===""||x===null||x===undefined;
 // A form's kit as the card shows it: multipliers in %, chances in %.
 function defForm(name){return{name,share:100,sa12:425,sa18:540,ki:24,k12:150,k24:200,stackPer:0,stackN:0,
-  addSup:1,addSupPct:0,addNorm:0,addNormPct:0,crit:0,critOn:"all",eva:0,ctrHit:0,atkHit:0,ctrDodge:0,atkDodge:0,dist:""}}
+  addSup:0,addSupPct:0,addNorm:0,addNormPct:0,normSuperPct:0,crit:0,critOn:"all",eva:0,ctrHit:0,atkHit:0,ctrDodge:0,atkDodge:0,dist:""}}
 function defaults(){return{
   v:3,name:"",role:"",req:"",unsure:"",
+  kitSource:"",kitLeader:"",kitSuper:"",kitPassive:"",kitActive:"",kitOther:"",kitSituation:"",kitReview:"unreviewed",kitGaps:"",
   rarity:"LR",unitClass:"Super",unitType:"AGL",enemyClass:"",enemyType:"",slot:"",cardAtk:20000,enemyDef:0,
   forms:[defForm("Base form")],
   hitsTotal:5,hits:"",hitSize:"auto",dr:0,guard:false,
@@ -393,13 +414,13 @@ function takenMult(mt,guard,td){
 // Turn a form's kit, as the card lists it, into the numbers the model uses.
 function kitForm(f,lr){
   const P=x=>num(x,0,0,100)/100,C=x=>Math.round(num(x,0,0,10));
-  const gS=C(f.addSup),pS=P(f.addSupPct),gN=C(f.addNorm),pN=P(f.addNormPct),xs=gS+pS,xn=gN+pN,n=1+gS+gN;
+  const gS=C(f.addSup),pS=P(f.addSupPct),gN=C(f.addNorm),pN=P(f.addNormPct),toSuper=P(f.normSuperPct),norm=gN+pN,xs=gS+pS+norm*toSuper,xn=norm*(1-toSuper),n=1+gS+gN;
   const pd=parseDist(f.dist),k12=num(f.k12,150,0,1000)/100;
   return{ki:lr?Math.round(num(f.ki,24,12,24)):12,k12,k24:lr?num(f.k24,200,0,1000)/100:k12,
     sa12:num(f.sa12,425,0,5000)/100,sa18:num(f.sa18,540,0,5000)/100,xs,xn,
     dist:pd||[[n,(1-pS)*(1-pN)],[n+1,pS*(1-pN)+pN*(1-pS)],[n+2,pS*pN]].filter(x=>x[1]>1e-12),
     distBad:!!String(f.dist||"").trim()&&!pd,
-    nc:P(f.crit)*(f.critOn==="super"?(1+xs)/(1+xs+xn):1),nd:P(f.eva),
+    nc:P(f.crit),superCrit:f.critOn==="super",nd:P(f.eva),
     st:num(f.stackPer,0,0,1000)/100*Math.round(num(f.stackN,0,0,100)),
     ctrHit:num(f.ctrHit,0,0,5000)/100,atkHit:num(f.atkHit,0,0,1000)/100,ctrDodge:num(f.ctrDodge,0,0,5000)/100,atkDodge:num(f.atkDodge,0,0,1000)/100};
 }
@@ -425,7 +446,7 @@ function model(st){
     const k=kitForm(f,lr),name=String(f.name||"").trim()||"Form "+(i+1);
     if(k.distBad)M.warn.push(`${name}: the attack-count odds weren’t understood, so the passive’s extra attacks were used. Use a form like “2:30, 3:70”.`);
     const m={name,w:ss?shares[i]/ss:1/st.forms.length,ki:k.ki,k12:k.k12,Km:lr?k.k12+(k.k24-k.k12)*(k.ki-12)/12:k.k12,
-      sa12:k.sa12,SAm:lr&&k.ki>=18?k.sa18:k.sa12,xs:k.xs,xn:k.xn,dist:k.dist,nc:k.nc,nd:k.nd,st:k.st,hv:0,dv:0,DEF:0,addT:null};
+      sa12:k.sa12,SAm:lr&&k.ki>=18?k.sa18:k.sa12,xs:k.xs,xn:k.xn,dist:k.dist,nc:k.nc,superCrit:k.superCrit,nd:k.nd,st:k.st,hv:0,dv:0,DEF:0,addT:null};
     m.addT=Float64Array.from({length:51},(_,L)=>addChance(m.dist,L));
     m.DEF=num(st.enemyDef,0,0,95)/100*m.Km*(m.SAm+m.st)*hitMult(mt,0);
     m.D0=attack(m,M,0,0,0,0,1);
@@ -448,9 +469,9 @@ function model(st){
 // Expected damage of one turn's attacks for one form (units: card ATK in battle = 1).
 function attack(m,M,a,c,s,t,u){
   const cr=1-(1-m.nc)*(1-Math.min(1,GAME.crit*c)),ad=m.addT[a<50?a:50],D=m.DEF;
-  const TM=hitMult(M.mt,t),CM=critMult(M.mt,t),sb=GAME.sa*s;
+  const TM=hitMult(M.mt,t),CM=critMult(M.mt,t),sb=GAME.sa*s,ncr=m.superCrit?Math.min(1,GAME.crit*c):cr;
   const vm=u*m.Km*(m.SAm+sb+m.st),vs=u*m.k12*(m.sa12+sb+m.st),vn=u*m.k12*(1+m.st);
-  const em=cr*vm*CM+(1-cr)*Math.max(0,vm*TM-D),es=cr*vs*CM+(1-cr)*Math.max(0,vs*TM-D),en=cr*vn*CM+(1-cr)*Math.max(0,vn*TM-D);
+  const em=cr*vm*CM+(1-cr)*Math.max(0,vm*TM-D),es=cr*vs*CM+(1-cr)*Math.max(0,vs*TM-D),en=ncr*vn*CM+(1-ncr)*Math.max(0,vn*TM-D);
   return em+m.xs*es+m.xn*en+ad*(GAME.addSuper*es+(1-GAME.addSuper)*en);
 }
 function dodgeOf(m,e){return 1-(1-m.nd)*(1-Math.min(1,GAME.eva*e))}
@@ -477,7 +498,9 @@ function evalBuild(M,tot,u){
   let g=-1,crit=0,sup=0,dodge=0;const per=[];
   M.forms.forEach((m,i)=>{
     const a=attack(m,M,tot[0],tot[1],tot[3],tot[5],u)/m.D0,dg=dodgeOf(m,tot[2]);
-    const cr=1-(1-m.nc)*(1-Math.min(1,GAME.crit*tot[1])),sp=GAME.addSuper*m.addT[Math.min(tot[0],50)];
+    const hc=Math.min(1,GAME.crit*tot[1]),sp=GAME.addSuper*m.addT[Math.min(tot[0],50)],
+      sc=1-(1-m.nc)*(1-hc),ad=m.addT[Math.min(tot[0],50)],
+      cr=m.superCrit?(sc*(1+m.xs+ad*GAME.addSuper)+hc*(m.xn+ad*(1-GAME.addSuper)))/(1+m.xs+m.xn+ad):sc;
     g+=m.w*a*d.rho[i];crit+=m.w*cr;sup+=m.w*sp;dodge+=m.w*dg;
     per.push({name:m.name,w:m.w,gain:100*(a*d.rho[i]-1),crit:100*cr,sup:100*sp,dodge:100*dg});
   });
@@ -569,7 +592,7 @@ function search(st,topN){
   // memoised by those totals.
   const jx=[0,1,3,5].map(i=>P1.indexOf(i)),pick=(j,x0,x1,x2,x3)=>j===0?x0:j===1?x1:j===2?x2:j===3?x3:0;
   const nA=hi[0]+1,nT=hi[5]+1,mu=[],nu=new Map();
-  const factored=W.every(m=>m.DEF===0);
+  const factored=W.every(m=>m.DEF===0&&!m.superCrit);
   if(factored)F.forEach((m,f)=>{
     mu[f]=new Float64Array((hi[1]+1)*nT);
     for(let c=0;c<=hi[1];c++){const cr=1-(1-m.nc)*(1-Math.min(1,GAME.crit*c));for(let t=0;t<nT;t++)mu[f][c*nT+t]=cr*critMult(M.mt,t)+(1-cr)*hitMult(M.mt,t)}
@@ -782,7 +805,8 @@ function formHTML(f,i){
   return `<div class="form">${multi?`<header><h3>Form ${i+1}</h3><button type="button" class="ghost small" data-rm="${i}">Remove</button></header>
   <label class="row t">Name<input data-k="forms.${i}.name" type="text" maxlength="60"></label>
   ${N("share","Share of turns in this form (%)",'min="0" max="100" step="5"')}`:""}
-  <h4>Super Attack</h4>
+  <h4>Super Attack and Ki</h4>
+  <p class="hint">Multipliers are card data, not the passive’s ATK boost. “Ki multiplier” is not Ki +X. Use verified values for this awakening and Super Attack level.</p>
   ${N("sa12","12 Ki Super multiplier (%)",'min="0" max="5000" step="5"')}
   ${N("sa18","18 Ki Super multiplier (%)",'min="0" max="5000" step="5"',"lr")}
   ${N("ki","Ki it usually Supers at (12–24)",'min="12" max="24" step="1"',"lr")}
@@ -790,22 +814,27 @@ function formHTML(f,i){
   ${N("k24","Ki multiplier at 24 Ki (%)",'min="0" max="1000" step="5"',"lr")}
   ${N("stackPer","“Raises ATK by X% for the battle” per Super: X",'min="0" max="1000" step="5"')}
   ${N("stackN","Supers it has done so far",'min="0" max="100" step="1"')}
-  <h4>Additional attacks in its passive</h4>
+  <h4>Additional attacks from the kit</h4>
+  <p class="hint">Do not count the main attack, Hidden Potential or orbs. “Additional Super” goes in the first pair. “Additional attack with a chance of becoming a Super” goes in the second pair plus its conversion chance. Example: 2 guaranteed attacks, each with a 50% Super chance → 2 attacks and 50% conversion; leave additional Supers at 0.</p>
   ${N("addSup","Guaranteed additional Supers",'min="0" max="10" step="1"')}
   ${N("addSupPct","Chance of one more additional Super (%)",P)}
-  ${N("addNorm","Guaranteed additional attacks (not Supers)",'min="0" max="10" step="1"')}
-  ${N("addNormPct","Chance of one more additional attack (%)",P)}
-  <h4>Crit and evasion in its passive</h4>
+  ${N("addNorm","Guaranteed additional attacks (before Super conversion)",'min="0" max="10" step="1"')}
+  ${N("addNormPct","Chance to launch one more attack (before conversion) (%)",P)}
+  ${N("normSuperPct","Super chance for the two attack fields just above (%)",P)}
+  <p class="hint">Use 0 for normal-only attacks. These attacks share one conversion chance; mixed groups with different chances need a separate approximation, recorded in the gaps above.</p>
+  <h4>Crit and evasion from the kit</h4>
+  <p class="hint">Enter the verified chance active in this situation, including Super or active-skill buffs if applicable. Do not add Hidden Potential chances here. Do not add separate passive chances together without checking their rules.</p>
   ${N("crit","Critical hit chance (%)",P)}
   <label class="row t">The crit chance applies to<select data-k="forms.${i}.critOn"><option value="all">All its attacks</option><option value="super">Its Supers only</option></select></label>
   ${N("eva","Evasion chance (%)",P)}
-  <h4>When it’s hit or evades</h4>
+  <details><summary>Advanced: counters and estimated gains when hit / evading</summary>
+  <p class="hint">Approximation: every incoming attack is treated alike, with no timing, attack-type restriction, buildup cap or turn history. The ATK fields below estimate a relative damage gain per event; they are not a direct copy of a passive ATK percentage. Use 0 and record a gap if that estimate is unknown.</p>
   ${N("ctrHit","Counters when hit: counter multiplier (%)",'min="0" max="5000" step="10"')}
-  ${N("atkHit","ATK +X% for each attack it receives before it attacks",'min="0" max="1000" step="5"')}
+  ${N("atkHit","Estimated own damage gain per received hit (%)",'min="0" max="1000" step="5"')}
   ${N("ctrDodge","Counters when it evades: counter multiplier (%)",'min="0" max="5000" step="10"')}
-  ${N("atkDodge","ATK +X% each time it evades before it attacks",'min="0" max="1000" step="5"')}
-  <details><summary>Attack-count odds (only if the kit’s extra attacks are more complicated)</summary>
-  <label class="row t">Attacks before the Hidden Potential additional<input data-k="forms.${i}.dist" type="text" placeholder="e.g. 2:30, 3:70 (blank = from the lines above)" maxlength="80"></label></details></div>`;
+  ${N("atkDodge","Estimated own damage gain per dodge (%)",'min="0" max="1000" step="5"')}
+  </details><details><summary>Attack-count odds (only if the kit’s extra attacks are more complicated)</summary>
+  <label class="row t">Attacks before the Hidden Potential additional<input data-k="forms.${i}.dist" type="text" placeholder="e.g. 2:30, 3:70 (blank = from the lines above)" maxlength="80"></label><p class="hint">This overrides only the number of Hidden Potential checks, not the extra Super / normal damage above. Both must describe the same situation.</p></details></div>`;
 }
 function renderForms(){
   $("forms").innerHTML=state.forms.map(formHTML).join("");
@@ -825,6 +854,12 @@ function syncUI(){
   document.body.dataset.rarity=state.rarity==="UR"?"UR":"LR";
   const auto=state.hitSize==="auto";
   document.querySelectorAll(".autoOnly").forEach(e=>e.disabled=!auto);
+  state.forms.forEach((f,i)=>{
+    const disable=(k,off)=>{const e=document.querySelector(`[data-k="forms.${i}.${k}"]`);if(e)e.disabled=off};
+    disable("stackN",num(f.stackPer,0,0,1000)===0);
+    disable("critOn",num(f.crit,0,0,100)===0);
+    disable("normSuperPct",num(f.addNorm,0,0,10)===0&&num(f.addNormPct,0,0,100)===0);
+  });
   const custom=!!String(state.inv||"").trim();
   document.querySelectorAll("#orbRows input:not([type=checkbox]),#orbOkBox input").forEach(e=>e.disabled=custom);
 }
@@ -878,6 +913,9 @@ function render(r){
   $("matchHint").textContent=describeMatch(state);
   $("shareHint").textContent=`Its hits are about ${short(M.size)}× a teammate’s, so it takes about ${Math.round(M.inShare*100)}% of the team’s incoming damage.`;
   const w=M.warn.slice();
+  if(state.kitReview!=="supported")w.unshift(state.kitReview==="gaps"?"Scenario estimate: relevant kit effects are missing or approximated. Review the gaps before using this recommendation.":"Kit review incomplete: these results use the entered numbers, including any example values left unchanged.");
+  if(state.kitGaps.trim())w.push("Kit gaps / assumptions: "+state.kitGaps);
+  if(state.kitReview==="supported"&&state.kitGaps.trim())w.push("The kit is marked complete but still has recorded gaps. Resolve them or select the missing-effects review status.");
   if(state.unsure)w.unshift("Hold off spending until you’ve confirmed: "+state.unsure+".");
   if(r.inv.bad)w.push(`${r.inv.bad} orb line(s) weren’t understood and were ignored. Use a form like “silver crit+additional 4” or “gold crit 7 atk 900”.`);
   if(String(state.inv||"").trim()&&!r.inv.list.length)w.push("None of the listed orbs were understood, so every slot is empty.");
@@ -898,8 +936,10 @@ function render(r){
   const L=(k,x)=>k+": "+(x||"")+"\n",matchTxt=`${state.unitClass} ${state.unitType} against ${state.enemyClass||state.unitClass} ${state.enemyType||"mixed Types"}`;
   $("review").textContent=L("Exact character/state",state.name)+L("Rarity",state.rarity)+L("Slot",slotName(state.slot))+L("Primary role",state.role)+
     L("Important activation requirement",state.req)+L("Type matchup",matchTxt)+
+    L("Kit source",state.kitSource)+L("Battle situation",state.kitSituation)+L("Kit review",state.kitReview)+L("Missing effects / assumptions",state.kitGaps)+
+    L("Leader skill (reference only)",state.kitLeader)+L("Super effects (reference only)",state.kitSuper)+L("Passive (reference only)",state.kitPassive)+L("Active / standby / transformations (reference only)",state.kitActive)+L("Other kit details (reference only)",state.kitOther)+
     `Share of team damage: ${short(M.s0*100)}%. Takes about ${Math.round(M.inShare*100)}% of the team’s incoming damage (${short(M.h)} of ${short(M.total)} attacks, hits ${short(M.size)}× a teammate’s)\n\n`+
-    M.forms.map(m=>`${m.name} (${Math.round(m.w*100)}% of turns): Super ${+(m.SAm*100).toFixed(1)}% at ${m.ki} Ki (Ki ${+(m.Km*100).toFixed(1)}%), additional Supers ${+m.xs.toFixed(2)}, additional attacks ${+m.xn.toFixed(2)}, crit ${+(m.nc*100).toFixed(1)}%, evasion ${+(m.nd*100).toFixed(1)}%${m.st?`, ATK stacked ${+(m.st*100).toFixed(0)}%`:""}${m.hv?`, each hit received worth ${+(m.hv*100).toFixed(0)}% of its turn`:""}${m.dv?`, each dodge worth ${+(m.dv*100).toFixed(0)}% of its turn`:""}`).join("\n")+"\n\n"+
+    M.forms.map(m=>`${m.name} (${Math.round(m.w*100)}% of turns): Super ${+(m.SAm*100).toFixed(1)}% at ${m.ki} Ki (Ki ${+(m.Km*100).toFixed(1)}%), additional Supers ${+m.xs.toFixed(2)}, additional attacks ${+m.xn.toFixed(2)}, crit ${+(m.nc*100).toFixed(1)}%${m.superCrit?" on Supers only":""}, evasion ${+(m.nd*100).toFixed(1)}%${m.st?`, ATK stacked ${+(m.st*100).toFixed(0)}%`:""}${m.hv?`, each hit received worth ${+(m.hv*100).toFixed(0)}% of its turn`:""}${m.dv?`, each dodge worth ${+(m.dv*100).toFixed(0)}% of its turn`:""}`).join("\n")+"\n\n"+
     `Bronze orb: ${b.n[0]}\nSilver orb: ${b.n[1]}\nGold orb: ${b.n[2]}\nPotential levels: ${ls(b.x)}\nFinal levels: ${ls(b.tot)}\n`+
     `Team margin ${sg(b.score)}: its damage ${sg(b.dmg)} per turn, team HP lost per turn ${b.cut>0?"−":""}${pct(b.cut)}\nCrit ${pct(b.crit)}, extra Super ${pct(b.sup)}, dodge ${pct(b.dodge)}\n`+
     (b.per.length>1?b.per.map(p=>`  ${p.name}: damage ${sg(p.gain)}, crit ${pct(p.crit)}, dodge ${pct(p.dodge)}`).join("\n")+"\n":"")+"\n"+L("Uncertain interaction",state.unsure);
