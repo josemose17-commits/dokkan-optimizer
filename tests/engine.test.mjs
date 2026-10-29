@@ -9,7 +9,7 @@ const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const src = html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1];
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(src + ";this.E={MATCH,defaults,defForm,normalizeState,fromLegacy,parseInv,takenMult,kitForm,matchCode,describeMatch,model,evalBuild,orbOptions,search,adviseSlot};", ctx);
+vm.runInContext(src + ";this.E={MATCH,defaults,defForm,normalizeState,fromLegacy,parseInv,takenMult,kitForm,matchCode,describeMatch,model,evalBuild,orbOptions,search,adviseSlot,sizeAt};", ctx);
 const E = ctx.E;
 // Arrays made inside the vm context have another realm's prototype.
 const plain = (x) => JSON.parse(JSON.stringify(x));
@@ -97,9 +97,82 @@ test("additionals use the 12 Ki Super and 12 Ki multiplier, one check per eligib
   near(build(base({ form: { xs: 1 } }), { A: 15 }).dmg, ((16 + 0.51 * 3.75) / 16 - 1) * 100, "additional");
 });
 
-test("stacked ATK adds to every Super and shrinks Super Attack Boost's share", () => {
+test("a Super's ATK raise counts for itself and the attacks after it", () => {
   near(build(base({ form: { xs: 1 } }), { S: 10 }).dmg, (17.75 / 16 - 1) * 100, "SA boost, no stack");
-  near(build(base({ form: { xs: 1, stack: 100 } }), { S: 10 }).dmg, (21.25 / 19.5 - 1) * 100, "SA boost, 100% stacked");
+  // "Raises ATK by 100% for the battle", one Super before this fight, a one-turn fight:
+  // main 2 x (5 + 2) = 14, extra Super 1.5 x (4 + 3) = 10.5; SA Boost 10 adds 0.5 to both.
+  near(build(base({ fightTurns: 1, form: { xs: 1, stack: 100 } }), { S: 10 }).dmg, (26.25 / 24.5 - 1) * 100, "SA boost, 100% stacked");
+  // "Raises ATK by 30% for 1 turn": main 2 x 5.3 = 10.6, extra 1.5 x 4.6 = 6.9; S10: 11.6 + 7.65.
+  near(build(base({ form: { xs: 1, saTurn: 30 } }), { S: 10 }).dmg, (19.25 / 17.5 - 1) * 100, "1-turn raise");
+});
+
+test("battle stacks build up over the turns it attacks, up to their cap", () => {
+  // 30% per Super over 3 turns: 2 x 5.3, 2 x 5.6, 2 x 5.9 = 10.6, 11.2, 11.8; SA Boost 10 adds 1 a turn.
+  near(build(base({ fightTurns: 3, form: { stackPer: 30 } }), { S: 10 }).dmg, (12.2 / 11.2 - 1) * 100, "3 turns");
+  // Capped at 50%: 10.6, 11, 11.
+  const avg = 32.6 / 3;
+  near(build(base({ fightTurns: 3, form: { stackPer: 30, stackCap: 50 } }), { S: 10 }).dmg, ((avg + 1) / avg - 1) * 100, "cap");
+});
+
+test("on-attack ATK boosts add up, then multiply", () => {
+  // ATK +50% on Supers: main 10 x 1.5 = 15 and a normal 1.5; S10: 2 x 5.5 x 1.5 = 16.5.
+  near(build(base({ form: { xn: 1, atkSup: 50 } }), { S: 10 }).dmg, (18 / 16.5 - 1) * 100, "on Supers");
+  // ATK +20% with each attack performed: the normal after the Super gets 1.2x (1.8).
+  near(build(base({ form: { xn: 1, atkEach: 20 } }), { S: 10 }).dmg, (12.8 / 11.8 - 1) * 100, "per attack");
+  // For the battle, 2 turns: 10, then 12 (S10: 11, then 13.2).
+  near(build(base({ fightTurns: 2, form: { atkEach: 20, eachBattle: true } }), { S: 10 }).dmg, (12.1 / 11 - 1) * 100, "per attack, battle");
+  // ATK +10% per attack received for the battle, 2 a turn: 10, then 12; capped at 15%: 11.5.
+  near(E.model(base({ fightTurns: 2, form: { hitStack: 10 } })).forms[0].D0, 11, "per attack received");
+  near(E.model(base({ fightTurns: 2, form: { hitStack: 10, hitCap: 15 } })).forms[0].D0, 10.75, "capped");
+});
+
+test("attacks effective against all Types hit like a Type it beats", () => {
+  // Neutral, same class: 1.25 + Type ATK, crit (1.5 + Type ATK) x 1.25, as in the first test.
+  near(build(base({ form: { effAll: true } }), { C: 15, T: 10 }).dmg, (19.75 / 12.5 - 1) * 100, "effective");
+  near(E.model(base({ hitSize: "auto", form: { effAll: true } })).size, 1, "it still takes neutral hits");
+});
+
+test("Ki odds average the Super over the Ki it reaches", () => {
+  // 18 Ki: 1.75 x 5; 24 Ki: 2 x 5; half each = 9.375. SA Boost 10 adds 0.5 x 1.875.
+  const st = base({ form: { kiOdds: "18:50, 24:50" } });
+  near(E.model(st).forms[0].Km, 1.875, "average Ki multiplier");
+  near(build(st, { S: 10 }).dmg, (0.9375 / 9.375) * 100, "SA boost");
+  // Below 18 Ki it uses the 12 Ki Super: 1.5 x 4 = 6.
+  near(E.model(base({ form: { kiOdds: "12:50, 24:50" } })).forms[0].D0, 8, "12 and 24 Ki");
+  assert.match(E.model(base({ form: { kiOdds: "30:50" } })).warn.join(" "), /Ki odds/);
+});
+
+test("lowered enemy DEF, all-target Supers and Active Skill attacks", () => {
+  // Enemy DEF = 50% of the 10 hit = 5. Main 10 - 5 = 5; the extra Super after it 6 - 2.5 = 3.5.
+  near(E.model(base({ enemyDef: 50, fightTurns: 1, form: { xs: 1, defLow: 50 } })).forms[0].D0, 8.5, "one turn");
+  // The next turn both Supers' debuffs are still up (they last 3 turns): 10 + 6.
+  near(E.model(base({ enemyDef: 50, fightTurns: 2, form: { xs: 1, defLow: 50 } })).forms[0].D0, 12.25, "two turns");
+  // A Super that hits 3 enemies: 30, plus a normal 1.5.
+  near(E.model(base({ form: { xn: 1, aoe: 3 } })).forms[0].D0, 31.5, "all-target Super");
+  // A 500% Active Skill once in a 5-turn fight: 1 a turn, and a Hidden Potential check every 5 turns.
+  const st = base({ actMult: 500, actUses: 1, fightTurns: 5 });
+  near(E.model(st).forms[0].D0, 11, "Active Skill");
+  near(build(st, { A: 15 }).sup, 50 * (1 - Math.pow(0.7, 1.2)), "its additional check");
+});
+
+test("with the enemy's ATK, DEF is subtracted before guard", () => {
+  const def = { hitSize: "auto", enemyAtk: 100000, def: 20000, mateDef: 10000, dr: 50 };
+  // Normal 100000 x 0.5 - 20000 = 30000, Super 250000 x 0.5 - 20000 = 105000, 20% Supers;
+  // a teammate takes 90000 and 240000.
+  near(E.model(base(def)).size, (0.8 * 30000 + 0.2 * 105000) / (0.8 * 90000 + 0.2 * 240000), "neutral");
+  // Against a Type it beats: (x 0.9 - DEF) x 0.5; Type DEF 15 turns 0.9 into 0.75.
+  const M = E.model(base(Object.assign({ match: "b1" }, def)));
+  near(E.sizeAt(M, 0), (0.8 * 12500 + 0.2 * 46250) / 120000, "beats");
+  near(E.sizeAt(M, 15), (0.8 * 8750 + 0.2 * 36875) / 120000, "Type DEF");
+  // Without it: 20% DR, 50% against Supers, Supers 2.5x normals.
+  near(E.model(base({ hitSize: "auto", dr: 20, drSup: 30 })).size, (0.8 * 0.8 + 0.2 * 2.5 * 0.5) / (0.8 + 0.2 * 2.5), "DR against Supers");
+});
+
+test("Recovery Boost heals 0.0015 x level x DEF x Ki Spheres of its Type", () => {
+  // 0.0015 x 20000 x 4 = 120 HP a level against 120000 a teammate hit; the team takes 5 hits a turn.
+  const st = base({ enemyAtk: 100000, def: 20000, mateDef: 10000, dr: 50, spheres: 4, recOff: 50 });
+  near(build(st, { R: 10 }).cut, (100 * 120 * 10) / 120000 / 5, "formula, the estimate is ignored");
+  near(build(base({ unevadable: 50 }), { E: 10 }).cut, 2, "half the attacks can't be evaded");
 });
 
 test("crits ignore enemy DEF", () => {
@@ -197,6 +270,19 @@ const bruteCases = {
     setMatch(st, "w2");
     Object.assign(st, { kmax: 2, dmgShare: 33, hitSize: "2", recOff: 15 });
   },
+  "stacks, Ki odds, all-target Supers, an Active Skill, lowered DEF": (st) => {
+    Object.assign(st, { enemyDef: 30, fightTurns: 3, actMult: 400, actUses: 1, dmgShare: 45 });
+    Object.assign(st.forms[0], { stackPer: 30, stackCap: 60, saTurn: 20, defLow: 30, aoe: 2, kiOdds: "18:40, 24:60", atkSup: 30 });
+    Object.assign(st.forms[1], { atkEach: 10, eachBattle: true, eachCap: 30, hitStack: 5 });
+  },
+  "counters, DEF hit sizes, attacks it can't evade, effective against all Types": (st) => {
+    setMatch(st, "w1");
+    Object.assign(st, { hitSize: "auto", enemyAtk: 200000, def: 30000, dr: 30, drSup: 20, unevadable: 25, spheres: 3, hits: 2, dmgShare: 33 });
+    Object.assign(st.forms[0], { ctrHit: 200, ctrOn: "normal", atkHit: 15, effAll: true });
+    Object.assign(st.forms[1], { ctrDodge: 300, atkDodge: 20, atkHit: 10 });
+  },
+  "one form, plain": (st) => { st.forms = [st.forms[0]]; },
+  "one form, gains when hit": (st) => { setMatch(st, "b1"); st.forms = [Object.assign(st.forms[0], { atkHit: 30 })]; },
   "one form, counters": (st) => {
     setMatch(st, "b1");
     Object.assign(st, { dmgShare: 33, hits: 2.5, hitSize: "1.5" });
@@ -247,7 +333,7 @@ test("saved inputs from earlier versions carry over", () => {
   assert.deepEqual(plain([fresh.orbs[1].one, fresh.orbs[1].two, fresh.orbs[0].stat]), [7, 4, 800]);
   // Version 1: a Type checkbox and absolute hit sizes.
   const v1 = E.normalizeState({ v: 1, typeOn: true, hitSize: "heavy", survW: 2, hits: "3", forms: [{ k12: 1.6 }] });
-  assert.equal(v1.v, 3);
+  assert.equal(v1.v, 4);
   assert.equal(E.matchCode(v1), "b1");
   assert.equal(v1.hitSize, "1");
   assert.equal(v1.hits, "3");
@@ -261,8 +347,15 @@ test("saved inputs from earlier versions carry over", () => {
   assert.equal(v2.dmgShare, 45, "nearest share option");
   assert.equal(v2.q.links, true);
   assert.equal("job" in v2.q, false);
-  assert.deepEqual(plain(v2.forms[0]), { name: "Base", share: 100, sa12: 425, sa18: 540, ki: 20, k12: 150, k24: 200, stackPer: 30, stackN: 1,
-    addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 70, crit: 20, critOn: "all", eva: 10, ctrHit: 0, atkHit: 20, ctrDodge: 0, atkDodge: 5, dist: "" });
+  assert.deepEqual(plain(v2.forms[0]), { name: "Base", share: 100, sa12: 425, sa18: 540, ki: 20, kiOdds: "", k12: 150, k24: 200,
+    saTurn: 0, stackPer: 30, stackCap: 0, stackN: 1, defLow: 0, aoe: 1, atkSup: 0, atkEach: 0, eachBattle: false, eachCap: 0, hitStack: 0, hitCap: 0,
+    addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 70, crit: 20, critOn: "all", eva: 10, effAll: false,
+    ctrHit: 0, ctrOn: "all", atkHit: 20, ctrDodge: 0, atkDodge: 5, dist: "" });
+  assert.equal(v2.fightTurns, 1, "old stacks keep a one-turn fight");
+  // Version 3: stacks were a snapshot, so they keep a one-turn fight.
+  assert.equal(E.normalizeState({ v: 3, forms: [{ stackPer: 30, stackN: 2 }] }).fightTurns, 1);
+  assert.equal(E.normalizeState({ v: 3, forms: [{ stackPer: 30 }] }).fightTurns, 5);
+  assert.equal(E.normalizeState({ v: 3, forms: [{ ctrOn: "bogus" }] }).forms[0].ctrOn, "all");
   assert.equal(E.normalizeState({ v: 3, unitType: "bogus", enemyType: "bogus", dmgShare: 50 }).unitType, "AGL");
 });
 
@@ -285,7 +378,7 @@ test("a Type that beats it: 0.9 / 1.0 hits, 1.25 / 1.5 taken, crits and guard st
   near(t("w1", true), 0.45, "guard ignores the disadvantage");
 });
 
-test("the kit's lines turn into attacks, crits and on-hit values", () => {
+test("the kit's lines turn into attacks, crits and counters", () => {
   // One guaranteed additional Super and a 50% chance of another: 1.5 extra Supers,
   // 2 or 3 attacks before the Hidden Potential additional.
   let k = E.kitForm(Object.assign(E.defForm("A"), { addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 20 }), true);
@@ -299,17 +392,27 @@ test("the kit's lines turn into attacks, crits and on-hit values", () => {
   near(k.nc, 0.6 * 2.5 / 3, "Supers-only crit");
   // "Raises ATK by 20% for the battle" after 3 Supers.
   near(E.kitForm(Object.assign(E.defForm("A"), { stackPer: 20, stackN: 3 }), true).st, 0.6, "stacked ATK");
-  // A 300% counter on a 10 turn, neutral: each hit received is worth 30% of the turn.
-  const M = E.model(base({ form: { ctrHit: 300, atkHit: 10 } }));
-  near(M.forms[0].hv, 0.3 + 0.1, "counter plus ATK per hit");
-  // Against a Type it beats the counter also gets 1.25x, and so does the turn.
-  near(E.model(base({ match: "b1", form: { ctrDodge: 300 } })).forms[0].dv, 0.3, "counter on evade");
+  // A 300% counter, 2 attacks received: 6 on top of the 10 turn; ATK +10% per hit
+  // before it attacks adds 0.2 x 10. Counters still happen when it evades.
+  const ctr = base({ form: { ctrHit: 300, atkHit: 10 } });
+  near(E.model(ctr).forms[0].D0, 18, "counter plus ATK per hit");
+  // SA Boost 10 lifts only its own attacks: 11 + 6 + 0.2 x 11.
+  near(build(ctr, { S: 10 }).dmg, (19.2 / 18 - 1) * 100, "SA Boost skips counters");
+  // Crit lifts the counters too: everything x (0.3 x 1.875 + 0.7).
+  near(build(ctr, { C: 15 }).dmg, 26.25, "Crit");
+  // 10% dodge: the counters stay, ATK per hit falls to 2 x 0.9 x 0.1.
+  near(build(ctr, { E: 10 }).dmg, (17.8 / 18 - 1) * 100, "Evasion");
+  // Each counter is a Hidden Potential check: 1 - 0.7^(1 + 2).
+  near(build(ctr, { A: 15 }).sup, 50 * (1 - Math.pow(0.7, 3)), "additional chance");
+  near(E.model(base({ form: { ctrHit: 300, ctrOn: "normal" } })).forms[0].D0, 10 + 2 * 0.8 * 3, "counters normal attacks only");
+  // Counters when it evades, against a Type it beats: 2 x 3 x 1.25 per unit of dodge on a 12.5 turn.
+  near(build(base({ match: "b1", form: { ctrDodge: 300 } }), { E: 10 }).dmg, 6, "counter on evade");
 });
 
 test("slot advice weighs the answers", () => {
   const q = (o) => Object.assign(E.defaults().q, o);
   const a = (o, M) => E.adviseSlot(q(o), M);
-  const hit = (size, hv, dv) => ({ size, forms: [{ w: 1, hv, dv }] });
+  const hit = (size, hv, dv) => ({ size, forms: [{ w: 1, gains: hv > 0 || dv > 0 }] });
   assert.equal(a({ links: true }).slot, "2");
   assert.equal(a({ protect: "y", links: true }).slot, "1");
   let r = a({ kisphere: true, links: true, startpos: true });
