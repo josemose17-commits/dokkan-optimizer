@@ -70,12 +70,20 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .form h4{font-size:13px;font-weight:600;margin:12px 0 2px;color:var(--muted)}
 .form details{margin-top:8px;font-size:13px}
+.guide-layout{display:grid;grid-template-columns:minmax(0,370px) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:860px){.guide-layout{grid-template-columns:minmax(0,1fr)}}
+.priority{font-size:clamp(21px,4vw,29px);font-weight:800;color:var(--blue);margin:12px 0}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--blue);font-weight:800}
+[hidden]{display:none!important}
+select{min-width:0;max-width:100%}
+#guideResult li{margin:8px 0}
+#guideEvidence p{font-size:14px}
 </style>
 </head>
 <body>
 <main>
 <h1>Dokkan build finder</h1>
-<p class="sub">Enter the kit for one battle situation, then choose the orbs you can use. This is a manual scenario comparison; it does not automatically read or simulate the whole kit. The tool tries every orb combination in the three slots and every way to place your Hidden Potential levels. It ranks builds by how much they widen the team’s margin in a fight: more damage ends it sooner, and dodges, Type DEF and healing make the team’s HP last longer.</p>
+<p class="sub">Choose the exact character and awakening. Get Hidden Potential priorities and an orb plan based on what the kit rewards, with the reasons and meaningful tradeoffs explained.</p>
 
 <div class="warn" id="legacy" hidden>
   <p style="margin:0 0 6px">Inputs from the previous version of this tool were found in this browser. That version assumed every two-skill orb gives +5 to each skill and that bronze orbs carry skills. Real orbs are closer to: bronze = stats only (up to ATK +800), one-skill orbs up to 7, two-skill silver orbs 4 + 4.</p>
@@ -85,9 +93,6 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
   <p class="hint">Your old data stays in the browser either way. Nothing is deleted.</p>
 </div>
 
-<div class="grid">
-<section aria-label="Inputs">
-
 <div class="card">
 <h2>Saved characters</h2>
 <div class="saverow"><input id="saveName" type="text" aria-label="Name to save as" placeholder="Name to save as" maxlength="80"><button id="save" type="button">Save</button></div>
@@ -95,6 +100,39 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 <p class="hint" id="storeMsg"></p>
 </div>
 
+<div class="guide-layout">
+<section class="card" aria-label="Character build inputs">
+<h2>1. Choose the character</h2>
+<label class="row t">Find a supported character<input id="characterSearch" type="search" placeholder="Name, title, type or awakening"></label>
+<label class="row t">Character and awakening<select data-k="guide.profileId" id="characterPicker"></select></label>
+<p class="hint">Three reviewed profiles from 2025–2026. Exact states are named; another awakening is never substituted.</p>
+<div id="customKit" hidden>
+<label class="row t">Exact character<input data-k="guide.custom.name" maxlength="200" placeholder="Character and card title"></label>
+<label class="row t">Awakening / form<input data-k="guide.custom.awakening" maxlength="200" placeholder="e.g. LR, EZA; include the form"></label>
+<label class="row t">Role<select data-k="guide.custom.role"><option value="damage">Damage dealer / tank</option><option value="support">Primarily support</option></select></label>
+<label class="row t">Native crit from the kit<select data-k="guide.custom.crit"><option value="unknown">Not checked</option><option value="none">None</option><option value="some">Some / conditional crit</option><option value="high">High sustained chance</option><option value="guaranteed">Guaranteed during the relevant forms / turns</option></select></label>
+<div id="kitQuestions"></div>
+<p class="hint">These answers create provisional advice. They do not automatically interpret pasted kit text. Use another entry for a form with different priorities.</p>
+</div>
+<h2 style="margin-top:20px">2. Your Hidden Potential</h2>
+<label class="row t">Duplicates used to open routes<select data-k="guide.dupes"><option value="0">0 dupes</option><option value="1">1 dupe</option><option value="2">2 dupes</option><option value="3">3 dupes</option><option value="4">4 dupes</option></select></label>
+<p class="hint">Priorities guide your selectable nodes. Exact level totals depend on which routes and nodes are unlocked.</p>
+<h2 style="margin-top:20px">3. Your compatible skill orbs</h2>
+<label class="row t">Optional: compatible orbs you own<textarea data-k="guide.inventory" rows="5" maxlength="4000" placeholder="bronze atk 800&#10;silver additional 7&#10;gold crit+additional 4"></textarea></label>
+<p class="hint">One orb per line. Silver assumes Super Attack level 10; gold needs two opened routes. An empty list leaves orb picks open.</p>
+</section>
+<section aria-label="Kit-based build recommendation" aria-live="polite">
+<div class="card"><p class="eyebrow">CHARACTER FIRST</p><h2 id="guideTitle">Your kit-based build</h2><div id="guideResult"></div></div>
+<div class="card" id="guideEvidence" hidden></div>
+<details class="card"><summary>Build plan to save or copy</summary><pre id="guideReview"></pre><button id="guideCopy" type="button">Copy build plan</button></details>
+</section>
+</div>
+<details class="card" id="advanced">
+<summary>Optional advanced fight calculator</summary>
+<p class="hint">Separate scenario tool. Enemy settings, multipliers and its team-margin score do not determine the character-first recommendation above.</p>
+
+<div class="grid">
+<section aria-label="Advanced inputs">
 <div class="card">
 <h2>1. The card</h2>
 <label class="row t">Character<input data-k="name" type="text" maxlength="200" placeholder="e.g. LR Super Saiyan God Goku, EZA"></label>
@@ -246,6 +284,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:13px;backg
 </div>
 </section>
 </div>
+</details>
 </main>
 
 <script id="engine">
@@ -271,7 +310,7 @@ const blank=x=>x===""||x===null||x===undefined;
 function defForm(name){return{name,share:100,sa12:425,sa18:540,ki:24,k12:150,k24:200,stackPer:0,stackN:0,
   addSup:0,addSupPct:0,addNorm:0,addNormPct:0,normSuperPct:0,crit:0,critOn:"all",eva:0,ctrHit:0,atkHit:0,ctrDodge:0,atkDodge:0,dist:""}}
 function defaults(){return{
-  v:3,name:"",role:"",req:"",unsure:"",
+  v:4,name:"",role:"",req:"",unsure:"",guide:guideDefaults(),
   kitSource:"",kitLeader:"",kitSuper:"",kitPassive:"",kitActive:"",kitOther:"",kitSituation:"",kitReview:"unreviewed",kitGaps:"",
   rarity:"LR",unitClass:"Super",unitType:"AGL",enemyClass:"",enemyType:"",slot:"",cardAtk:20000,enemyDef:0,
   forms:[defForm("Base form")],
@@ -325,12 +364,13 @@ function upgrade(o){
     s=Object.assign({},s,{v:3,unitClass:"Super",unitType:"TEQ",enemyClass:m[1]==="2"?"Extreme":"",enemyType:m[0]==="b"?"AGL":"",
       dmgShare:SHARES.reduce((a,b)=>Math.abs(b-share)<Math.abs(a-share)?b:a),forms:Array.isArray(s.forms)?s.forms.map(formV2):s.forms});
   }
+  if(s.v===3)s=Object.assign({},s,{v:4});
   return s;
 }
 function normalizeState(o){
   o=upgrade(o);
   const s=merge(defaults(),o);
-  s.v=3;
+  s.v=4;
   if(!TYPES.includes(s.unitType))s.unitType="AGL";
   if(s.unitClass!=="Extreme")s.unitClass="Super";
   if(s.enemyType&&!TYPES.includes(s.enemyType))s.enemyType="";
@@ -732,6 +772,69 @@ function search(st,topN){
   const best=rows[0],tie=best?rows.filter(r=>Math.abs(r.score-best.score)<=1e-6*Math.max(1,Math.abs(best.score))).length:0;
   return{M,top:rows.slice(0,topN),combos:rows.length,skipped,allocs,ties:tie,inv,pool,kmax,P:[...P1,...P2]};
 }
+// Character-first advice is a kit policy, independent of the advanced fight score.
+// Source snapshots: 2026-10-29. Summaries are paraphrased; priorities are our inference.
+const CHARACTER_KITS=[
+ {id:"1032551:standard:2026-10-29",name:"Super Saiyan 4 Goku (DAIMA)",title:"Maximum-Power Battle",state:"LR STR · standard",release:"2026-01-29",source:"https://dokkanstats.com/en/cards/1032551/",policy:"crit-trigger",
+  sections:{passive:"Guard, damage reduction and sphere-based Ki. Full Ki grants extra crit and an extra-Super chance; slot and received-attack buffs can raise crit further.",super:"The first Super can become an EX Super after a critical hit. Ultra and EX Supers carry DEF buffs.",active:"One turn of guaranteed crit, available from turn 4.",other:"DAIMA / Goku’s Family support; leader, links and categories improve team fit."},
+  reasons:["Crit helps unlock the first-Super EX effect; it is more than a generic damage bonus here.","Additional is the second offensive investment. Guard and reduction reduce the case for prioritizing Evasion."],
+  alternative:"If your rotation maintains guaranteed native crit, switch to Additional first and stop adding Crit. The active turn alone is not a permanent crit guarantee.",scope:"EX access is considered qualitatively; this is not an EX damage calculation."},
+ {id:"1032581:standard:2026-10-29",name:"Super Saiyan 3 Vegeta (DAIMA)",title:"Earth-Shattering Climax",state:"LR TEQ · standard",release:"2026-01-29",source:"https://dokkanstats.com/en/cards/1032581/",policy:"additional-ex",
+  sections:{passive:"Attacks build turn ATK and reach a three-attack reward. High Ki adds a Super and reduction; entry provides temporary guard.",super:"Supers raise DEF. An additional Super can become an EX Super with longer buffs.",active:"An attacking active skill also supplies team Ki.",other:"DAIMA / Vegeta’s Family support and position-dependent team protection."},
+  reasons:["Additional serves several kit goals: attack-count rewards, Super DEF and EX opportunities.","Crit remains useful beyond conditional team crit support. Evasion is a secondary survival alternative."],
+  alternative:"Extra native attacks also give more Hidden Potential checks, so the marginal benefit eventually shrinks. Keep Crit as the complementary investment.",scope:"Attack chains, buff duration and support uptime are considered as kit interactions, not fully simulated."},
+ {id:"1031921:standard:2026-10-29",name:"Broly (Wrathful)",title:"Relentlessly Surging Power",state:"LR TEQ · standard",release:"2025-09-12",source:"https://dokkanstats.com/en/cards/1031921/",policy:"buildup-crit-cap",
+  sections:{passive:"Performed attacks build DEF and eventually guaranteed crit. Received attacks build ATK and additional attacks; guard and entry reduction protect buildup.",super:"Both Supers stack ATK and DEF for the battle.",active:"An attacking active supplies a temporary DEF buff and Super foresight.",other:"A conditional Unarmed-Super counter and Exploding Rage leader support round out the kit."},
+  reasons:["Additional accelerates attack buildup and creates more stacking Supers.","Crit loses value at full native buildup. Evasion can delay received-hit rewards and the counter; use it selectively."],
+  alternative:"Additional is the firm priority. Spare Evasion favors survival; spare Crit only helps the opening before the native guarantee. Neither is an unconditional second-place winner.",scope:"The default plan favors completed buildup; opening-turn and received-hit tradeoffs remain explicit."}
+];
+function guideDefaults(){return{profileId:"",dupes:0,inventory:"",custom:{name:"",awakening:"",role:"damage",crit:"unknown",superReward:"unknown",attackReward:"unknown",hitReward:"unknown",critReward:"unknown",dodgeReward:"unknown",formChange:"unknown"}}}
+function kitRecommendation(g){
+  g=merge(guideDefaults(),g);const dupes=Math.round(num(g.dupes,0,0,4));
+  const p=CHARACTER_KITS.find(p=>p.id===g.profileId);
+  let name,order,reasons,alternative,scope,sections={},source="",status="ready",excluded=[];
+  if(p){
+    name=p.name+" — "+p.title+" ("+p.state+")";sections=p.sections;source=p.source;reasons=p.reasons.slice();alternative=p.alternative;scope=p.scope;
+    order=p.policy==="crit-trigger"?[1,0,2]:p.policy==="buildup-crit-cap"?[0,2,1]:[0,1,2];
+    if(p.policy==="buildup-crit-cap")excluded=[1];
+  }else if(g.profileId==="custom"){
+    const c=g.custom;name=c.name.trim();
+    const keys=["superReward","attackReward","hitReward","critReward","dodgeReward"];
+    if(!name||!c.awakening.trim()||!["none","some","high","guaranteed"].includes(c.crit)||!["damage","support"].includes(c.role)||keys.some(k=>!["yes","no"].includes(c[k]))||!["no","yes"].includes(c.formChange))return{status:"incomplete",name:name||"Unlisted character",message:"Add the exact character and awakening, then finish the kit questions. No build is inferred from an unreviewed name or pasted text."};
+    name+=" — "+c.awakening.trim();reasons=[];
+    if(c.crit==="guaranteed")excluded=[1];
+    if(c.critReward==="yes"&&c.crit!=="guaranteed"){
+      order=[1,0,2];reasons.push("Crit triggers another kit benefit, so it gets priority over a generic crit-damage rule.");
+    }else if(c.superReward==="yes"||c.attackReward==="yes"){
+      order=c.crit==="high"||c.crit==="guaranteed"?[0,2,1]:[0,1,2];reasons.push("Additional advances the kit’s Super or attack-count rewards.");
+    }else if(c.role==="support"&&c.hitReward!=="yes"){
+      order=[2,0,1];reasons.push("For a support with no received-hit reward, Evasion is a reasonable general survival priority.");
+    }else{
+      order=c.crit==="high"||c.crit==="guaranteed"?[0,2,1]:[1,0,2];reasons.push("With no stronger kit trigger recorded, use complementary offensive skills; this is a provisional priority, not a proven optimum.");
+    }
+    if(c.hitReward==="yes"){
+      order=order.filter(x=>x!==2).concat(2);reasons.push("Evasion can postpone received-hit rewards, so it is placed last unless surviving requires it.");
+    }
+    if(c.dodgeReward==="yes")reasons.push("The kit rewards dodges. An Evasion-heavy alternative can be worthwhile; the size and timing of that reward need a character-specific review.");
+    if(c.crit==="guaranteed")reasons.push("Recorded native crit is guaranteed: extra Crit gives no further crit chance while that guarantee applies.");
+    if(c.formChange==="yes")reasons.push("Another form changes the kit. Review that form separately before choosing a permanent build.");
+    alternative="Compare the alternate form and any conditional guarantees. The entered traits produce provisional advice, not an automatic full-kit evaluation.";
+    scope="Manual kit traits, not a source-reviewed character profile.";status="provisional";
+  }else return{status:"empty",message:"Choose a supported character and exact awakening, or use the kit questions for an unlisted character."};
+  const inv=parseInv(g.inventory),skills=order.filter(i=>!excluded.includes(i));
+  // Ordinal priority matching, not an invented combat-utility score. For each
+  // slot prefer the most levels of the first useful skill, then the next.
+  const cmp=(a,b)=>{for(const i of skills){const d=b.d[i]-a.d[i];if(d)return d}return b.atk-a.atk||a.n.localeCompare(b.n)};
+  const slots=TIERS.map((tier,s)=>{
+    const locked=s===2&&dupes<2;
+    const candidates=locked?[]:inv.list.filter(o=>o.s===s&&(o.atk>0||skills.some(i=>o.d[i]>0))).sort(cmp);
+    return{tier,locked,pick:candidates[0]||null,alternatives:candidates.slice(1,3)};
+  });
+  return{status,name,order,reasons,alternative,scope,sections,source,dupes,excluded,slots,bad:inv.bad,
+    board:dupes===0?"0 dupes: use the unlocked board and available orb slots; there are no duplicate-route choices to assign.":`${dupes} dupe${dupes===1?"":"s"}: favor the first priority at available choice nodes, then the next. Fixed nodes stay fixed. Exact level totals require the character’s route map.`,
+    orbMethod:"Orb picks match the stated skill priorities, then ATK. They do not compare exact combat value. Only list orbs compatible with this character; exclusivity is not inferred from text."};
+}
+
 // Slot advice: each answer adds points to the slots it favours; the weights
 // are judgment calls and are shown with the result.
 const SLOT_RULES=[
@@ -781,6 +884,7 @@ function readStore(){
     if(!o||typeof o!=="object")throw 0;
     if(typeof o.v==="number"&&o.v>1){storeOk=false;return"Saved data from a newer version of this tool was found. It was left untouched and nothing will be saved here."}
     if(o.v!==1||typeof o.saved!=="object"||!o.saved)throw 0;
+    if([o.current,...Object.values(o.saved)].some(s=>s&&typeof s.v==="number"&&s.v>4)){storeOk=false;return"Saved character data from a newer version was found. It was left untouched; saving is disabled."}
     store={v:1,current:o.current||null,saved:o.saved,legacy:o.legacy||null};
     return"";
   }catch(e){storeOk=false;return"Saved data in this browser couldn’t be read. It was left untouched and nothing will be saved until you choose to replace it."}
@@ -865,9 +969,11 @@ function syncUI(){
 }
 function applyState(s){
   state=normalizeState(s);
-  renderForms();bind(document);syncUI();run();
+  populateCharacterPicker();renderForms();bind(document);syncUI();run();
 }
 function buildStatic(){
+  const questions={superReward:"Do more Supers improve its DEF, stacks or another kit effect?",attackReward:"Does performing more attacks advance buildup or a reward?",hitReward:"Does it need to receive attacks for buildup, buffs or counters?",critReward:"Does a critical hit trigger another kit effect (such as EX)?",dodgeReward:"Does evading trigger an important kit reward?",formChange:"Does another form change these priorities?"};
+  $("kitQuestions").innerHTML=Object.entries(questions).map(([k,label])=>`<label class="row t">${label}<select data-k="guide.custom.${k}"><option value="unknown">Not checked</option><option value="yes">Yes</option><option value="no">No</option></select></label>`).join("");
   document.querySelectorAll(".typeSel").forEach(e=>{e.innerHTML=(e.dataset.any?`<option value="">${e.dataset.any}</option>`:"")+TYPES.map(t=>`<option value="${t}">${t}</option>`).join("")});
   $("starSkill").innerHTML=`<option value="">No star-node skill</option>`+SK.map((n,i)=>`<option value="${i}">${n}</option>`).join("");
   $("boardBox").innerHTML=SK.map((n,i)=>`<label class="chk"><input type="checkbox" data-k="board.${i}"> ${n}</label>`).join("");
@@ -899,7 +1005,9 @@ function startWorker(){
 }
 function run(){
   if(storeOk){store.current=state;persist()}
+  renderGuide();
   job++;
+  if(!$("advanced").open){if(worker){worker.terminate();worker=null}busy=false;clearTimeout(slowTimer);return}
   if(busy&&worker){worker.terminate();worker=null}
   if(!worker&&typeof Worker!=="undefined")worker=startWorker();
   if(!worker){render(search(state));return}
@@ -961,7 +1069,8 @@ $("addForm").addEventListener("click",()=>{
 });
 $("forms").addEventListener("click",e=>{const i=e.target.dataset&&e.target.dataset.rm;if(i===undefined)return;state.forms.splice(+i,1);renderForms();syncUI();run()});
 $("save").addEventListener("click",()=>{
-  const n=$("saveName").value.trim()||state.name.trim();
+  const plan=kitRecommendation(state.guide);
+  const n=$("saveName").value.trim()||plan.name||state.name.trim();
   if(!n){$("storeMsg").textContent="Type a name to save under.";return}
   if(!storeOk){$("storeMsg").textContent="Saving is off because the stored data couldn’t be read safely.";return}
   if(store.saved[n]&&!confirm(`Replace the saved character “${n}”?`))return;
@@ -979,6 +1088,28 @@ $("legNew").addEventListener("click",()=>legacyChoice("new"));
 $("legOld").addEventListener("click",()=>legacyChoice("old"));
 $("legNo").addEventListener("click",()=>legacyChoice("no"));
 $("copy").addEventListener("click",()=>{try{navigator.clipboard.writeText($("review").textContent).then(()=>{$("copy").textContent="Copied"},()=>{})}catch(e){}setTimeout(()=>{$("copy").textContent="Copy review"},1500)});
+
+function populateCharacterPicker(){
+  const q=$("characterSearch").value.trim().toLowerCase(),selected=state.guide.profileId;
+  const profiles=CHARACTER_KITS.filter(p=>p.id===selected||(p.name+" "+p.title+" "+p.state).toLowerCase().includes(q));
+  $("characterPicker").innerHTML='<option value="">Choose a character and awakening</option>'+profiles.map(p=>`<option value="${esc(p.id)}">${esc(p.name+" — "+p.title+" · "+p.state)}</option>`).join("")+'<option value="custom">Not listed — use kit questions</option>';
+  $("characterPicker").value=selected;
+}
+function renderGuide(){
+  const g=kitRecommendation(state.guide),ready=g.status==="ready"||g.status==="provisional";
+  $("customKit").hidden=state.guide.profileId!=="custom";
+  $("guideTitle").textContent=g.name||"Your kit-based build";
+  $("guideEvidence").hidden=!ready;$("guideCopy").disabled=!ready;
+  if(!ready){$("guideResult").textContent=g.message;$("guideReview").textContent=g.message;return}
+  const order=g.order.filter(i=>!g.excluded.includes(i)),priority=order.map(i=>SK[i]).join(" → ");
+  $("guideResult").innerHTML=`<p class="priority">${esc(priority)}</p><p class="hint">${g.status==="provisional"?"Provisional manual-kit advice":"General-purpose kit recommendation · priorities are an inference"}. No enemy selection or Ki estimate required.</p><ul>${g.reasons.map(r=>`<li>${esc(r)}</li>`).join("")}</ul><p>${esc(g.board)}</p><h3>When the build changes</h3><p>${esc(g.alternative)}</p><h3>Compatible orb plan</h3>${g.slots.map(s=>`<p><b>${s.tier}:</b> ${s.locked?"Locked until two routes are opened":s.pick?esc(s.pick.n):"No useful compatible orb listed"}${s.alternatives.length?`<br><span class="hint">Next options: ${s.alternatives.map(o=>esc(o.n)).join("; ")}</span>`:""}</p>`).join("")}<p class="hint">${esc(g.orbMethod)}</p>${g.bad?`<p class="warn">${g.bad} orb line(s) could not be read. Check the tier, skill name and level.</p>`:""}<p class="hint">This recommends priorities and compatible orbs, not a proven mathematical optimum or an exact board allocation.</p>`;
+  const labels={passive:"Passive and entrance",super:"Super / EX effects",active:"Active skill",other:"Leader, links, categories and other effects"};
+  $("guideEvidence").innerHTML=`<h2>Kit behind the recommendation</h2>${Object.entries(g.sections).map(([k,v])=>`<h3>${labels[k]}</h3><p>${esc(v)}</p>`).join("")}<p class="hint">${esc(g.scope)}</p>${g.source?`<p><a href="${g.source}" target="_blank" rel="noopener noreferrer">Card source and full kit — DokkanStats</a><br><span class="hint">Exact-state snapshot checked October 29, 2026. Source facts are separated from the inferred priorities above.</span></p>`:""}`;
+  $("guideReview").textContent=`${g.name}\nGeneral-purpose kit priority: ${priority}\n${g.reasons.join("\n")}\n\n${g.board}\nAlternative: ${g.alternative}\n\n${g.slots.map(s=>s.tier+": "+(s.locked?"locked":s.pick?s.pick.n:"open — no compatible orb listed")).join("\n")}\n${g.orbMethod}\n${g.scope}\nSource: ${g.source||"manual traits"}\nPriorities are kit advice, not a proven mathematical optimum or exact board allocation.`;
+}
+$("characterSearch").addEventListener("input",populateCharacterPicker);
+$("advanced").addEventListener("toggle",()=>run());
+$("guideCopy").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("guideReview").textContent);$("guideCopy").textContent="Copied"}catch{$("guideCopy").textContent="Select and copy the plan above"}});
 
 // ---------- start ----------
 buildStatic();
