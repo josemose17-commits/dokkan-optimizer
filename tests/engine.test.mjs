@@ -250,7 +250,7 @@ test("saved inputs from earlier versions carry over", () => {
   assert.deepEqual(plain([fresh.orbs[1].one, fresh.orbs[1].two, fresh.orbs[0].stat]), [7, 4, 800]);
   // Version 1: a Type checkbox and absolute hit sizes.
   const v1 = E.normalizeState({ v: 1, typeOn: true, hitSize: "heavy", survW: 2, hits: "3", forms: [{ k12: 1.6 }] });
-  assert.equal(v1.v, 3);
+  assert.equal(v1.v, 4);
   assert.equal(E.matchCode(v1), "b1");
   assert.equal(v1.hitSize, "1");
   assert.equal(v1.hits, "3");
