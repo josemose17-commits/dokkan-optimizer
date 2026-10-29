@@ -9,7 +9,7 @@ const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const src = html.match(/<script id="engine">([\s\S]*?)<\/script>/)[1];
 const ctx = {};
 vm.createContext(ctx);
-vm.runInContext(src + ";this.E={MATCH,defaults,defForm,normalizeState,fromLegacy,parseInv,takenMult,kitForm,matchCode,describeMatch,model,evalBuild,orbOptions,search,adviseSlot,sizeAt};", ctx);
+vm.runInContext(src + ";this.E={MATCH,defaults,defForm,normalizeState,fromLegacy,parseInv,takenMult,kitForm,matchCode,describeMatch,model,evalBuild,orbOptions,search,adviseSlot,sizeAt,readKit};", ctx);
 const E = ctx.E;
 // Arrays made inside the vm context have another realm's prototype.
 const plain = (x) => JSON.parse(JSON.stringify(x));
@@ -126,6 +126,13 @@ test("on-attack ATK boosts add up, then multiply", () => {
   near(E.model(base({ fightTurns: 2, form: { hitStack: 10, hitCap: 15 } })).forms[0].D0, 10.75, "capped");
 });
 
+test("an additional attack that may become a Super, and ATK when attacking", () => {
+  // Half the time a 6 Super, half a 1.5 normal: 10 + 3.75.
+  near(E.model(base({ form: { addMix: 1, addMixPct: 50 } })).forms[0].D0, 13.75, "may become a Super");
+  // ATK +50% when attacking and +50% on Supers add up: main 10 x 2 = 20, normal 1.5 x 1.5 = 2.25.
+  near(build(base({ form: { xn: 1, atkAll: 50, atkSup: 50 } }), { S: 10 }).dmg, (24.25 / 22.25 - 1) * 100, "when attacking");
+});
+
 test("attacks effective against all Types hit like a Type it beats", () => {
   // Neutral, same class: 1.25 + Type ATK, crit (1.5 + Type ATK) x 1.25, as in the first test.
   near(build(base({ form: { effAll: true } }), { C: 15, T: 10 }).dmg, (19.75 / 12.5 - 1) * 100, "effective");
@@ -149,9 +156,11 @@ test("lowered enemy DEF, all-target Supers and Active Skill attacks", () => {
   near(E.model(base({ enemyDef: 50, fightTurns: 2, form: { xs: 1, defLow: 50 } })).forms[0].D0, 12.25, "two turns");
   // A Super that hits 3 enemies: 30, plus a normal 1.5.
   near(E.model(base({ form: { xn: 1, aoe: 3 } })).forms[0].D0, 31.5, "all-target Super");
-  // A 500% Active Skill once in a 5-turn fight: 1 a turn, and a Hidden Potential check every 5 turns.
+  // A 500% Active Skill once in a 5-turn fight, at the 24 Ki multiplier (2): 10 / 5 = 2 a turn,
+  // and a Hidden Potential check every 5 turns. SA Boost 10 adds 0.5 x 2 / 5 to it and 1 to the Super.
   const st = base({ actMult: 500, actUses: 1, fightTurns: 5 });
-  near(E.model(st).forms[0].D0, 11, "Active Skill");
+  near(E.model(st).forms[0].D0, 12, "Active Skill");
+  near(build(st, { S: 10 }).dmg, (13.2 / 12 - 1) * 100, "SA Boost counts for it");
   near(build(st, { A: 15 }).sup, 50 * (1 - Math.pow(0.7, 1.2)), "its additional check");
 });
 
@@ -348,8 +357,8 @@ test("saved inputs from earlier versions carry over", () => {
   assert.equal(v2.q.links, true);
   assert.equal("job" in v2.q, false);
   assert.deepEqual(plain(v2.forms[0]), { name: "Base", share: 100, sa12: 425, sa18: 540, ki: 20, kiOdds: "", k12: 150, k24: 200,
-    saTurn: 0, stackPer: 30, stackCap: 0, stackN: 1, defLow: 0, aoe: 1, atkSup: 0, atkEach: 0, eachBattle: false, eachCap: 0, hitStack: 0, hitCap: 0,
-    addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 70, crit: 20, critOn: "all", eva: 10, effAll: false,
+    saTurn: 0, stackPer: 30, stackCap: 0, stackN: 1, defLow: 0, aoe: 1, atkAll: 0, atkSup: 0, atkEach: 0, eachBattle: false, eachCap: 0, hitStack: 0, hitCap: 0,
+    addSup: 1, addSupPct: 50, addMix: 0, addMixPct: 50, addNorm: 0, addNormPct: 70, crit: 20, critOn: "all", eva: 10, effAll: false,
     ctrHit: 0, ctrOn: "all", atkHit: 20, ctrDodge: 0, atkDodge: 5, dist: "" });
   assert.equal(v2.fightTurns, 1, "old stacks keep a one-turn fight");
   // Version 3: stacks were a snapshot, so they keep a one-turn fight.
@@ -485,4 +494,65 @@ test("Evasion falls as the unit's share of team damage rises", () => {
     last = e;
   }
   assert.equal(last, 0, "a main damage dealer that takes big hits still prefers damage at 60%");
+});
+
+// Kits as the game and DokkanStats show them (from the Dokkan wiki's card pages).
+const BROLY = {
+  sa12: "Greatly raises ATK, raises DEF and causes immense damage to enemy",
+  passive: `Basic effect(s)
+- Ki +3
+- ATK & DEF 260%↑
+- Damage reduction rate & chance of performing a critical hit 26%↑
+- Launches an additional attack that has a high chance of becoming a Super Attack
+When attacking
+- ATK & DEF 26%↑
+When there is a "Pure Saiyans", "Hybrid Saiyans" or "Movie Heroes" Category enemy
+- Ki +3
+- Launches an additional attack that has a great chance of becoming a Super Attack
+- Damage reduction rate & chance of performing a critical hit 18%↑ when attacking`,
+  active: "Ki +6, ATK +60% and attacks effective against all Types for 1 turn",
+};
+
+test("reading a pasted kit: basic effects count, conditions wait for a tick", () => {
+  const r = E.readKit(BROLY, false, true);
+  // Immense damage at SA level 15 (an Extreme Z-Awakened UR) is 630%; "greatly raises ATK" for the battle is +50%.
+  assert.deepEqual(plain(r.form), { sa12: 630, stackPer: 50, crit: 26, addMix: 1, addMixPct: 50, atkAll: 26 });
+  assert.deepEqual(plain(r.card), { dr: 26, drSup: 0, guard: false });
+  assert.equal(r.groups.length, 1);
+  assert.equal(r.groups[0].on, false);
+  assert.ok(r.skipped.some((x) => /Start-of-turn/.test(x)), "ATK & DEF 260% is left out");
+  assert.ok(r.skipped.some((x) => /Active Skill without an attack/.test(x)));
+  // Ticking the Saiyan condition adds its effects; the two additional attacks average 50% and 70%.
+  const on = E.readKit(BROLY, false, true, [r.groups[0].head]);
+  assert.deepEqual(plain(on.form), { sa12: 630, stackPer: 50, crit: 44, addMix: 2, addMixPct: 60, atkAll: 26 });
+  assert.equal(on.card.dr, 44);
+});
+
+test("reading a LR kit: Ultra Super, stated percentages and an Active Skill", () => {
+  const r = E.readKit({
+    sa12: "Raises ATK for 4 turns and causes colossal damage to enemy",
+    sa18: "Raises ATK & DEF by 58% for 1 turn and causes mega-colossal damage to enemy",
+    passive: `Basic effect(s)
+- Ki +7 and ATK & DEF 350%↑
+- Damage reduction rate 58%↑
+- Guards all attacks
+- ATK & DEF 58%↑ and damage reduction rate 10%↑ for allies whose names include "Piccolo"`,
+    active: "Raises ATK by 580% temporarily and causes ultimate damage to enemy; DEF +100% for 1 turn",
+  }, true, false);
+  // Colossal 425% and mega-colossal 570% at LR SA level 20; the 18 Ki Super's raise is the one used.
+  assert.deepEqual(plain(r.form), { sa12: 425, sa18: 570, saTurn: 58 });
+  assert.deepEqual(plain(r.card), { dr: 58, drSup: 0, guard: true }, "the allies' 10% is left out");
+  // Ultimate damage 550% + 580%.
+  assert.deepEqual(plain(r.act), { actMult: 1130, actUses: 1 });
+});
+
+test("reading an older passive written in one line", () => {
+  const r = E.readKit({ passive: "ATK & DEF +120%; ATK +50% when performing a Super Attack; launches an additional Super Attack; high chance of evading enemy's attack; counters with tremendous power; rare chance of performing a critical hit" }, false, false);
+  assert.deepEqual(plain(r.form), { atkSup: 50, eva: 50, addSup: 1, ctrHit: 300, ctrOn: "all" });
+  assert.ok(r.check.some((x) => /rare/.test(x)), "a rare chance needs a number");
+  assert.ok(r.check.some((x) => /Ki multiplier/.test(x)));
+  // Counters on Supers with a chance: 50% x 300%.
+  const n = E.readKit({ passive: "When receiving a Super Attack\n- High chance of nullifying it and countering with tremendous power" }, false, false, ["When receiving a Super Attack"]);
+  assert.equal(n.form.ctrHit, 150, "entered in %");
+  assert.equal(n.form.ctrOn, "super");
 });
