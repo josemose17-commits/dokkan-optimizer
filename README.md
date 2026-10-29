@@ -4,6 +4,16 @@ A single-page tool that picks Hidden Potential levels and skill orbs for one Dok
 
 It tries every orb setup in the bronze, silver and gold slots and every way to place your Potential levels. It ranks the builds by how much they widen the team's margin in a fight.
 
+## Kit entry and supported scope
+
+The kit editor keeps the full leader, Super, passive, active/standby/transformation and other kit text, plus its source and exact awakening state. Reference text is saved and included in the copyable review; it is not parsed into mechanics. There is no bundled character database or automatic character import.
+
+Choose a battle situation (turn, slot, spheres, HP and active conditions) and enter the supported numbers for that situation. The routing guide explains which inputs apply and which effects need an approximation or remain unsupported. Kit review defaults to incomplete; missing effects and assumptions appear next to the result. “All relevant effects entered” is the user's review, not independent verification. Starting Super/Ki multipliers are examples. New states start with no additional attacks; old saved attack values are preserved.
+
+An additional attack with a chance of becoming a Super is entered as an attack count/launch chance and a separate conversion chance. It always counts as one attack for Hidden Potential checks, regardless of whether it becomes a Super. All attacks in that group share a conversion chance; mixed conversion groups need a recorded approximation. This introduces no new game constants. Super-only native crit is now applied to Super damage separately from normals (including Hidden Potential additional attacks); its displayed chance is weighted by expected attack counts. Search factorization is disabled for that case and the exact fallback is checked against brute force.
+
+Guard and damage reduction remain scenario-wide. Forms are weighted steady states, not a timeline. Passive stat buckets, temporary Super buffs, DEF buildup, active/finish damage, revival, domains, nullification and enemy dodge cancellation are not simulated. The hit/dodge damage-gain controls are explicitly estimates; copying passive ATK percentages into them is not an exact calculation.
+
 ## What you enter
 
 Everything comes from the card, its DokkanStats page, or the fight:

@@ -183,6 +183,9 @@ test("orb list parsing", () => {
 // The margin is not additive, so check the search against every orb setup and
 // every Potential split, with Evasion both able and unable to lower the score.
 const bruteCases = {
+  "Super-only crit with converting additionals": (st) => {
+    Object.assign(st.forms[0], { critOn: "super", crit: 70, addNorm: 2, addNormPct: 30, normSuperPct: 50 });
+  },
   "counter unit, Super vs Extreme": (st) => {
     setMatch(st, "b2");
     Object.assign(st, { recOff: 10, dmgShare: 45, hits: 2, hitSize: "auto", dr: 20, enemyDef: 20 });
@@ -262,7 +265,7 @@ test("saved inputs from earlier versions carry over", () => {
   assert.equal(v2.q.links, true);
   assert.equal("job" in v2.q, false);
   assert.deepEqual(plain(v2.forms[0]), { name: "Base", share: 100, sa12: 425, sa18: 540, ki: 20, k12: 150, k24: 200, stackPer: 30, stackN: 1,
-    addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 70, crit: 20, critOn: "all", eva: 10, ctrHit: 0, atkHit: 20, ctrDodge: 0, atkDodge: 5, dist: "" });
+    addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 70, normSuperPct: 0, crit: 20, critOn: "all", eva: 10, ctrHit: 0, atkHit: 20, ctrDodge: 0, atkDodge: 5, dist: "" });
   assert.equal(E.normalizeState({ v: 3, unitType: "bogus", enemyType: "bogus", dmgShare: 50 }).unitType, "AGL");
 });
 
@@ -296,7 +299,8 @@ test("the kit's lines turn into attacks, crits and on-hit values", () => {
   near(k.dist[2][1], 0.5 * 0.2, "four attacks");
   // 60% crit on Supers only: 2.5 Supers of 3 attacks.
   k = E.kitForm(Object.assign(E.defForm("A"), { addSup: 1, addSupPct: 50, addNorm: 0, addNormPct: 50, crit: 60, critOn: "super" }), true);
-  near(k.nc, 0.6 * 2.5 / 3, "Supers-only crit");
+  near(k.nc, 0.6, "undiluted Super crit");
+  assert.equal(k.superCrit, true);
   // "Raises ATK by 20% for the battle" after 3 Supers.
   near(E.kitForm(Object.assign(E.defForm("A"), { stackPer: 20, stackN: 3 }), true).st, 0.6, "stacked ATK");
   // A 300% counter on a 10 turn, neutral: each hit received is worth 30% of the turn.
@@ -382,4 +386,44 @@ test("Evasion falls as the unit's share of team damage rises", () => {
     last = e;
   }
   assert.equal(last, 0, "a main damage dealer that takes big hits still prefers damage at 60%");
+});
+
+
+test("an additional that can become a Super is one attack, not two checks", () => {
+  const st = base();
+  Object.assign(st.forms[0], { addNorm: 2, addNormPct: 50, normSuperPct: 40 });
+  const k = E.kitForm(st.forms[0], true);
+  near(k.xs, 1, "2.5 additional attacks times 40% Supers");
+  near(k.xn, 1.5, "remaining attacks are normal");
+  assert.deepEqual(plain(k.dist), [[3, 0.5], [4, 0.5]]);
+  // Main damage 10, 1 expected extra Super at 6, 1.5 normals at 1.5.
+  near(E.model(st).forms[0].D0, 18.25, "baseline damage");
+  // Additional Lv10: .5*(1-.8^3)+.5*(1-.8^4) = .5392.
+  // Each proc gives .5*6+.5*1.5 = 3.75 damage.
+  near(build(st, { A: 10 }).dmg, 0.5392 * 3.75 / 18.25 * 100, "extra damage");
+  Object.assign(st.forms[0], { normSuperPct: 100 });
+  near(E.kitForm(st.forms[0], true).xn, 0, "100% conversion has no normals");
+});
+
+test("Super-only crit uses separate normal damage and includes HiPo additionals", () => {
+  const st = base({ form: { crit: 60, critOn: "super", xn: 1 } });
+  // Super 10*(.6*1.875+.4)=15.25; normal 1.5 with no native crit.
+  near(E.model(st).forms[0].D0, 16.75, "baseline separate attack types");
+  // Crit Lv10: Super crit .68, normal crit .2.
+  const main = 10 * (.68 * 1.875 + .32), normal = 1.5 * (.2 * 1.875 + .8);
+  // Additional Lv10, two checks: 1-.8^2=.36; half Super / half normal.
+  const dmg = main + normal + .36 * (.5 * 6 * (.68 * 1.875 + .32) + .5 * normal);
+  near(build(st, { A: 10, C: 10 }).dmg, (dmg / 16.75 - 1) * 100, "damage");
+  near(build(st, { A: 10, C: 10 }).crit, (.68 * 1.18 + .2 * 1.18) / 2.36 * 100, "attack-weighted display");
+});
+
+test("full kit reference and scenario survive normalization without inventing mechanics", () => {
+  const st = E.normalizeState({ v: 3, kitSource: "card 123 / EZA", kitPassive: "ATK & DEF +200%", kitSituation: "Slot 2, turn 5", kitReview: "gaps", kitGaps: "DEF buildup" });
+  assert.equal(st.kitPassive, "ATK & DEF +200%");
+  assert.equal(st.kitSituation, "Slot 2, turn 5");
+  assert.equal(st.kitGaps, "DEF buildup");
+  assert.equal(st.forms[0].addSup, 0, "new cards do not invent an additional Super");
+  const before = E.model(st).forms[0].D0;
+  st.kitPassive = "ATK & DEF +500%";
+  near(E.model(st).forms[0].D0, before, "reference text is not silently calculated");
 });
