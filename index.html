@@ -253,6 +253,7 @@ details.mini summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:
   <div class="pair" id="addRow"><span>Super Attack (12 Ki)<span class="hint">Also used by every additional attack. Colossal at SA 20 = 4.25</span></span><input id="mAdd" data-k data-form type="number" min="0" step="0.05" value="4.25" aria-label="12 Ki Super multiplier"><input id="rAdd" data-k data-form type="number" min="0" value="30" aria-label="12 Ki Super ATK raise"></div>
   <p class="hint">Raises ATK %: "raises ATK" = 30, "greatly raises ATK" = 50, "massively raises ATK" = 100, "raises ATK &amp; DEF" = 20. Enter 0 if the Super doesn't raise ATK.</p>
   <div class="sub">Built-in from the passive</div>
+  <label class="chk"><input id="link" data-k type="checkbox" checked><span>Take these from the effect rows in section 2<span class="hint">Additional attacks, crit, evasion, counters and “effective against all Types” are added up from the rows ticked “Counts for the build”, so you enter them once. Untick to type them here instead.</span></span></label>
   <label class="f">Guaranteed additional Supers<span class="hint">Count of "launches an additional Super Attack"</span><input id="natS" data-k data-form type="number" min="0" max="10" value="0"></label>
   <label class="f">Additional attacks that may become a Super<span class="hint">Count of "launches an additional attack that has a … chance of becoming a Super Attack"</span><input id="natC" data-k data-form type="number" min="0" max="10" value="1"></label>
   <label class="f">Chance each one becomes a Super %<span class="hint">The card's footnote gives the exact %. "High chance" = 50, "great chance" = 70</span><input id="natQ" data-k data-form type="number" min="0" max="100" value="50"></label>
@@ -538,14 +539,14 @@ const ENGINE = (() => {
   }
 
   // ---- Slot: check which effects are on before and after its attack in each slot ----
-  const FX_WHAT = {guard: 'Guard', dr: 'Damage reduction', drN: 'Damage reduction, normals only', eva: 'Evasion', nullify: 'Nullify enemy Supers', atkdown: 'Lowers enemy ATK', def: 'DEF boost', atk: 'ATK boost', crit: 'Crit chance', add: 'Additional attack', counter: 'Counter', ally: 'Boost to allies', debuff: 'Stun, seal or enemy stat down'};
+  const FX_WHAT = {guard: 'Guard', dr: 'Damage reduction', drN: 'Damage reduction, normals only', eva: 'Evasion', nullify: 'Nullify enemy Supers', atkdown: 'Lowers enemy ATK', def: 'DEF boost', atk: 'ATK boost', crit: 'Crit chance', add: 'Additional attack', counter: 'Counter', ally: 'Boost to allies', debuff: 'Stun, seal or enemy stat down', eat: 'Effective against all Types'};
   const FX_SRC = {passive: 'Passive', super: 'Super Attack', ultra: 'Ultra Super Attack', active: 'Active Skill'};
   const FX_LAST = {'1': 'This turn only', '2': '2 turns', '3': '3 turns or more', perm: 'Rest of the battle (stacks)'};
   const FX_WHEN = {start: 'start of turn', recv: 'when hit', afterRecv: 'after being hit', evade: 'after evading', attack: 'when attacking', afterSuper: 'after its Super', alliesBefore: 'after allies attack'};
   const FX_POS = {any: 'any position', '1': 'as the 1st attacker', '2': 'as the 2nd attacker', '3': 'as the 3rd attacker', '12': 'as the 1st or 2nd attacker', '23': 'as the 2nd or 3rd attacker'};
   const DEF_W = {guard: 3, dr: 2, drN: 1, eva: 2, nullify: 2, atkdown: 1, def: 1};
   // Typical amount used when a row leaves Amount blank.
-  const AMT_DEFAULT = {dr: 30, drN: 30, eva: 30, nullify: 50, atkdown: 30, def: 100, debuff: 60};
+  const AMT_DEFAULT = {dr: 30, drN: 30, eva: 30, nullify: 50, atkdown: 30, def: 100, debuff: 60, crit: 30};
   const AMT_TYPES = Object.keys(AMT_DEFAULT);
   // Defensive value in "guard equivalents": guard 3, 60% DR or evasion ≈ a guard, DEF +100% = 1.
   function defValue(e) {
@@ -563,10 +564,35 @@ const ENGINE = (() => {
       amt: AMT_TYPES.includes(e.what) ? amt : null, hp: !!e.hp, needAlly: !!e.needAlly, form: e.form == null ? 'all' : String(e.form)};
     if (n.src === 'super' || n.src === 'ultra') n.when = 'attack';
     if (n.src === 'active') n.late = true;
+    // Rows that also feed the damage maths (section 3) carry its numbers.
+    const num = (v, d, lo, hi) => v === '' || v == null || !Number.isFinite(+v) ? d : Math.max(lo, Math.min(hi, +v));
+    if (BUILD_TYPES.includes(n.what)) n.build = e.build !== false;
+    if (n.what === 'crit') n.supOnly = !!e.supOnly;
+    if (n.what === 'add') { n.count = Math.round(num(e.count, 1, 0, 10)); n.sup = num(e.sup, 50, 0, 100); }
+    if (n.what === 'counter') { n.str = num(e.str, 200, 0, 2000); n.per = num(e.per, 1, 0, 10); }
     return n;
   }
+  // Section 3 numbers from the rows that count for the build (all forms' rows plus this form's).
+  const BUILD_TYPES = ['crit', 'eva', 'add', 'counter', 'eat'];
+  function deriveAtk(E, form) {
+    const r = {natS: 0, natC: 0, natQ: 50, ncS: 0, ncN: 0, nd: 0, counters: 0, cMult: 200, eat: false};
+    let qs = 0, cs = 0;
+    for (const e of E) {
+      if (!BUILD_TYPES.includes(e.what) || e.build === false || (form != null && e.form !== 'all' && e.form !== String(form))) continue;
+      const a = e.amt != null ? e.amt : (AMT_DEFAULT[e.what] || 0);
+      if (e.what === 'crit') { r.ncS = Math.min(100, r.ncS + a); if (!e.supOnly && e.src === 'passive') r.ncN = Math.min(100, r.ncN + a); }
+      else if (e.what === 'eva') r.nd = Math.min(100, r.nd + a);
+      else if (e.what === 'add') { if (e.sup >= 100) r.natS += e.count; else { r.natC += e.count; qs += e.count * e.sup; } }
+      else if (e.what === 'counter') { r.counters += e.per; cs += e.per * e.str; }
+      else if (e.what === 'eat') r.eat = true;
+    }
+    if (r.natC) r.natQ = Math.round(qs / r.natC);
+    if (r.counters) r.cMult = Math.round(cs / r.counters);
+    r.natS = Math.min(10, r.natS); r.natC = Math.min(10, r.natC); r.counters = Math.min(10, r.counters);
+    return r;
+  }
   const posOk = (p, k) => p === 'any' || p === String(k) || (p === '23' && k > 1) || (p === '12' && k < 3);
-  const FX_LOW = {guard: 'guard', dr: 'damage reduction', drN: 'damage reduction vs normals', eva: 'evasion', nullify: 'Super nullify', atkdown: 'enemy ATK down', def: 'DEF boost', atk: 'ATK boost', crit: 'crit chance', add: 'additional attack', counter: 'counter', ally: 'boost to allies', debuff: 'stun, seal or enemy stat down'};
+  const FX_LOW = {guard: 'guard', dr: 'damage reduction', drN: 'damage reduction vs normals', eva: 'evasion', nullify: 'Super nullify', atkdown: 'enemy ATK down', def: 'DEF boost', atk: 'ATK boost', crit: 'crit chance', add: 'additional attack', counter: 'counter', ally: 'boost to allies', debuff: 'stun, seal or enemy stat down', eat: 'effective against all Types'};
   const SRC_LOW = {super: 'from its Super', ultra: 'from its Ultra Super', active: 'from its Active Skill'};
   const LAST_LOW = {'2': 'lasts 2 turns', '3': 'lasts 3+ turns', perm: 'lasts all battle'};
   const fxName = e => `${FX_LOW[e.what]}${e.amt != null ? ' ' + e.amt + '%' : ''} (${[e.src !== 'passive' ? SRC_LOW[e.src] : FX_WHEN[e.when], LAST_LOW[e.lasts], e.pos !== 'any' ? FX_POS[e.pos] : ''].filter(Boolean).join(', ')})`;
@@ -884,9 +910,10 @@ const ENGINE = (() => {
       return null;
     };
     const rare = s => check.push(`“${s}”: the chance isn't given (“rare” is 2–15%), so its amount is left blank.`);
-    const row = (what, ctx, amt, note) => {
-      const e = norm(Object.assign({what, src: ctx.src, when: ctx.when || 'start', pos: ctx.pos || 'any', lasts: ctx.lasts || '1', late: !!ctx.late, hp: !!ctx.hp, needAlly: !!ctx.needAlly}, amt != null && !isNaN(amt) ? {amt} : {}));
+    const row = (what, ctx, amt, note, extra) => {
+      const e = norm(Object.assign({what, src: ctx.src, when: ctx.when || 'start', pos: ctx.pos || 'any', lasts: ctx.lasts || '1', late: !!ctx.late, hp: !!ctx.hp, needAlly: !!ctx.needAlly}, amt != null && !isNaN(amt) ? {amt} : {}, extra || {}));
       rows.push(e); filled.push(capFirst(fxName(e)) + (note ? ` (${note})` : ''));
+      return e;
     };
     // Effects in one line, with the timing ctx. `steady` = on every turn it attacks, so it can go into section 3.
     function effects(line, ctx) {
@@ -904,39 +931,40 @@ const ENGINE = (() => {
       m = line.match(/damage reduction rate(?: & [^%\d]*)?\s*(\d+(?:\.\d+)?)\s*%/i) || line.match(/damage received(?: from ([a-z ]+?))?\s*-\s*(\d+)\s*%/i) || line.match(/reduces damage received(?: from ([a-z ]+?))? by (\d+)\s*%/i);
       if (m) { hit = true; const v = +(m[2] || m[1]), from = m[2] ? (m[1] || '') : ''; row(/normal/i.test(from) ? 'drN' : 'dr', ctx, v); }
       if (/guards? all attacks/i.test(line)) { hit = true; row('guard', ctx); }
+      // Crit, evasion, additional attacks, counters and "effective against all Types" also feed section 3;
+      // a row only counts there when it's on every turn it attacks ("Counts for the build").
+      const build = steady || (ctx.src !== 'passive' && ctx.src !== 'active');
+      const cond = what => { if (!build && ctx.src === 'passive') check.push(`${what} (${ctx.head || 'conditional'}) isn't always on, so its row doesn't count for the build. Tick “Counts for the build” on it if it usually holds.`); };
       c = chanceOf(line, '(?:performing |perform )?a critical hit');
       if (c === null && /performs? a critical hit/i.test(line) && !/chance/i.test(line)) c = 100;
       if (c !== null) {
         hit = true; if (isNaN(c)) rare(line);
-        else if (steady || ctx.src !== 'passive') { const sup = ctx.src !== 'passive' || /super attack/i.test(line + ' ' + (ctx.head || '')); atk.ncS = Math.min(100, (atk.ncS || 0) + c); if (!sup) atk.ncN = Math.min(100, (atk.ncN || 0) + c); filled.push(`Crit chance +${c}%${sup ? ' on Supers' : ''} (section 3)`); }
-        else { row('crit', ctx); if (ctx.src === 'passive') check.push(`Crit +${c}% (${ctx.head || 'conditional'}) isn't always on, so it's a row but not in section 3. Add it there if it usually holds.`); }
+        else { const supOnly = ctx.src !== 'passive' || /super attack/i.test(line + ' ' + (ctx.head || '')); row('crit', ctx, c, '', {supOnly, build}); cond(`Crit +${c}%`); }
       }
       c = chanceOf(line, 'evad(?:e|ing) (?:the )?(?:enemy\'?s? )?(?:super |normal )?attacks?');
       if (c === null && /\bevades? (?:the )?enemy'?s? attacks?/i.test(line) && !/chance/i.test(line)) c = 100;
-      if (c !== null) { hit = true; if (isNaN(c)) rare(line); else { row('eva', ctx, c); if (steady) { atk.nd = Math.min(100, (atk.nd || 0) + c); filled.push(`Evasion ${c}% (section 3)`); } } }
-      if (/effective against all types/i.test(line)) { hit = true; if (steady && !/chance/i.test(line)) { atk.eat = true; filled.push('Attacks effective against all Types (section 3)'); } else check.push(`“${line}”: effective against all Types only some of the time; tick it in section 3 if it's usually on.`); }
-      // Additional attacks: steady ones are attack numbers, conditional ones a row.
-      const addOut = (k, n, p, what) => { hit = true; if (steady) { if (k === 'natC') { const prev = atk.natC || 0; atk.natQ = Math.round(((atk.natQ || 0) * prev + p * n) / (prev + n)); } atk[k] = (atk[k] || 0) + n; filled.push(`${what} (section 3)`); }
-        else { row('add', ctx); if (ctx.src === 'passive') check.push(`${what} (${ctx.head || 'conditional'}) isn't always on, so it's a row but not in section 3. Add it there if it usually holds.`); } };
+      if (c !== null) { hit = true; if (isNaN(c)) rare(line); else { row('eva', ctx, c, '', {build}); cond(`Evasion ${c}%`); } }
+      if (/effective against all types/i.test(line)) { hit = true; const sure = build && !/chance/i.test(line); row('eat', ctx, null, '', {build: sure}); if (!sure) check.push(`“${line}”: effective against all Types only some of the time; tick “Counts for the build” on its row if it's usually on.`); }
+      // Additional attacks: one row per line, with how many and their chance of becoming a Super.
+      const addOut = (n, p, what) => { hit = true; row('add', ctx, null, '', {count: n, sup: p, build}); cond(what); };
       const twice = line.match(/(great|high|medium|rare|\d+%) chance (?:of|to) launch(?:ing)? an additional attack that has an? (great|high|medium|rare|\d+%) chance (?:of|to) becom/i);
       if (twice) { hit = true; const q = /%/.test(twice[2]) ? parseFloat(twice[2]) : CHANCE[twice[2].toLowerCase()];
-        if (q === undefined) rare(line); else { addOut('natC', 1, q, `1 additional attack that may become a Super (${q}%)`); check.push(`“${line}”: the attack itself only comes with a chance, but it's counted as sure. Lower it if that overrates it.`); } }
+        if (q === undefined) rare(line); else { addOut(1, q, '1 additional attack'); check.push(`“${line}”: the attack itself only comes with a chance, but it's counted as sure. Lower it if that overrates it.`); } }
       m = twice ? null : line.match(/launch(?:es)? (an|a|one|two|three|\d+) additional attacks?,? (?:each )?(?:of which )?(?:that )?(?:has|have) an? (great|high|medium|rare|\d+%) chance (?:of|to) becom/i);
       if (twice) {}
-      else if (m) { hit = true; const n = word2n(m[1]), p = /%/.test(m[2]) ? parseFloat(m[2]) : CHANCE[m[2].toLowerCase()]; if (p === undefined) rare(line); else addOut('natC', n, p, `${n} additional attack${n > 1 ? 's' : ''} that may become a Super (${p}%)`); }
-      else if ((c = chanceOf(line, 'launch(?:ing)? an additional (?:ultra )?super attack')) !== null) { hit = true; if (isNaN(c)) rare(line); else if (steady) { const prev = atk.natC || 0; atk.natQ = Math.round(((atk.natQ || 0) * prev + 100) / (prev + 1)); atk.natC = prev + 1; filled.push(`${c}% chance of an additional Super, counted as an attack that is always a Super (section 3; check it)`); check.push(`“${line}”: a chance of an extra Super isn't an input, so it's counted as a sure one. Lower it if that overrates it.`); } else row('add', ctx); }
-      else if ((m = line.match(/launch(?:es)? (an|a|one|two|three|\d+) additional (?:ultra )?super attacks?/i))) { const n = word2n(m[1]); addOut('natS', n, 100, `${n} additional Super${n > 1 ? 's' : ''}`); }
-      else if ((m = line.match(/launch(?:es)? (an|a|one|two|three|\d+) additional attacks?/i))) { const n = word2n(m[1]); addOut('natC', n, 0, `${n} additional attack${n > 1 ? 's' : ''} (never a Super)`); }
+      else if (m) { hit = true; const n = word2n(m[1]), p = /%/.test(m[2]) ? parseFloat(m[2]) : CHANCE[m[2].toLowerCase()]; if (p === undefined) rare(line); else addOut(n, p, `${n} additional attack${n > 1 ? 's' : ''}`); }
+      else if ((c = chanceOf(line, 'launch(?:ing)? an additional (?:ultra )?super attack')) !== null) { hit = true; if (isNaN(c)) rare(line); else { addOut(1, 100, `${c}% chance of an additional Super`); check.push(`“${line}”: a chance of an extra Super is counted as a sure one. Lower it if that overrates it.`); } }
+      else if ((m = line.match(/launch(?:es)? (an|a|one|two|three|\d+) additional (?:ultra )?super attacks?/i))) addOut(word2n(m[1]), 100, 'Additional Super');
+      else if ((m = line.match(/launch(?:es)? (an|a|one|two|three|\d+) additional attacks?/i))) addOut(word2n(m[1]), 0, 'Additional attack');
       // Counters.
       if (/counter/i.test(line)) {
         hit = true; const pw = (line.match(/(enormous|tremendous|ferocious|super-intense) power/i) || [])[1], mult = pw ? COUNTER[pw.toLowerCase()] : (+(line.match(/(\d{3})\s*%/) || [])[1] || 0);
         const nul = /nullif/i.test(line + ' ' + (ctx.head || '')), p = nul ? chanceOf(line, 'nullif') : null;
         if (nul) row('nullify', ctx, p !== null && !isNaN(p) ? p : null);
-        row('counter', Object.assign({}, ctx, {when: 'recv'}));
-        if (mult) atk.cMult = mult; else check.push(`“${line}”: the counter's strength isn't known; enter it in section 3.`);
-        atk.counters = nul ? Math.round((p !== null && !isNaN(p) ? p : 50) / 10) / 10 : 1;
-        filled.push(`Counters: ${atk.counters} a turn${mult ? ` at ${mult}%` : ''} (section 3)`);
-        check.push(`Counters per turn was set to ${atk.counters}; change it to how many it usually makes.`);
+        const per = nul ? Math.round((p !== null && !isNaN(p) ? p : 50) / 10) / 10 : 1;
+        row('counter', Object.assign({}, ctx, {when: 'recv'}), null, `${per} a turn${mult ? ` at ${mult}%` : ''}`, {str: mult || 200, per, build: true});
+        if (!mult) check.push(`“${line}”: the counter's strength isn't known, so 200% is used; change it on its row.`);
+        check.push(`Counters per turn was set to ${per}; change it on its row to how many it usually makes.`);
       }
       if (/nullif/i.test(line) && !/counter/i.test(line)) { hit = true; const p = chanceOf(line, 'nullif'); row('nullify', ctx, p !== null && !isNaN(p) ? p : null); }
       // Enemy debuffs.
@@ -1001,7 +1029,7 @@ const ENGINE = (() => {
     return {rows, atk, filled, skipped, check};
   }
 
-  return {SN, SS, Z, AMT_TYPES, AMT_DEFAULT, FX_SRC, FX_LAST, norm, FX_WHAT, FX_WHEN, FX_POS, fxName, parseBoard, boardTotals, parseOrbs, stdOrbs, orbTotals, slotAdvice, weights, evalBuild, score, parseLevels, search, formSet, evalAll, scoreAll, readKit};
+  return {SN, SS, Z, AMT_TYPES, AMT_DEFAULT, FX_SRC, FX_LAST, norm, FX_WHAT, FX_WHEN, FX_POS, fxName, parseBoard, boardTotals, parseOrbs, stdOrbs, orbTotals, slotAdvice, weights, evalBuild, score, parseLevels, search, formSet, evalAll, scoreAll, readKit, deriveAtk, BUILD_TYPES};
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
 </script>
@@ -1031,6 +1059,7 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     if (!s || typeof s !== 'object') return false;
     fields.forEach(e => { if (!(e.id in s)) return; if (e.type === 'checkbox') e.checked = !!s[e.id]; else e.value = String(s[e.id]); });
     if (!('effects' in s)) $('effects').value = JSON.stringify(DEFAULT_FX);
+    if (!('link' in s)) $('link').checked = false; // saved before rows fed section 3: keep its own numbers
     if (!('formAtk' in s)) { $('atkTab').value = '0'; $('formAtk').value = JSON.stringify({'0': visibleStats()}); }
     else { const fa = getFA(); if (fa[$('atkTab').value]) putStats(fa[$('atkTab').value]); }
     renderTabs();
@@ -1042,7 +1071,8 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
   const DEFAULT_FX = [
     {what: 'def', src: 'passive', when: 'start', pos: 'any', lasts: '1', late: false},
     {what: 'dr', src: 'passive', when: 'attack', pos: 'any', lasts: '1', late: false},
-    {what: 'atk', src: 'super', when: 'attack', pos: 'any', lasts: '3', late: false}
+    {what: 'atk', src: 'super', when: 'attack', pos: 'any', lasts: '3', late: false},
+    {what: 'add', src: 'passive', when: 'start', pos: 'any', lasts: '1', late: false, count: 1, sup: 50}
   ];
   function getFx() {
     try { const a = JSON.parse($('effects').value || '[]'); return Array.isArray(a) ? a.filter(e => e && e.what).map(E.norm) : []; } catch { return []; }
@@ -1096,10 +1126,14 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
         <label>Turns on${e.src === 'passive' ? `<select data-f="when">${opts(WHEN_LABEL, e.when)}</select>` : `<select disabled><option>${e.src === 'active' ? 'When it’s used' : 'When it attacks'}</option></select>`}</label>
         <label>Lasts<select data-f="lasts">${opts(E.FX_LAST, e.lasts)}</select></label>
         <label>Position<select data-f="pos">${opts(POS_LABEL, e.pos)}</select></label>
-        ${E.AMT_TYPES.includes(e.what) ? `<label>${e.what === 'debuff' ? 'Chance %' : e.what === 'def' ? 'DEF +%' : 'Amount %'}<input type="number" min="0" data-f="amt" value="${e.amt == null ? '' : e.amt}" placeholder="${E.AMT_DEFAULT[e.what]} if blank"></label>` : ''}
+        ${E.AMT_TYPES.includes(e.what) ? `<label>${e.what === 'debuff' ? 'Chance %' : e.what === 'def' ? 'DEF +%' : e.what === 'crit' ? 'Crit chance %' : 'Amount %'}<input type="number" min="0" data-f="amt" value="${e.amt == null ? '' : e.amt}" placeholder="${E.AMT_DEFAULT[e.what]} if blank"></label>` : ''}
+        ${e.what === 'add' ? `<label>How many<input type="number" min="0" max="10" step="1" data-f="count" value="${e.count}"></label><label>Becomes a Super %<input type="number" min="0" max="100" data-f="sup" value="${e.sup}" title="100 = always a Super"></label>` : ''}
+        ${e.what === 'counter' ? `<label>Strength %<input type="number" min="0" max="2000" step="10" data-f="str" value="${e.str}"></label><label>Counters per turn<input type="number" min="0" max="10" step="0.5" data-f="per" value="${e.per}"></label>` : ''}
         ${formCount() > 1 ? `<label>Form<select data-f="form">${opts(formMap(), e.form)}</select></label>` : ''}
       </div>
       <div class="row"><div class="flags">
+        ${E.BUILD_TYPES.includes(e.what) ? `<label class="chk"><input type="checkbox" data-f="build" ${e.build ? 'checked' : ''}> Counts for the build (it's usually on)</label>` : ''}
+        ${e.what === 'crit' ? `<label class="chk"><input type="checkbox" data-f="supOnly" ${e.supOnly ? 'checked' : ''} ${e.src !== 'passive' ? 'disabled' : ''}> Supers only</label>` : ''}
         <label class="chk"><input type="checkbox" data-f="late" ${e.late ? 'checked' : ''} ${e.src === 'active' ? 'disabled' : ''}> Needs a later turn</label>
         <label class="chk"><input type="checkbox" data-f="hp" ${e.hp ? 'checked' : ''}> Needs an HP condition</label>
         <label class="chk"><input type="checkbox" data-f="needAlly" ${e.needAlly ? 'checked' : ''}> Needs a certain ally in the same turn</label></div>
@@ -1131,11 +1165,12 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     const multi = formCount() > 1, tab = $('atkTab').value;
     const keep = multi ? getFx().filter(e => e.form !== tab) : [];
     setFx(keep.concat(r.rows.map(e => Object.assign({}, e, {form: multi ? tab : 'all'}))));
-    // Section 3: the kit decides its built-in attacks, crit, evasion and counters.
-    putStats(Object.assign({natS: 0, natC: 0, ncS: 0, ncN: 0, nd: 0, counters: 0, eat: false}, r.atk));
+    // Section 3: the Super numbers; additional attacks, crit, evasion and counters come from the rows.
+    $('link').checked = true;
+    putStats(r.atk);
     saveTab(); schedule();
     const L = (t, a, cls) => a.length ? `<b>${t}</b><ul class="${cls || ''}">${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
-    $('kOut').innerHTML = L(`Filled in${multi ? ' for ' + esc(formMap()[tab]) : ''}: ${r.rows.length} effect row${r.rows.length === 1 ? '' : 's'} and section 3`, r.filled) + L('Check these', r.check, 'chk-l') +
+    $('kOut').innerHTML = L(`Filled in${multi ? ' for ' + esc(formMap()[tab]) : ''}: ${r.rows.length} effect row${r.rows.length === 1 ? '' : 's'} and the Super numbers in section 3`, r.filled) + L('Check these', r.check, 'chk-l') +
       (r.skipped.length ? `<details class="mini"><summary>Left out because they don't change the slot or build (${r.skipped.length})</summary><ul>${r.skipped.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : '');
   });
   $('fxClear').addEventListener('click', () => {
@@ -1167,6 +1202,10 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     FORM_FIELDS.forEach(e => { if (e.type === 'number') vis[e.id] = c[e.id]; });
     const first = tab === '0' ? vis : cleanStats(fa['0'], vis);
     c.formStats = c.forms.length > 1 ? c.forms.map((_, i) => String(i) === tab ? vis : cleanStats(fa[String(i)] || first, first)) : [];
+    if (c.link) {
+      if (c.formStats.length) c.formStats.forEach((st, i) => Object.assign(st, E.deriveAtk(c.effects, i)));
+      else Object.assign(c, E.deriveAtk(c.effects, null));
+    }
     if (c.formStats.length) c.formStats.forEach(st => { st.counters = Math.max(0, st.counters); st.natS = Math.floor(st.natS); st.natC = Math.floor(st.natC); });
     if (c.formStats.length) Object.assign(c, c.formStats[0]);
     ['natS','natC'].forEach(k => c[k] = Math.floor(c[k]));
@@ -1188,10 +1227,16 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     $('warn').innerHTML = list.length ? '<ul>' + list.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '';
   }
 
+  const DERIVED = ['natS', 'natC', 'natQ', 'ncS', 'ncN', 'nd', 'counters', 'cMult', 'eat'];
   function uiToggles() {
     document.body.dataset.type = $('type').value;
     const lr = $('lr').value === '1';
     $('addRow').hidden = !lr;
+    const linked = $('link').checked, d = linked ? E.deriveAtk(getFx(), formCount() > 1 ? $('atkTab').value : null) : null;
+    DERIVED.forEach(id => {
+      const el = $(id); el.disabled = linked;
+      if (linked) { if (el.type === 'checkbox') el.checked = d[id]; else el.value = String(d[id]); }
+    });
     $('kSa18Row').hidden = !lr;
     $('kForm').textContent = formCount() > 1 ? `Fills ${formMap()[$('atkTab').value]}, the form open in section 3.` : '';
     $('kiRow').hidden = !lr;
