@@ -170,6 +170,8 @@ details.mini summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:
     <select id="profSel" aria-label="Saved characters"><option value="">Saved characters…</option></select>
     <button id="profLoad" type="button" class="ghost">Load</button>
     <button id="profDel" type="button" class="ghost">Delete</button>
+    <button id="newChar" type="button" class="ghost" title="Start a clean character. Keeps your orbs and priorities; saved characters aren't touched.">New character</button>
+    <button id="clearAll" type="button" class="ghost" title="Reset every input to its starting value. Saved characters aren't touched.">Clear all</button>
   </div>
 </div>
 
@@ -212,7 +214,7 @@ details.mini summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:
   </div>
   <p class="hint">Add a row for each defensive, offensive or team effect, with where it's written and the condition on the card. A unit with damage reduction at the start of turn and a guard after its Super gets two rows. Plain stat boosts with no condition can be skipped unless they're defensive.</p>
   <div id="fxList" class="fxlist"></div>
-  <div class="row"><button id="fxAdd" type="button">Add effect</button><button id="fxClear" type="button" class="ghost">Clear all</button></div>
+  <div class="row"><button id="fxAdd" type="button">Add effect</button><button id="fxClear" type="button" class="ghost">Clear rows</button></div>
   <textarea id="effects" data-k hidden aria-hidden="true"></textarea>
   <details class="mini"><summary>Which "Turns on" to pick</summary>
     <ul class="notes">
@@ -1194,8 +1196,8 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
       (r.skipped.length ? `<details class="mini"><summary>Left out because they don't change the slot or build (${r.skipped.length})</summary><ul>${r.skipped.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : '');
   });
   $('fxClear').addEventListener('click', () => {
-    if ($('fxClear').dataset.armed !== '1') { $('fxClear').dataset.armed = '1'; $('fxClear').textContent = 'Confirm clear'; setTimeout(() => { $('fxClear').dataset.armed = ''; $('fxClear').textContent = 'Clear all'; }, 2500); return; }
-    $('fxClear').dataset.armed = ''; $('fxClear').textContent = 'Clear all'; setFx([]);
+    if ($('fxClear').dataset.armed !== '1') { $('fxClear').dataset.armed = '1'; $('fxClear').textContent = 'Confirm clear'; setTimeout(() => { $('fxClear').dataset.armed = ''; $('fxClear').textContent = 'Clear rows'; }, 2500); return; }
+    $('fxClear').dataset.armed = ''; $('fxClear').textContent = 'Clear rows'; setFx([]);
   });
   function read() {
     const c = {};
@@ -1419,6 +1421,27 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
   $('board').value = standardBoard('teq', 4);
   $('effects').value = JSON.stringify(DEFAULT_FX);
   $('formAtk').value = JSON.stringify({'0': visibleStats()});
+  // ---- New character and Clear all: back to the page's starting values, with no rows ----
+  const START = Object.assign(getState(), {notes: '', effects: '[]'});
+  // Settings that belong to the player, not the character: kept by New character.
+  const ACCOUNT = ['orbMode', 'u0', 's0', 'd0', 'u1', 's1', 'd1', 'u2', 's2', 'd2', 'o0', 'o1', 'o2', 'o3', 'o4', 'o5', 'o6', 'inv', 'statOrbs', 'own', 'wD', 'wT', 'wS'];
+  function resetPage(keepAccount) {
+    const s = Object.assign({}, START), now = getState();
+    if (keepAccount) ACCOUNT.forEach(k => { s[k] = now[k]; });
+    setState(s);
+    ['kSa12', 'kSa18', 'kPassive', 'kActive'].forEach(id => { $(id).value = ''; });
+    $('kEza').checked = false; $('kOut').innerHTML = ''; $('profName').value = '';
+    schedule(); $('notes').focus();
+  }
+  // A second click within a few seconds confirms, like Delete.
+  function confirmClick(btn, label, act) {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = 'Confirm'; setTimeout(() => { btn.dataset.armed = ''; btn.textContent = label; }, 2500); return; }
+      btn.dataset.armed = ''; btn.textContent = label; act();
+    });
+  }
+  confirmClick($('newChar'), 'New character', () => resetPage(true));
+  confirmClick($('clearAll'), 'Clear all', () => resetPage(false));
   const saved = store.get(CUR_KEY);
   if (saved) setState(saved); else { renderFx(); renderTabs(); }
   refreshProfiles();
