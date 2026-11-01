@@ -66,7 +66,7 @@ When there is a "Pure Saiyans" Category enemy
   const adds = r.rows.filter((e) => e.what === "add");
   assert.deepEqual(plain(adds.map((e) => [e.count, e.sup, e.build])), [[1, 50, true], [1, 70, false]], "the conditional one doesn't count for the build");
   assert.equal(r.rows.find((e) => e.what === "atk").lasts, "perm", "a raise with no turn count stacks all battle");
-  assert.ok(r.check.some((x) => /isn't always on/.test(x)));
+  assert.ok(r.check.some((x) => /counts for the slot advice.*depends on the fight/.test(x)));
 });
 
 test("quick fill: LR Supers, guard, counters and conditions", () => {
@@ -123,4 +123,28 @@ test("section 3 adds up the rows: enter each effect once", () => {
   assert.deepEqual([d.natC, d.natQ, d.natS], [3, 57, 1]);
   assert.deepEqual([d.counters, d.cMult, d.eat], [1, 300, true]);
   assert.equal(plain(E.deriveAtk(rows, 1)).ncS, 100, "form 2 adds its own 40%, capped at 100");
+});
+
+test("quick fill: position and team conditions count, fight conditions wait for a tick", () => {
+  const r = E.readKit({ passive: `Basic effect(s)
+- ATK & DEF 200%↑
+As the 2nd or 3rd attacker in a turn
+- High chance of evading enemy's attack
+When attacking as the 2nd or 3rd attacker in a turn
+- Launches 2 additional attacks, each of which has a high chance of becoming a Super Attack
+When there is another "Bond of Master and Disciple" or "Future Saga" Category ally on the team
+- Launches an additional Super Attack
+When HP is 50% or less
+- Great chance of performing a critical hit
+- Survives K.O. attacks (up to once within a turn)` }, false, false);
+  const by = (w) => r.rows.find((e) => e.what === w);
+  assert.equal(by("eva").pos, "23");
+  assert.equal(by("eva").build, true, "position effects count when the build is for that slot");
+  assert.equal(by("crit").build, false, "an HP condition waits for a tick");
+  assert.ok(r.skipped.some((x) => /Survives K\.O\./.test(x)));
+  assert.ok(!r.check.some((x) => /Not understood/.test(x)));
+  // Slot 2: evasion 50%, 2 attacks that may become a Super, and the team's additional Super.
+  assert.deepEqual(plain(E.deriveAtk(r.rows, null, 2)), { natS: 1, natC: 2, natQ: 50, ncS: 0, ncN: 0, nd: 50, counters: 0, cMult: 200, eat: false });
+  // Slot 1: the position effects are off.
+  assert.deepEqual(plain(E.deriveAtk(r.rows, null, 1)), { natS: 1, natC: 0, natQ: 50, ncS: 0, ncN: 0, nd: 0, counters: 0, cMult: 200, eat: false });
 });

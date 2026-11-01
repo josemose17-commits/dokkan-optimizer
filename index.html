@@ -254,7 +254,7 @@ details.mini summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:
   <div class="pair" id="addRow"><span>Super Attack (12 Ki)<span class="hint">Also used by every additional attack. Colossal at SA 20 = 4.25</span></span><input id="mAdd" data-k data-form type="number" min="0" step="0.05" value="4.25" aria-label="12 Ki Super multiplier"><input id="rAdd" data-k data-form type="number" min="0" value="30" aria-label="12 Ki Super ATK raise"></div>
   <p class="hint">Raises ATK %: "raises ATK" = 30, "greatly raises ATK" = 50, "massively raises ATK" = 100, "raises ATK &amp; DEF" = 20. Enter 0 if the Super doesn't raise ATK.</p>
   <div class="sub">Built-in from the passive</div>
-  <label class="chk"><input id="link" data-k type="checkbox" checked><span>Take these from the effect rows in section 2<span class="hint">Additional attacks, crit, evasion, counters and “effective against all Types” are added up from the rows ticked “Counts for the build”, so you enter them once. Untick to type them here instead.</span></span></label>
+  <label class="chk"><input id="link" data-k type="checkbox" checked><span>Take these from the effect rows in section 2<span class="hint">Additional attacks, crit, evasion, counters and “effective against all Types” are added up from the rows ticked “Counts for the build”, so you enter them once. Untick to type them here instead.<span id="linkSlot"></span></span></span></label>
   <label class="f">Guaranteed additional Supers<span class="hint">Count of "launches an additional Super Attack"</span><input id="natS" data-k data-form type="number" min="0" max="10" value="0"></label>
   <label class="f">Additional attacks that may become a Super<span class="hint">Count of "launches an additional attack that has a … chance of becoming a Super Attack"</span><input id="natC" data-k data-form type="number" min="0" max="10" value="1"></label>
   <label class="f">Chance each one becomes a Super %<span class="hint">The card's footnote gives the exact %. "High chance" = 50, "great chance" = 70</span><input id="natQ" data-k data-form type="number" min="0" max="100" value="50"></label>
@@ -575,12 +575,14 @@ const ENGINE = (() => {
     return n;
   }
   // Section 3 numbers from the rows that count for the build (all forms' rows plus this form's).
+  // A row for a position counts when the build's slot is that position.
   const BUILD_TYPES = ['crit', 'eva', 'add', 'counter', 'eat'];
-  function deriveAtk(E, form) {
+  function deriveAtk(E, form, slot) {
     const r = {natS: 0, natC: 0, natQ: 50, ncS: 0, ncN: 0, nd: 0, counters: 0, cMult: 200, eat: false};
     let qs = 0, cs = 0;
     for (const e of E) {
       if (!BUILD_TYPES.includes(e.what) || e.build === false || (form != null && e.form !== 'all' && e.form !== String(form))) continue;
+      if (e.pos && e.pos !== 'any' && !(slot && posOk(e.pos, +slot))) continue;
       const a = e.amt != null ? e.amt : (AMT_DEFAULT[e.what] || 0);
       if (e.what === 'crit') { r.ncS = Math.min(100, r.ncS + a); if (!e.supOnly && e.src === 'passive') r.ncN = Math.min(100, r.ncN + a); }
       else if (e.what === 'eva') r.nd = Math.min(100, r.nd + a);
@@ -873,7 +875,7 @@ const ENGINE = (() => {
         const line = raw.replace(/^[\s•\-–·*]+/, '').replace(/\s+/g, ' ').trim();
         if (!line) return;
         const head = /^(basic effect|when |for |per |with |after |as the |starting |if |during |at the start|from |once |within |each time|every |upon |up to )/i.test(line)
-          && !/%|\+\s*\d|chance of|launch|counters|critical hit|guards|effective against|damage reduction|evades/i.test(line);
+          && !/%(?!\s*or (?:more|less|above|below))|\+\s*\d|chance of|launch|counters|critical hit|guards|effective against|damage reduction|evades/i.test(line);
         out.push({line, head});
       });
     return out;
@@ -919,7 +921,8 @@ const ENGINE = (() => {
     };
     // Effects in one line, with the timing ctx. `steady` = on every turn it attacks, so it can go into section 3.
     function effects(line, ctx) {
-      const steady = ctx.src === 'passive' && !ctx.cond && (!ctx.when || ctx.when === 'start' || ctx.when === 'attack') && !ctx.hp && !ctx.late && !ctx.needAlly && (!ctx.pos || ctx.pos === 'any');
+      // On whenever it attacks (a position is left to the slot the build is for).
+      const steady = ctx.src === 'passive' && !ctx.cond && (!ctx.when || ctx.when === 'start' || ctx.when === 'attack') && !ctx.hp && !ctx.late && !ctx.needAlly;
       if (/allies'|allies’|ally's|all allies|\bfor allies\b|\bto allies\b/i.test(line)) { row('ally', ctx); return true; }
       let hit = false, m, c;
       // ATK & DEF: DEF is defence; a plain start-of-turn ATK boost doesn't change anything, so only conditional ATK gets a row.
@@ -936,7 +939,8 @@ const ENGINE = (() => {
       // Crit, evasion, additional attacks, counters and "effective against all Types" also feed section 3;
       // a row only counts there when it's on every turn it attacks ("Counts for the build").
       const build = steady || (ctx.src !== 'passive' && ctx.src !== 'active');
-      const cond = what => { if (!build && ctx.src === 'passive') check.push(`${what} (${ctx.head || 'conditional'}) isn't always on, so its row doesn't count for the build. Tick “Counts for the build” on it if it usually holds.`); };
+      const why = ctx.hp ? 'an HP condition' : ctx.late ? 'a later turn' : ctx.needAlly ? 'a certain ally attacking in the same turn' : ctx.when && !['start', 'attack'].includes(ctx.when) ? 'being hit, evading or its Super first' : 'a condition that depends on the fight';
+      const cond = what => { if (!build && ctx.src === 'passive') check.push(`${what} (${ctx.head || 'conditional'}) counts for the slot advice. It's left out of the build's damage maths because it needs ${why}; tick “Counts for the build” on its row if that usually holds in your fight.`); };
       c = chanceOf(line, '(?:performing |perform )?a critical hit');
       if (c === null && /performs? a critical hit/i.test(line) && !/chance/i.test(line)) c = 100;
       if (c !== null) {
@@ -1012,8 +1016,13 @@ const ENGINE = (() => {
     for (const {line, head: isHead} of kitLines(txt.passive)) {
       if (isHead) { head = /^basic effect/i.test(line) ? '' : line; hctx = condOf(head); continue; }
       if (/entrance animation|foresees|giant ape|giant form|rage mode/i.test(line)) { skipped.push(line); continue; }
+      if (/survives? k\.?o\.?|revive|revival/i.test(line)) { skipped.push(`${line} (surviving a K.O. isn't part of the slot or build maths)`); continue; }
       // Effects under a heading other than the always-on ones are conditional: rows, but not section 3 numbers.
-      const cond = !!head && !/^when (?:attacking|performing an? (?:ultra )?super attack)(?: with (?:1[0-2]|[1-9]) or more ki)?$/i.test(head);
+      // Headings that don't depend on the fight: attacking, a position (the slot decides),
+      // or allies of a category on the team (the team is built for it).
+      const cond = !!head && !/^when (?:attacking|performing an? (?:ultra )?super attack)(?: with (?:1[0-2]|[1-9]) or more ki)?$/i.test(head)
+        && !/^(?:when attacking )?as the (?:1st|2nd|3rd)(?: or (?:2nd|3rd))? attacker in a turn$/i.test(head)
+        && !(/\bon the team\b/i.test(head) && !/same turn|enemy/i.test(head));
       const ctx = Object.assign({src: 'passive', head, cond}, hctx, condOf(line));
       if (ctx.when === 'attack' && !ctx.lasts) ctx.lasts = '1';
       if (!effects(line, ctx)) {
@@ -1214,8 +1223,10 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     const first = tab === '0' ? vis : cleanStats(fa['0'], vis);
     c.formStats = c.forms.length > 1 ? c.forms.map((_, i) => String(i) === tab ? vis : cleanStats(fa[String(i)] || first, first)) : [];
     if (c.link) {
-      if (c.formStats.length) c.formStats.forEach((st, i) => Object.assign(st, E.deriveAtk(c.effects, i)));
-      else Object.assign(c, E.deriveAtk(c.effects, null));
+      // Position rows count for the slot the build is for, the one the slot advice picks.
+      lastSlot = E.slotAdvice(c).pick;
+      if (c.formStats.length) c.formStats.forEach((st, i) => Object.assign(st, E.deriveAtk(c.effects, i, lastSlot)));
+      else Object.assign(c, E.deriveAtk(c.effects, null, lastSlot));
     }
     if (c.formStats.length) c.formStats.forEach(st => { st.counters = Math.max(0, st.counters); st.natS = Math.floor(st.natS); st.natC = Math.floor(st.natC); });
     if (c.formStats.length) Object.assign(c, c.formStats[0]);
@@ -1238,12 +1249,14 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     $('warn').innerHTML = list.length ? '<ul>' + list.map(x => `<li>${esc(x)}</li>`).join('') + '</ul>' : '';
   }
 
+  let lastSlot = null;
   const DERIVED = ['natS', 'natC', 'natQ', 'ncS', 'ncN', 'nd', 'counters', 'cMult', 'eat'];
   function uiToggles() {
     document.body.dataset.type = $('type').value;
     const lr = $('lr').value === '1';
     $('addRow').hidden = !lr;
-    const linked = $('link').checked, d = linked ? E.deriveAtk(getFx(), formCount() > 1 ? $('atkTab').value : null) : null;
+    const linked = $('link').checked, d = linked ? E.deriveAtk(getFx(), formCount() > 1 ? $('atkTab').value : null, lastSlot) : null;
+    $('linkSlot').textContent = linked && lastSlot && getFx().some(e => E.BUILD_TYPES.includes(e.what) && e.pos !== 'any') ? ` Rows for a position count for slot ${lastSlot}, the slot the build is for.` : '';
     DERIVED.forEach(id => {
       const el = $(id); el.disabled = linked;
       if (linked) { if (el.type === 'checkbox') el.checked = d[id]; else el.value = String(d[id]); }
@@ -1293,6 +1306,7 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     let c;
     try { c = read(); } catch (err) { setWarn([err.message]); $('status').textContent = ''; return; }
     renderSlot(E.slotAdvice(c));
+    uiToggles();
     let r;
     try {
       r = await E.search(c, async frac => {
