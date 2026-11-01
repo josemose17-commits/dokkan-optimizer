@@ -144,6 +144,12 @@ td .tag{display:inline-block;padding:1px 6px;border-radius:999px;border:1px soli
 #atkScope{gap:8px}
 details.mini summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:600}
 .timeline{margin-top:14px;grid-column:1 / -1}
+.quick{border:2px solid var(--acc);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.kout{font-size:13px}
+.kout ul{margin:2px 0 6px;padding-left:18px}
+.kout li{margin:2px 0}
+.kout .chk-l li{color:var(--warnline)}
+.kout b{font-weight:600}
 .timeline td .yes{color:var(--bad);font-weight:600}
 .timeline td .no{color:var(--good);font-weight:600}
 @media(max-width:900px){.jump{display:inline-block}}
@@ -183,6 +189,17 @@ details.mini summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:
 <details class="sec" open>
 <summary><h2>2. Kit effects</h2><small>One row per effect on the passive or Super</small></summary>
 <div class="secbody">
+  <div class="quick">
+    <h3>Quick fill from the card</h3>
+    <p class="hint">Paste the card's text from DokkanStats or the game and press Fill in. It adds a row for each effect and fills in section 3, then you add anything unusual by hand. Leave a box empty if the card doesn't have it.</p>
+    <label class="f wide">Super Attack (12 Ki)<textarea id="kSa12" rows="2" spellcheck="false" placeholder="Raises ATK for 1 turn and causes supreme damage to enemy"></textarea></label>
+    <label class="f wide" id="kSa18Row">Ultra Super Attack (18 Ki)<textarea id="kSa18" rows="2" spellcheck="false"></textarea></label>
+    <label class="f wide">Passive Skill<textarea id="kPassive" rows="6" spellcheck="false" placeholder="Basic effect(s)&#10;- ATK &amp; DEF 200%↑&#10;- Damage reduction rate 30%↑&#10;When attacking&#10;- Guards all attacks"></textarea></label>
+    <label class="f wide">Active Skill<textarea id="kActive" rows="2" spellcheck="false"></textarea></label>
+    <label class="chk"><input id="kEza" type="checkbox"><span>Extreme Z-Awakened<span class="hint">Sets the Super Attack level used to read "immense damage" and the like</span></span></label>
+    <div class="row"><button id="kFill" type="button">Fill in from the text</button><span class="hint" id="kForm"></span></div>
+    <div id="kOut" class="kout" aria-live="polite"></div>
+  </div>
   <label class="f">Forms<span class="hint">Transformations, exchanges and standby forms. Orbs and Hidden Potential carry across forms.</span>
     <select id="formN" data-k><option value="1" selected>One form</option><option value="2">2 forms</option><option value="3">3 forms</option></select></label>
   <div id="formBox" class="qlist" hidden>
@@ -804,7 +821,187 @@ const ENGINE = (() => {
     return {slot, w, F, base, relevant, pb, po, board, orbs, total, top};
   }
 
-  return {SN, SS, Z, AMT_TYPES, AMT_DEFAULT, FX_SRC, FX_LAST, norm, FX_WHAT, FX_WHEN, FX_POS, fxName, parseBoard, boardTotals, parseOrbs, stdOrbs, orbTotals, slotAdvice, weights, evalBuild, score, parseLevels, search, formSet, evalAll, scoreAll};
+  // ---- Quick fill: read pasted kit text into effect rows and attack numbers ----
+  // Chance words from the wiki's footnotes: great 70, high 50, medium 30 ("rare" varies, 2–15%).
+  const CHANCE = {great: 70, high: 50, medium: 30};
+  // Counter words, matched against the wiki's Counterattack tables.
+  const COUNTER = {enormous: 200, tremendous: 300, ferocious: 400};
+  // Super Attack multipliers (%) by damage word and SA level (wiki table); Z = Extreme Z-Awakened only, L = LRs only.
+  const SA_WORDS = {low: [[10, 220]], damage: [[10, 260]], huge: [[10, 290], [15, 340], [20, 420, 'L'], [25, 470, 'LZ']], extreme: [[10, 355], [15, 430]],
+    supreme: [[10, 430], [15, 530, 'Z'], [20, 630, 'Z']], immense: [[10, 505], [15, 630, 'Z']], colossal: [[10, 345], [15, 370], [20, 425, 'L'], [25, 450, 'LZ']],
+    'mega-colossal': [[10, 440], [15, 490], [20, 570, 'L'], [25, 620, 'LZ']]};
+  SA_WORDS.destructive = SA_WORDS.huge; SA_WORDS.mass = SA_WORDS.extreme;
+  function saWord(word, lr, eza) {
+    const lv = (lr ? 20 : 10) + (eza ? 5 : 0); let v = null;
+    for (const [l, x, r] of SA_WORDS[word] || []) if (l <= lv && !(r && ((r.includes('L') && !lr) || (r.includes('Z') && !eza)))) v = x;
+    return v;
+  }
+  // Split pasted text into lines, marking condition headings ("When attacking").
+  function kitLines(t) {
+    const out = [];
+    String(t || '').replace(/<ref[^>]*\/>|<ref[^>]*>[\s\S]*?<\/ref>/gi, '').replace(/\{\{Passive\|UpArrow\}\}/g, '↑').replace(/\{\{[^}]*\}\}/g, '')
+      .replace(/\[\[(?:[^\]|]*\|)?([^\]]*)\]\]/g, '$1').replace(/<br\s*\/?>|<hr\s*\/?>|<\/?b>/gi, '\n')
+      .split(/\n|;\s*/).forEach(raw => {
+        const line = raw.replace(/^[\s•\-–·*]+/, '').replace(/\s+/g, ' ').trim();
+        if (!line) return;
+        const head = /^(basic effect|when |for |per |with |after |as the |starting |if |during |at the start|from |once |within |each time|every |upon |up to )/i.test(line)
+          && !/%|\+\s*\d|chance of|launch|counters|critical hit|guards|effective against|damage reduction|evades/i.test(line);
+        out.push({line, head});
+      });
+    return out;
+  }
+  // The timing a heading or an inline condition sets for the effects under it.
+  function condOf(s) {
+    const c = {};
+    s = String(s || '').toLowerCase();
+    if (/when attacking|when performing an? (?:ultra )?super attack|when launching|during (?:its |the )?attack/.test(s)) c.when = 'attack';
+    if (/after performing an? (?:ultra )?super|\bevery (?:ultra )?super attack performed|after (?:its|the character's) super|\b(?:every|each|per) attack performed/.test(s)) c.when = 'afterSuper';
+    if (/when receiving (?:an|a super) attack|every time (?:the character|it) receives an attack|when (?:the character is )?attacked/.test(s)) c.when = 'recv';
+    if (/after receiving an attack|(?:for )?every attack received|per attack received|with each attack received|after receiving \d+/.test(s)) c.when = 'afterRecv';
+    if (/after evading|(?:for )?every attack evaded|each time (?:the character|it) evades|per attack evaded/.test(s)) c.when = 'evade';
+    if (/(?:for )?every ally (?:who )?(?:has )?attacked|allies (?:who )?attack(?:ed)? before|(?:for )?every (?:attack|ally) .*before (?:the|this) character/.test(s)) c.when = 'alliesBefore';
+    const p = s.match(/as the (1st or 2nd|2nd or 3rd|1st|2nd|3rd) attacker/);
+    if (p) c.pos = {'1st or 2nd': '12', '2nd or 3rd': '23', '1st': '1', '2nd': '2', '3rd': '3'}[p[1]];
+    if (/hp is \d+% or/.test(s)) c.hp = true;
+    if (/starting from the \d+(?:st|nd|rd|th) turn|from the \d+(?:st|nd|rd|th) turn from the start|after the \d+(?:st|nd|rd|th) turn/.test(s)) c.late = true;
+    if (/(?:ally|allies)[^.]*(?:attacking )?in the same turn|another "[^"]+" category ally attacking/.test(s)) c.needAlly = true;
+    const n = s.match(/for (\d+) turns?(?! from the (?:character's entry|start))/);
+    if (/within the (?:same )?turn/.test(s)) c.lasts = '1';
+    else if (n) c.lasts = +n[1] >= 3 ? '3' : +n[1] === 2 ? '2' : '1';
+    else if (/for the rest of (?:the )?battle|up to \d+%|\(stacks?\)/.test(s) || (/\bevery\b|\bwith each\b|\bper\b/.test(s) && c.when && c.when !== 'attack')) c.lasts = 'perm';
+    return c;
+  }
+  const word2n = w => ({an: 1, a: 1, one: 1, two: 2, three: 3, four: 4}[String(w).toLowerCase()] || +w || 1);
+  // Read a kit's text. Returns effect rows (in the page's row format), attack
+  // numbers for section 3, and plain lists of what was filled, left out and to check.
+  function readKit(txt, lr, eza) {
+    const rows = [], atk = {}, filled = [], skipped = [], check = [];
+    const chanceOf = (s, what) => {
+      let m = s.match(new RegExp('(\\d+(?:\\.\\d+)?)\\s*%\\s*chance\\s*(?:of|to)\\s*(?:\\w+\\s){0,3}?' + what, 'i')); if (m) return +m[1];
+      m = s.match(new RegExp('\\b(great|high|medium|rare)\\s+chance\\s*(?:of|to)?\\s*(?:\\w+\\s){0,3}?' + what, 'i'));
+      if (m) return CHANCE[m[1].toLowerCase()] !== undefined ? CHANCE[m[1].toLowerCase()] : NaN;
+      m = s.match(new RegExp(what + '[^%\\d]{0,30}(\\d+(?:\\.\\d+)?)\\s*%', 'i')); if (m) return +m[1];
+      return null;
+    };
+    const rare = s => check.push(`“${s}”: the chance isn't given (“rare” is 2–15%), so its amount is left blank.`);
+    const row = (what, ctx, amt, note) => {
+      const e = norm(Object.assign({what, src: ctx.src, when: ctx.when || 'start', pos: ctx.pos || 'any', lasts: ctx.lasts || '1', late: !!ctx.late, hp: !!ctx.hp, needAlly: !!ctx.needAlly}, amt != null && !isNaN(amt) ? {amt} : {}));
+      rows.push(e); filled.push(capFirst(fxName(e)) + (note ? ` (${note})` : ''));
+    };
+    // Effects in one line, with the timing ctx. `steady` = on every turn it attacks, so it can go into section 3.
+    function effects(line, ctx) {
+      const steady = ctx.src === 'passive' && !ctx.cond && (!ctx.when || ctx.when === 'start' || ctx.when === 'attack') && !ctx.hp && !ctx.late && !ctx.needAlly && (!ctx.pos || ctx.pos === 'any');
+      if (/allies'|allies’|ally's|all allies|\bfor allies\b|\bto allies\b/i.test(line)) { row('ally', ctx); return true; }
+      let hit = false, m, c;
+      // ATK & DEF: DEF is defence; a plain start-of-turn ATK boost doesn't change anything, so only conditional ATK gets a row.
+      m = line.match(/\b(ATK & DEF|ATK and DEF|DEF|ATK)\s*\+?\s*(\d+(?:\.\d+)?)\s*%/i);
+      if (m && !/raises?|lowers?/i.test(line)) {
+        hit = true; const v = +m[2], both = /&|and/.test(m[1]);
+        if (both || /^DEF$/i.test(m[1])) row('def', ctx, v);
+        if ((both || /^ATK$/i.test(m[1])) && ((ctx.when && ctx.when !== 'start') || ctx.hp || ctx.late || ctx.pos)) row('atk', ctx);
+        else if (both || /^ATK$/i.test(m[1])) skipped.push(`Start-of-turn ATK: ${line} (raises every attack alike)`);
+      }
+      m = line.match(/damage reduction rate(?: & [^%\d]*)?\s*(\d+(?:\.\d+)?)\s*%/i) || line.match(/damage received(?: from ([a-z ]+?))?\s*-\s*(\d+)\s*%/i) || line.match(/reduces damage received(?: from ([a-z ]+?))? by (\d+)\s*%/i);
+      if (m) { hit = true; const v = +(m[2] || m[1]), from = m[2] ? (m[1] || '') : ''; row(/normal/i.test(from) ? 'drN' : 'dr', ctx, v); }
+      if (/guards? all attacks/i.test(line)) { hit = true; row('guard', ctx); }
+      c = chanceOf(line, '(?:performing |perform )?a critical hit');
+      if (c === null && /performs? a critical hit/i.test(line) && !/chance/i.test(line)) c = 100;
+      if (c !== null) {
+        hit = true; if (isNaN(c)) rare(line);
+        else if (steady || ctx.src !== 'passive') { const sup = ctx.src !== 'passive' || /super attack/i.test(line + ' ' + (ctx.head || '')); atk.ncS = Math.min(100, (atk.ncS || 0) + c); if (!sup) atk.ncN = Math.min(100, (atk.ncN || 0) + c); filled.push(`Crit chance +${c}%${sup ? ' on Supers' : ''} (section 3)`); }
+        else { row('crit', ctx); if (ctx.src === 'passive') check.push(`Crit +${c}% (${ctx.head || 'conditional'}) isn't always on, so it's a row but not in section 3. Add it there if it usually holds.`); }
+      }
+      c = chanceOf(line, 'evad(?:e|ing) (?:the )?(?:enemy\'?s? )?(?:super |normal )?attacks?');
+      if (c === null && /\bevades? (?:the )?enemy'?s? attacks?/i.test(line) && !/chance/i.test(line)) c = 100;
+      if (c !== null) { hit = true; if (isNaN(c)) rare(line); else { row('eva', ctx, c); if (steady) { atk.nd = Math.min(100, (atk.nd || 0) + c); filled.push(`Evasion ${c}% (section 3)`); } } }
+      if (/effective against all types/i.test(line)) { hit = true; if (steady && !/chance/i.test(line)) { atk.eat = true; filled.push('Attacks effective against all Types (section 3)'); } else check.push(`“${line}”: effective against all Types only some of the time; tick it in section 3 if it's usually on.`); }
+      // Additional attacks: steady ones are attack numbers, conditional ones a row.
+      const addOut = (k, n, p, what) => { hit = true; if (steady) { if (k === 'natC') { const prev = atk.natC || 0; atk.natQ = Math.round(((atk.natQ || 0) * prev + p * n) / (prev + n)); } atk[k] = (atk[k] || 0) + n; filled.push(`${what} (section 3)`); }
+        else { row('add', ctx); if (ctx.src === 'passive') check.push(`${what} (${ctx.head || 'conditional'}) isn't always on, so it's a row but not in section 3. Add it there if it usually holds.`); } };
+      const twice = line.match(/(great|high|medium|rare|\d+%) chance (?:of|to) launch(?:ing)? an additional attack that has an? (great|high|medium|rare|\d+%) chance (?:of|to) becom/i);
+      if (twice) { hit = true; const q = /%/.test(twice[2]) ? parseFloat(twice[2]) : CHANCE[twice[2].toLowerCase()];
+        if (q === undefined) rare(line); else { addOut('natC', 1, q, `1 additional attack that may become a Super (${q}%)`); check.push(`“${line}”: the attack itself only comes with a chance, but it's counted as sure. Lower it if that overrates it.`); } }
+      m = twice ? null : line.match(/launch(?:es)? (an|a|one|two|three|\d+) additional attacks?,? (?:each )?(?:of which )?(?:that )?(?:has|have) an? (great|high|medium|rare|\d+%) chance (?:of|to) becom/i);
+      if (twice) {}
+      else if (m) { hit = true; const n = word2n(m[1]), p = /%/.test(m[2]) ? parseFloat(m[2]) : CHANCE[m[2].toLowerCase()]; if (p === undefined) rare(line); else addOut('natC', n, p, `${n} additional attack${n > 1 ? 's' : ''} that may become a Super (${p}%)`); }
+      else if ((c = chanceOf(line, 'launch(?:ing)? an additional (?:ultra )?super attack')) !== null) { hit = true; if (isNaN(c)) rare(line); else if (steady) { const prev = atk.natC || 0; atk.natQ = Math.round(((atk.natQ || 0) * prev + 100) / (prev + 1)); atk.natC = prev + 1; filled.push(`${c}% chance of an additional Super, counted as an attack that is always a Super (section 3; check it)`); check.push(`“${line}”: a chance of an extra Super isn't an input, so it's counted as a sure one. Lower it if that overrates it.`); } else row('add', ctx); }
+      else if ((m = line.match(/launch(?:es)? (an|a|one|two|three|\d+) additional (?:ultra )?super attacks?/i))) { const n = word2n(m[1]); addOut('natS', n, 100, `${n} additional Super${n > 1 ? 's' : ''}`); }
+      else if ((m = line.match(/launch(?:es)? (an|a|one|two|three|\d+) additional attacks?/i))) { const n = word2n(m[1]); addOut('natC', n, 0, `${n} additional attack${n > 1 ? 's' : ''} (never a Super)`); }
+      // Counters.
+      if (/counter/i.test(line)) {
+        hit = true; const pw = (line.match(/(enormous|tremendous|ferocious|super-intense) power/i) || [])[1], mult = pw ? COUNTER[pw.toLowerCase()] : (+(line.match(/(\d{3})\s*%/) || [])[1] || 0);
+        const nul = /nullif/i.test(line + ' ' + (ctx.head || '')), p = nul ? chanceOf(line, 'nullif') : null;
+        if (nul) row('nullify', ctx, p !== null && !isNaN(p) ? p : null);
+        row('counter', Object.assign({}, ctx, {when: 'recv'}));
+        if (mult) atk.cMult = mult; else check.push(`“${line}”: the counter's strength isn't known; enter it in section 3.`);
+        atk.counters = nul ? Math.round((p !== null && !isNaN(p) ? p : 50) / 10) / 10 : 1;
+        filled.push(`Counters: ${atk.counters} a turn${mult ? ` at ${mult}%` : ''} (section 3)`);
+        check.push(`Counters per turn was set to ${atk.counters}; change it to how many it usually makes.`);
+      }
+      if (/nullif/i.test(line) && !/counter/i.test(line)) { hit = true; const p = chanceOf(line, 'nullif'); row('nullify', ctx, p !== null && !isNaN(p) ? p : null); }
+      // Enemy debuffs.
+      m = line.match(/(massively |greatly )?lowers? (?:the )?(?:enemy'?s?|enemies'?|attacked enemy'?s?|target'?s?)? ?(ATK & DEF|ATK and DEF|ATK|DEF)(?: by (\d+)%)?/i);
+      if (m) { hit = true; const adv = (m[1] || '').trim().toLowerCase(), v = m[3] ? +m[3] : adv === 'massively' ? 80 : adv === 'greatly' ? 50 : 30;
+        if (/ATK/i.test(m[2])) row('atkdown', ctx, v, m[3] ? '' : 'size from its wording'); if (/DEF/i.test(m[2]) && !/ATK/i.test(m[2])) row('debuff', ctx); else if (/DEF/i.test(m[2])) row('debuff', ctx); }
+      m = line.match(/enem[^.]*?\bATK\s*-\s*(\d+)\s*%/i);
+      if (m) { hit = true; row('atkdown', ctx, +m[1]); }
+      if (/\bstun|\bseal/i.test(line)) { hit = true; const p = chanceOf(line, '(?:stun|seal)'); row('debuff', ctx, p !== null && !isNaN(p) ? p : null); }
+      return hit;
+    }
+    // Super Attacks: the multiplier from the damage word, ATK raises for section 3, the rest as rows.
+    const sup = (t, src, label) => {
+      const s = kitLines(t).map(x => x.line).join(' ');
+      if (!s) return null;
+      const w = s.match(/causes? (low|damage|huge|destructive|extreme|mass|supreme|immense|colossal|mega-colossal) damage/i);
+      let mult = null;
+      if (w) { mult = saWord(w[1].toLowerCase(), lr, eza); if (mult) { filled.push(`${label}: ×${mult / 100} (${w[1].toLowerCase()} damage at SA level ${(lr ? 20 : 10) + (eza ? 5 : 0)}; check it on DokkanStats)`); } }
+      else check.push(`${label}: no damage word found, so its multiplier wasn't changed.`);
+      const r = s.match(/(massively |greatly )?raises (?:its )?ATK( & DEF| and DEF)?(?:,? (?:and )?raises DEF)?(?: by (\d+)%)?(?: for (\d+) turns?)?/i);
+      let raise = 0;
+      if (r) {
+        const adv = (r[1] || '').trim().toLowerCase(), turns = r[4] ? +r[4] : 99;
+        raise = r[3] ? +r[3] : adv === 'massively' ? 100 : adv === 'greatly' ? 50 : r[2] && turns > 1 ? 20 : turns > 1 && turns < 9 ? 50 : 30;
+        rows.push(norm({what: 'atk', src, when: 'attack', pos: 'any', lasts: turns >= 99 ? 'perm' : turns >= 3 ? '3' : turns === 2 ? '2' : '1'})); filled.push(`${label} raises ATK ${raise}%${turns >= 99 ? ' for the battle' : turns > 1 ? ` for ${turns} turns` : ' for 1 turn'}`);
+      }
+      const d = s.match(/(massively |greatly )?raises (?:its )?(?:ATK & |ATK and )?DEF(?: by (\d+)%)?(?: for (\d+) turns?)?/i) || (r && r[2] ? r : null);
+      if (d) { const turns = d[3] && d !== r ? +d[3] : r && d === r ? (r[4] ? +r[4] : 99) : 99, da = (d[1] || '').trim().toLowerCase(),
+          v = d !== r && d[2] ? +d[2] : /ATK/i.test(d[0]) ? raise : da === 'massively' ? 100 : da === 'greatly' ? 50 : 30;
+        rows.push(norm({what: 'def', src, when: 'attack', pos: 'any', lasts: turns >= 99 ? 'perm' : turns >= 3 ? '3' : turns === 2 ? '2' : '1', amt: v})); filled.push(`${label} raises DEF ${v}%`); }
+      const ctx = {src, when: 'attack', head: 'super attack'};
+      // Other Super effects (stun, seal, lowers ATK/DEF, crit, allies).
+      effects(s.replace(/(massively |greatly )?raises (?:its )?ATK[^,.]*?(?=,| and causes|$)|causes? [a-z-]+ damage(?: to (?:the |all )?enem(?:y|ies))?/gi, ' '), ctx);
+      if (/all enemies/i.test(s)) check.push(`${label} hits all enemies; the build counts it against one.`);
+      return {mult, raise};
+    };
+    const s12 = sup(txt.sa12, 'super', lr ? 'Super Attack (12 Ki)' : 'Super Attack');
+    const s18 = lr ? sup(txt.sa18, 'ultra', 'Ultra Super Attack') : null;
+    if (lr) { if (s18 && s18.mult) atk.mMain = s18.mult / 100; if (s18) atk.rMain = s18.raise; if (s12 && s12.mult) atk.mAdd = s12.mult / 100; if (s12) atk.rAdd = s12.raise; }
+    else if (s12) { if (s12.mult) atk.mMain = s12.mult / 100; atk.rMain = s12.raise; }
+    // Passive, block by block: a heading sets the timing for the lines under it.
+    let head = '', hctx = {};
+    for (const {line, head: isHead} of kitLines(txt.passive)) {
+      if (isHead) { head = /^basic effect/i.test(line) ? '' : line; hctx = condOf(head); continue; }
+      if (/entrance animation|foresees|giant ape|giant form|rage mode/i.test(line)) { skipped.push(line); continue; }
+      // Effects under a heading other than the always-on ones are conditional: rows, but not section 3 numbers.
+      const cond = !!head && !/^when (?:attacking|performing an? (?:ultra )?super attack)(?: with (?:1[0-2]|[1-9]) or more ki)?$/i.test(head);
+      const ctx = Object.assign({src: 'passive', head, cond}, hctx, condOf(line));
+      if (ctx.when === 'attack' && !ctx.lasts) ctx.lasts = '1';
+      if (!effects(line, ctx)) {
+        if (/\bki\b|\bhp\b|recover|heal|revive|revival|exchange|transform/i.test(line)) skipped.push(line);
+        else check.push(`Not understood, add it by hand if it matters: “${line}”`);
+      }
+    }
+    // Active Skill: its effects as rows (they count from a later turn).
+    for (const {line} of kitLines(txt.active)) {
+      const ctx = Object.assign({src: 'active', head: 'active'}, condOf(line), {when: 'start', late: true});
+      const done = effects(line.replace(/causes? (?:ultimate|[a-z-]+) damage(?: to (?:the |all )?enem(?:y|ies))?|(?:massively |greatly )?raises ATK(?: by \d+%)? temporarily/gi, ' '), ctx);
+      if (!done) skipped.push(`Active Skill: ${line}`);
+    }
+    if (!txt.passive || !String(txt.passive).trim()) check.push('No Passive Skill pasted, so its effects are missing.');
+    return {rows, atk, filled, skipped, check};
+  }
+
+  return {SN, SS, Z, AMT_TYPES, AMT_DEFAULT, FX_SRC, FX_LAST, norm, FX_WHAT, FX_WHEN, FX_POS, fxName, parseBoard, boardTotals, parseOrbs, stdOrbs, orbTotals, slotAdvice, weights, evalBuild, score, parseLevels, search, formSet, evalAll, scoreAll, readKit};
 })();
 if (typeof module !== 'undefined') module.exports = ENGINE;
 </script>
@@ -925,6 +1122,22 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     const a = getFx(); a.splice(+d, 1); setFx(a);
   });
   $('fxAdd').addEventListener('click', () => { const a = getFx(); a.push({what: 'dr', src: 'passive', when: 'start', pos: 'any', lasts: '1', late: false}); setFx(a); });
+  // ---- Quick fill from pasted kit text ----
+  $('kFill').addEventListener('click', () => {
+    const txt = {sa12: $('kSa12').value, sa18: $('lr').value === '1' ? $('kSa18').value : '', passive: $('kPassive').value, active: $('kActive').value};
+    if (!Object.values(txt).some(t => t.trim())) { $('kOut').innerHTML = '<p>Paste at least the Passive Skill or a Super Attack first.</p>'; return; }
+    const r = E.readKit(txt, $('lr').value === '1', $('kEza').checked);
+    // With several forms, the rows and numbers go to the form whose numbers are open in section 3.
+    const multi = formCount() > 1, tab = $('atkTab').value;
+    const keep = multi ? getFx().filter(e => e.form !== tab) : [];
+    setFx(keep.concat(r.rows.map(e => Object.assign({}, e, {form: multi ? tab : 'all'}))));
+    // Section 3: the kit decides its built-in attacks, crit, evasion and counters.
+    putStats(Object.assign({natS: 0, natC: 0, ncS: 0, ncN: 0, nd: 0, counters: 0, eat: false}, r.atk));
+    saveTab(); schedule();
+    const L = (t, a, cls) => a.length ? `<b>${t}</b><ul class="${cls || ''}">${a.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
+    $('kOut').innerHTML = L(`Filled in${multi ? ' for ' + esc(formMap()[tab]) : ''}: ${r.rows.length} effect row${r.rows.length === 1 ? '' : 's'} and section 3`, r.filled) + L('Check these', r.check, 'chk-l') +
+      (r.skipped.length ? `<details class="mini"><summary>Left out because they don't change the slot or build (${r.skipped.length})</summary><ul>${r.skipped.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>` : '');
+  });
   $('fxClear').addEventListener('click', () => {
     if ($('fxClear').dataset.armed !== '1') { $('fxClear').dataset.armed = '1'; $('fxClear').textContent = 'Confirm clear'; setTimeout(() => { $('fxClear').dataset.armed = ''; $('fxClear').textContent = 'Clear all'; }, 2500); return; }
     $('fxClear').dataset.armed = ''; $('fxClear').textContent = 'Clear all'; setFx([]);
@@ -979,6 +1192,8 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     document.body.dataset.type = $('type').value;
     const lr = $('lr').value === '1';
     $('addRow').hidden = !lr;
+    $('kSa18Row').hidden = !lr;
+    $('kForm').textContent = formCount() > 1 ? `Fills ${formMap()[$('atkTab').value]}, the form open in section 3.` : '';
     $('kiRow').hidden = !lr;
     $('cMultRow').hidden = !(+$('counters').value > 0);
     $('mainLabel').textContent = lr ? 'Ultra Super Attack (18+ Ki)' : 'Super Attack (12 Ki)';
