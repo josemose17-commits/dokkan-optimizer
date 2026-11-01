@@ -197,7 +197,8 @@ details.mini summary{cursor:pointer;font-size:13px;color:var(--acc);font-weight:
     <label class="f wide">Passive Skill<textarea id="kPassive" rows="6" spellcheck="false" placeholder="Basic effect(s)&#10;- ATK &amp; DEF 200%↑&#10;- Damage reduction rate 30%↑&#10;When attacking&#10;- Guards all attacks"></textarea></label>
     <label class="f wide">Active Skill<textarea id="kActive" rows="2" spellcheck="false"></textarea></label>
     <label class="chk"><input id="kEza" type="checkbox"><span>Extreme Z-Awakened<span class="hint">Sets the Super Attack level used to read "immense damage" and the like</span></span></label>
-    <div class="row"><button id="kFill" type="button">Fill in from the text</button><span class="hint" id="kForm"></span></div>
+    <label class="f" id="kFormRow" hidden>Fill into<span class="hint">Paste one form's kit at a time. Filling a form replaces only the rows it filled before; rows you added by hand stay.</span><select id="kForm" aria-label="Form to fill"></select></label>
+    <div class="row"><button id="kFill" type="button">Fill in from the text</button></div>
     <div id="kOut" class="kout" aria-live="polite"></div>
   </div>
   <label class="f">Forms<span class="hint">Transformations, exchanges and standby forms. Orbs and Hidden Potential carry across forms.</span>
@@ -566,6 +567,7 @@ const ENGINE = (() => {
     if (n.src === 'active') n.late = true;
     // Rows that also feed the damage maths (section 3) carry its numbers.
     const num = (v, d, lo, hi) => v === '' || v == null || !Number.isFinite(+v) ? d : Math.max(lo, Math.min(hi, +v));
+    if (e.kit) n.kit = true; // filled in from pasted kit text, so a new fill replaces it
     if (BUILD_TYPES.includes(n.what)) n.build = e.build !== false;
     if (n.what === 'crit') n.supOnly = !!e.supOnly;
     if (n.what === 'add') { n.count = Math.round(num(e.count, 1, 0, 10)); n.sup = num(e.sup, 50, 0, 100); }
@@ -1098,6 +1100,9 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     $('atkTabsBox').hidden = n < 2;
     const names = formMap();
     $('atkTabs').innerHTML = Array.from({length: n}, (_, i) => `<button type="button" role="tab" aria-selected="${i === cur}" data-tab="${i}">${esc(names[String(i)])}</button>`).join('');
+    const pick = Math.min($('kForm').value === '' ? cur : +$('kForm').value, n - 1);
+    $('kForm').innerHTML = Array.from({length: n}, (_, i) => `<option value="${i}" ${i === pick ? 'selected' : ''}>${esc(names[String(i)])}</option>`).join('');
+    $('kFormRow').hidden = n < 2;
   }
   $('atkTabs').addEventListener('click', ev => { const t = ev.target.dataset.tab; if (t != null && t !== $('atkTab').value) switchTab(+t); });
   FORM_FIELDS.forEach(e => { e.addEventListener('input', saveTab); e.addEventListener('change', saveTab); });
@@ -1161,11 +1166,17 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
     const txt = {sa12: $('kSa12').value, sa18: $('lr').value === '1' ? $('kSa18').value : '', passive: $('kPassive').value, active: $('kActive').value};
     if (!Object.values(txt).some(t => t.trim())) { $('kOut').innerHTML = '<p>Paste at least the Passive Skill or a Super Attack first.</p>'; return; }
     const r = E.readKit(txt, $('lr').value === '1', $('kEza').checked);
-    // With several forms, the rows and numbers go to the form whose numbers are open in section 3.
-    const multi = formCount() > 1, tab = $('atkTab').value;
-    const keep = multi ? getFx().filter(e => e.form !== tab) : [];
-    setFx(keep.concat(r.rows.map(e => Object.assign({}, e, {form: multi ? tab : 'all'}))));
-    // Section 3: the Super numbers; additional attacks, crit, evasion and counters come from the rows.
+    // Each form gets its own rows and section 3 numbers. A new fill replaces the rows the
+    // last fill of that form made; rows added by hand stay. The untouched example rows go.
+    const multi = formCount() > 1, tab = multi ? String(Math.min(+$('kForm').value || 0, formCount() - 1)) : 'all';
+    let rows = getFx();
+    if (JSON.stringify(rows) === JSON.stringify(DEFAULT_FX.map(E.norm))) rows = [];
+    // Rows filled while there was one form belong to the first form once there are more.
+    if (multi) rows = rows.filter(e => !(e.kit && e.form === 'all' && tab === '0')).map(e => e.kit && e.form === 'all' ? Object.assign({}, e, {form: '0'}) : e);
+    rows = rows.filter(e => !(e.kit && e.form === tab));
+    setFx(rows.concat(r.rows.map(e => Object.assign({}, e, {form: tab, kit: true}))));
+    // Section 3: the Super numbers for that form; additional attacks, crit, evasion and counters come from the rows.
+    if (multi && tab !== $('atkTab').value) switchTab(+tab);
     $('link').checked = true;
     putStats(r.atk);
     saveTab(); schedule();
@@ -1238,7 +1249,6 @@ if (typeof module !== 'undefined') module.exports = ENGINE;
       if (linked) { if (el.type === 'checkbox') el.checked = d[id]; else el.value = String(d[id]); }
     });
     $('kSa18Row').hidden = !lr;
-    $('kForm').textContent = formCount() > 1 ? `Fills ${formMap()[$('atkTab').value]}, the form open in section 3.` : '';
     $('kiRow').hidden = !lr;
     $('cMultRow').hidden = !(+$('counters').value > 0);
     $('mainLabel').textContent = lr ? 'Ultra Super Attack (18+ Ki)' : 'Super Attack (12 Ki)';
