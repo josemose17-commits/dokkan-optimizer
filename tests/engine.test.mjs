@@ -56,12 +56,15 @@ When there is a "Pure Saiyans" Category enemy
 - Launches an additional attack that has a great chance of becoming a Super Attack`,
   }, false, true);
   // Immense damage at SA level 15 (Extreme Z-Awakened UR) = 6.3; "greatly raises ATK" = 50.
-  assert.deepEqual(plain(r.atk), { mMain: 6.3, rMain: 50, ncS: 26, ncN: 26, natQ: 50, natC: 1 });
+  assert.deepEqual(plain(r.atk), { mMain: 6.3, rMain: 50 });
+  // Section 3 adds up the rows that count for the build: the basic block, not the Saiyan condition.
+  assert.deepEqual(plain(E.deriveAtk(r.rows, null)), { natS: 0, natC: 1, natQ: 50, ncS: 26, ncN: 26, nd: 0, counters: 0, cMult: 200, eat: false });
   const what = r.rows.map((e) => e.what + ":" + e.when + ":" + (e.amt ?? ""));
   assert.ok(what.includes("def:start:260"));
   assert.ok(what.includes("dr:start:26"));
   assert.ok(what.includes("atk:attack:"), "the Super's ATK raise");
-  assert.ok(what.includes("add:start:"), "the conditional additional attack is a row");
+  const adds = r.rows.filter((e) => e.what === "add");
+  assert.deepEqual(plain(adds.map((e) => [e.count, e.sup, e.build])), [[1, 50, true], [1, 70, false]], "the conditional one doesn't count for the build");
   assert.equal(r.rows.find((e) => e.what === "atk").lasts, "perm", "a raise with no turn count stacks all battle");
   assert.ok(r.check.some((x) => /isn't always on/.test(x)));
 });
@@ -84,7 +87,10 @@ When receiving a Super Attack
   assert.equal(r.atk.mAdd, 4.25);
   assert.equal(r.atk.mMain, 5.7);
   assert.equal(r.atk.rMain, 58);
-  assert.equal(r.atk.cMult, 300);
+  const d = E.deriveAtk(r.rows, null);
+  assert.equal(d.cMult, 300);
+  assert.equal(d.counters, 0.5, "50% chance to counter a Super");
+  assert.equal(d.nd, 0, "evasion as the 1st attacker isn't always on");
   const get = (w) => r.rows.find((e) => e.what === w);
   assert.equal(get("guard").when, "attack");
   assert.equal(get("eva").pos, "1");
@@ -93,4 +99,28 @@ When receiving a Super Attack
   assert.equal(get("dr").amt, 58);
   assert.ok(get("ally"), "the allies' boost is an ally row, not its own damage reduction");
   assert.equal(r.rows.filter((e) => e.what === "dr").length, 1);
+});
+
+test("section 3 adds up the rows: enter each effect once", () => {
+  const rows = [
+    { what: "crit", src: "passive", when: "start", amt: 20 },
+    { what: "crit", src: "super", when: "attack", amt: 50 },
+    { what: "eva", src: "passive", when: "start", amt: 30 },
+    { what: "eva", src: "passive", when: "start", amt: 20, build: false },
+    { what: "add", src: "passive", when: "start", count: 2, sup: 70 },
+    { what: "add", src: "passive", when: "start", count: 1, sup: 30 },
+    { what: "add", src: "passive", when: "start", count: 1, sup: 100 },
+    { what: "counter", src: "passive", when: "recv", str: 300, per: 1 },
+    { what: "eat", src: "passive", when: "start" },
+    { what: "crit", src: "passive", when: "start", amt: 40, form: "1" },
+  ].map(E.norm);
+  const d = plain(E.deriveAtk(rows, 0));
+  // Crit: 20 on everything, 50 more on Supers from the Super; the form-2 row is left out.
+  assert.equal(d.ncS, 70);
+  assert.equal(d.ncN, 20);
+  assert.equal(d.nd, 30, "a row not counted for the build is left out");
+  // Three attacks that may become a Super average (2 x 70 + 30) / 3 = 57; the sure one is a guaranteed Super.
+  assert.deepEqual([d.natC, d.natQ, d.natS], [3, 57, 1]);
+  assert.deepEqual([d.counters, d.cMult, d.eat], [1, 300, true]);
+  assert.equal(plain(E.deriveAtk(rows, 1)).ncS, 100, "form 2 adds its own 40%, capped at 100");
 });

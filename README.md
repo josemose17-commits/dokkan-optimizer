@@ -6,13 +6,13 @@ A single-page tool for one Dokkan Battle character. Fill in what the card says a
 
 1. **Character:** name, Type (sets the free star skill on the board) and rarity.
 2. **Kit effects:** one row per effect on the passive, Super, Ultra Super or Active Skill: guard, damage reduction, evasion, DEF and ATK boosts, crit, additional attacks, counters, ally boosts, stuns and seals. Each row says when it turns on, how long it lasts, which position it needs and how big it is. Up to 3 forms.
-3. **Attacks on the card:** the Super Attack multipliers and their ATK raises, the Ki it usually reaches, built-in additional attacks, crit and evasion chances, counters, and "effective against all Types".
+3. **Attacks on the card:** the Super Attack multipliers and their ATK raises and the Ki it usually reaches. Built-in additional attacks, crit, evasion, counters and "effective against all Types" are added up from the section 2 rows ticked "Counts for the build", so each effect is entered once (crit rows take their % and "Supers only", additional attack rows how many and their Super chance, counter rows their strength and counters per turn). Untick "Take these from the effect rows" to type them in section 3 instead; characters saved before this keep their own numbers that way.
 4. **Hidden Potential board:** how much Potential is unlocked, or your own board nodes.
 5. **Skill orbs:** standard orbs at the levels you set, or only the orbs you list.
 
 Optional: your own priorities, your current build to compare, and a backup box to move characters between devices.
 
-**Quick fill from the card** (top of section 2) does most of this for you: paste the Super Attack, Ultra Super Attack, Passive Skill and Active Skill text from DokkanStats or the game and press Fill in. It adds an effect row for each line (with when it turns on, how long it lasts, position, HP and ally conditions and amounts) and fills in section 3: Super multipliers from their damage word, ATK raises, built-in additional attacks, crit, evasion, counters and "effective against all Types". Effects under a condition such as "when there is a Saiyan enemy" become rows but stay out of section 3. It lists what it filled, what it left out (Ki, healing, start-of-turn ATK) and what to check, such as a "rare" chance or counters per turn. Add anything unusual as a row by hand afterwards.
+**Quick fill from the card** (top of section 2) does most of this for you: paste the Super Attack, Ultra Super Attack, Passive Skill and Active Skill text from DokkanStats or the game and press Fill in. It adds an effect row for each line (with when it turns on, how long it lasts, position, HP and ally conditions and amounts) and fills in the Super multipliers (from their damage word) and ATK raises in section 3. Effects under a condition such as "when there is a Saiyan enemy" become rows that don't count for the build until you tick them. It lists what it filled, what it left out (Ki, healing, start-of-turn ATK) and what to check, such as a "rare" chance or counters per turn. Add anything unusual as a row by hand afterwards.
 
 Wording follows the Dokkan wiki: chances great 70%, high 50%, medium 30%; counters enormous 200%, tremendous 300%, ferocious 400%; Super Attack damage words by SA level (UR 10, LR 20, +5 when Extreme Z-Awakened).
 
@@ -30,7 +30,7 @@ The page's "How it decides" section explains the rules and lists its sources (Do
 node --test
 ```
 
-`tests/engine.test.mjs` loads the calculation code from `<script id="engine">` and checks that it reads boards and orbs, that more Crit and Additional raise damage, that the search returns a build, and that Quick fill reads real kits.
+`tests/engine.test.mjs` loads the calculation code from `<script id="engine">` and checks that it reads boards and orbs, that more Crit and Additional raise damage, that the search returns a build, that Quick fill reads real kits, and that section 3 adds up the rows correctly.
 
 ## Saved data
 
